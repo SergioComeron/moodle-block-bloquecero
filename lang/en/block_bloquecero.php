@@ -1,5 +1,5 @@
 <?php
-$string['pluginname'] = 'Zoom UDIMA';
+$string['pluginname'] = 'Bloque cero';
 $string['clientid'] = 'Client ID';
 $string['clientid_desc'] = 'Introduce el Client ID de OAuth2';
 $string['clientsecret'] = 'Client Secret';
