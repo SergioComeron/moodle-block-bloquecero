@@ -5,6 +5,8 @@ class block_bloquecero extends block_base {
     }
 
     public function get_content() {
+        global $COURSE;
+
         if ($this->content !== null) {
             return $this->content;
         }
@@ -12,14 +14,13 @@ class block_bloquecero extends block_base {
         $this->content = new stdClass;
 
         // URL del foro de anuncios
-        // $forum_anuncios_url = new moodle_url('/mod/forum/view.php', ['id' => 1]);
-        $forum_anuncios_url = 'http://localhost/stable_404/mod/forum/view.php?id=64';
+        $forum_anuncios_url = new moodle_url('/mod/forum/view.php', array('id' => 64));
 
         // URL del foro de tutorías
-        $forum_tutorias_url = 'http://localhost/stable_404/mod/forum/view.php?id=64';
+        $forum_tutorias_url = new moodle_url('/mod/forum/view.php', array('id' => 64));
 
         // URL del foro de estudiantes
-        $forum_estudiantes_url = 'http://localhost/stable_404/mod/forum/view.php?id=64';
+        $forum_estudiantes_url = new moodle_url('/mod/forum/view.php', array('id' => 64));
 
         // URLs de las secciones
         $guide_url = new moodle_url('/path/to/guide'); // Cambia esta URL
@@ -31,47 +32,56 @@ class block_bloquecero extends block_base {
         $foro_estudiantes_img = new moodle_url('/blocks/bloquecero/pix/foro_estudiantes_bg.png');
         $foro_anuncios_img = new moodle_url('/blocks/bloquecero/pix/foro_anuncios_bg.png');
         $foro_tutorias_img = new moodle_url('/blocks/bloquecero/pix/foro_tutorias_bg.png');
+        $fondo_cabecera_img = new moodle_url('/blocks/bloquecero/pix/header_bg.png');
         // HTML para el bloque
         $this->content->text = '
             <div style="padding: 0 20px; font-family: Arial, sans-serif;">
-                <!-- Cabecera -->
-                <div style="border: 1px solid #ddd; border-radius: 8px; padding: 20px; text-align: center; background-color: #f9f9f9;">
-                    <h2 style="margin: 0; font-size: 1.5em;">Título de la asignatura con la cabecera de marketing</h2>
-                    <p style="margin: 10px 0; font-size: 1em;">Profesor/a: Sinesio Delgado</p>
-                    <button style="
-                        padding: 10px 15px;
-                        background-color: #0073e6;
-                        color: white;
-                        border: none;
-                        border-radius: 4px;
-                        cursor: pointer;
-                        font-size: 1em;
-                        transition: background-color 0.3s ease;
-                    " onmouseover="this.style.backgroundColor=\'#005bb5\';" onmouseout="this.style.backgroundColor=\'#0073e6\';" onclick="toggleContactInfo()">Datos de contacto</button>
-                    <div id="contact-info" style="
-                        display: none;
-                        margin-top: 10px;
-                        text-align: left;
-                        font-size: 0.9em;
-                        color: #333;
-                        border: 1px solid #ddd;
-                        border-radius: 8px;
-                        padding: 15px;
-                        background-color: #f9f9f9;
-                        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
-                        opacity: 0;
-                        transform: scaleY(0);
-                        transform-origin: top;
-                        transition: transform 0.3s ease, opacity 0.3s ease;
-                    ">
-                        <p><strong>E-mail:</strong> jesusalberto.arenas@udima.es</p>
-                        <p><strong>Teléfono:</strong> +34 918561694 / +34 911896994 - Extensión 3563</p>
-                        <p><strong>Horario de Tutorías Telefónicas (horario Madrid):</strong></p>
-                        <ul>
-                            <li>Lunes y Martes de 17:00 a 19:00 h.</li>
-                            <li>Miércoles y Jueves de 12:00 a 14:00 h.</li>
-                        </ul>
+               <!-- Cabecera -->
+                    <div style="position: relative; border-radius: 12px; overflow: hidden; margin-bottom: 20px; font-family: Arial, sans-serif; width: 100%; aspect-ratio: 3 / 1;">
+                    <img src="' . $fondo_cabecera_img . '" alt="Fondo" style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; object-fit: cover;">
+                    <div style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; padding: 30px; display: flex; flex-direction: column; justify-content: flex-end; align-items: flex-start;">
+                        <h1 style="margin: 0 0 10px 0; font-size: 2.5em; color: black;">' . format_string($COURSE->fullname) . '</h1>
+                        <p style="margin: 0 0 10px 0; font-size: 1.2em; color: black;">Profesor/a: Sinesio Delgado</p>
+                        <button style="
+                            padding: 10px 20px;
+                            background-color: #0073e6;
+                            color: white;
+                            border: none;
+                            border-radius: 4px;
+                            cursor: pointer;
+                            font-size: 1em;
+                            transition: background-color 0.3s ease;
+                            width: auto;
+                            max-width: 100%;
+                        " 
+                        onmouseover="this.style.backgroundColor=\'#005bb5\';"
+                        onmouseout="this.style.backgroundColor=\'#0073e6\';"
+                        onclick="toggleContactInfo()">Datos de contacto</button>
                     </div>
+                </div>
+                <div id="contact-info" style="
+                    display: none;
+                    margin-top: 10px;
+                    text-align: left;
+                    font-size: 0.9em;
+                    color: #333;
+                    border: 1px solid #ddd;
+                    border-radius: 8px;
+                    padding: 15px;
+                    background-color: #f9f9f9;
+                    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+                    opacity: 0;
+                    transform: scaleY(0);
+                    transform-origin: top;
+                    transition: transform 0.3s ease, opacity 0.3s ease;
+                ">
+                    <p><strong>E-mail:</strong> jesusalberto.arenas@udima.es</p>
+                    <p><strong>Teléfono:</strong> +34 918561694 / +34 911896994 - Extensión 3563</p>
+                    <p><strong>Horario de Tutorías Telefónicas (horario Madrid):</strong></p>
+                    <ul>
+                        <li>Lunes y Martes de 17:00 a 19:00 h.</li>
+                        <li>Miércoles y Jueves de 12:00 a 14:00 h.</li>
+                    </ul>
                 </div>
 
                 <!-- Foros -->
