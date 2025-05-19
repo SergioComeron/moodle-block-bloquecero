@@ -1,4 +1,6 @@
 <?php
+require_once($CFG->dirroot.'/course/format/weeks/lib.php');
+
 class block_bloquecero extends block_base {
     public function init() {
         $this->title = get_string('pluginname', 'block_bloquecero');
@@ -125,6 +127,65 @@ class block_bloquecero extends block_base {
                 </div>';
         }
 
+        // Carrusel de tarjetas de secciones
+        $sectionscarousel = '<div class="sections-carousel">';
+        $modinfo = get_fast_modinfo($COURSE);
+        $sectioncount = 0;
+        foreach ($modinfo->get_section_info_all() as $section) {
+            if ($section->section == 0) continue;
+            if (!$section->uservisible) continue;
+
+            $course = $modinfo->get_course();
+            $sectiontitle = '';
+
+            // Si el formato es "weeks" y la sección NO tiene nombre personalizado
+            if ($course->format == 'weeks' && empty($section->name)) {
+                $startdate = $course->startdate;
+                $weekduration = 7 * 24 * 60 * 60; // 7 días en segundos
+                $sectionstart = $startdate + (($section->section - 1) * $weekduration);
+                $sectionend = $sectionstart + $weekduration;
+
+                // Si hay fecha de fin de curso y nos pasamos, la ajustamos (opcional)
+                if (!empty($course->enddate) && $sectionend > $course->enddate) {
+                    $sectionend = $course->enddate;
+                }
+
+                $sectiontitle = userdate($sectionstart, get_string('strftimedateshort')) . ' - ' . userdate($sectionend - 1, get_string('strftimedateshort'));
+            } else {
+                // Si tiene nombre personalizado o NO es formato weeks
+                $sectiontitle = format_string($section->name ?: get_string('section', 'moodle') . ' ' . $section->section);
+            }
+
+            // Recoge las actividades visibles de la sección
+            $activities = '';
+            if (!empty($modinfo->sections[$section->section])) {
+                foreach ($modinfo->sections[$section->section] as $cmid) {
+                    $cm = $modinfo->cms[$cmid];
+                    if (!$cm->uservisible) continue;
+                    $icon = $OUTPUT->pix_icon('icon', $cm->modfullname, $cm->modname, ['class' => 'activityicon']);
+                    $activities .= '<li style="margin-bottom: 6px;">' . $icon . ' <a href="' . $cm->url . '" style="color:#004D35;text-decoration:none;">' . format_string($cm->name) . '</a></li>';
+                }
+            }
+            if ($activities) {
+                $activities = '<ul style="margin: 12px 0 0 0; padding-left: 18px;">' . $activities . '</ul>';
+            } else {
+                $activities = '<div style="margin-top:12px; color:#888; font-size:0.95em;">'.get_string('noactivities', 'block_bloquecero').'</div>';
+            }
+
+            $sectionid = 'section-activities-' . $sectioncount;
+            $sectionscarousel .= '<div class="section-card" style="flex-direction: column; padding:0;">
+                <button class="section-title-btn section-title-header" type="button" onclick="toggleSectionActivities(\'' . $sectionid . '\', this)">
+                    <span class="section-title-text">' . $sectiontitle . '</span>
+                    <span class="section-arrow">&#9654;</span>
+                </button>
+                <div id="' . $sectionid . '" class="section-activities collapsed" style="margin:0 16px 8px 16px; display:none;">'
+                    . $activities .
+                '</div>
+            </div>';
+            $sectioncount++;
+        }
+        $sectionscarousel .= '</div>';
+
         // HTML principal del bloque
         $this->content->text = '
             <div style="padding: 0 20px; font-family: Arial, sans-serif;">
@@ -140,6 +201,8 @@ class block_bloquecero extends block_base {
                 </div>
                 <!-- Bloques de información de contacto de cada profesor -->
                 ' . $contactBlocksHtml . '
+                
+
                 
                 <!-- Sección de foros y demás secciones -->
                 <div style="display: flex; flex-direction: row; justify-content: center; gap: 20px; margin: 20px 0;">
@@ -201,35 +264,200 @@ class block_bloquecero extends block_base {
                         </div>
                     </a>
                 </div>
+                
                 <style>
                     .forum-card:hover {
                         transform: scale(1.05);
                         box-shadow: 0 6px 10px rgba(0, 0, 0, 0.15);
                     }
-                </style>
-            </div>
+                    .ghost-button {
+    display: flex;
+    align-items: center;
+    background: #fff;
+    color: #004D35;
+    border: 2px solid #004D35;
+    border-radius: 8px;
+    padding: 10px 20px;
+    font-weight: 600;
+    gap: 10px;
+    min-width: 160px;
+    transition: background 0.2s, box-shadow 0.2s;
+    box-shadow: none;
+    cursor: pointer;
+    font-size: 1em;
+    text-decoration: none !important;
+    width: 220px;
+    justify-content: center;
+}
 
-            <script>
-                function toggleContactInfo(id) {
-                    const contactInfo = document.getElementById(id);
-                    if (contactInfo.style.display === "none" || contactInfo.style.opacity === "0") {
-                        contactInfo.style.display = "block";
-                        setTimeout(() => {
-                            contactInfo.style.opacity = "1";
-                            contactInfo.style.transform = "scaleY(1)";
-                        }, 10);
-                    } else {
-                        contactInfo.style.opacity = "0";
-                        contactInfo.style.transform = "scaleY(0)";
-                        setTimeout(() => {
-                            contactInfo.style.display = "none";
-                        }, 300);
+/* Elimina subrayado en todos los estados posibles */
+.ghost-button:visited,
+.ghost-button:focus,
+.ghost-button:hover,
+.ghost-button:active {
+    text-decoration: none !important;
+    color: #004D35;
+}
+
+/* Opcional: refuerza el pointer en todos los estados */
+.ghost-button:focus,
+.ghost-button:hover,
+.ghost-button:active {
+    cursor: pointer;
+}
+
+
+.ghost-button:hover,
+.ghost-button:focus {
+    background: #004D35 !important;
+    color: #fff !important;
+    border-color: #004D35 !important;
+    box-shadow: 0 6px 16px rgba(0, 77, 53, 0.10);
+    outline: none;
+    transition: background 0.2s, color 0.2s, border-color 0.2s;
+}
+.sections-carousel {
+    display: flex;
+    flex-direction: row;
+    gap: 18px;
+    overflow-x: auto;
+    padding: 10px 0 20px 0;
+    margin-bottom: 10px;
+    scrollbar-width: thin;
+    scrollbar-color: #004D35 #e0e0e0;
+}
+.sections-carousel::-webkit-scrollbar {
+    height: 8px;
+}
+.sections-carousel::-webkit-scrollbar-thumb {
+    background: #004D35;
+    border-radius: 4px;
+}
+.section-card {
+    min-width: 220px;
+    max-width: 260px;
+    background: #fff;
+    border: 1.5px solid #004D35;
+    border-radius: 10px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+    color: #004D35;
+    font-weight: 600;
+    font-size: 0.9em;
+    display: flex;
+    flex-direction: column;
+    align-items: stretch;
+    justify-content: flex-start;
+    transition: box-shadow 0.2s;
+    flex-shrink: 0;
+    cursor: pointer;
+    padding: 0;
+    overflow: hidden;
+}
+.section-title-header {
+    background: #004D35 !important;
+    color: #fff !important;
+    border: none;
+    width: 100%;
+    text-align: left;
+    padding: 14px 16px;
+    margin: 0;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    font-size: 1em;
+    outline: none;
+    border-radius: 10px 10px 0 0;
+    transition: background 0.2s, color 0.2s;
+}
+.section-title-header .section-title-text {
+    color: #fff !important;
+    font-weight: 600;
+    font-size: 1em;
+}
+.section-title-header .section-arrow {
+    color: #fff !important;
+    font-size: 1.1em;
+    margin-left: 8px;
+    transition: transform 0.3s;
+}
+.section-title-btn.open .section-arrow {
+    transform: rotate(90deg);
+}
+.section-activities {
+    background: #fff;
+    transition: max-height 0.3s ease, opacity 0.3s;
+    overflow: hidden;
+    opacity: 1;
+    max-height: 1000px;
+    border-radius: 0 0 10px 10px;
+    padding-bottom: 8px;
+}
+.section-activities.collapsed {
+    opacity: 0;
+    max-height: 0;
+    padding: 0 !important;
+}
+                </style>
+                
+                <!-- Fila de botones adicionales para otras secciones -->
+                <div style="display: flex; justify-content: center; gap: 20px; margin: 20px 0;">
+                    <a href="' . new moodle_url('/grade/report/user/index.php', array('id' => $COURSE->id)) . '" class="ghost-button">
+                        ' . $OUTPUT->pix_icon('t/grades', '', 'moodle', array('class' => 'bigicon')) . '
+                        <span>' . get_string('calificador', 'block_bloquecero') . '</span>
+                    </a>
+                    <a href="' . new moodle_url('/user/index.php', array('id' => $COURSE->id)) . '" class="ghost-button">
+                        ' . $OUTPUT->pix_icon('i/users', '', 'moodle', array('class' => 'bigicon')) . '
+                        <span>' . get_string('participantes', 'block_bloquecero') . '</span>
+                    </a>
+                    <a href="' . new moodle_url('/#', array('id' => $COURSE->id)) . '" class="ghost-button">
+                        ' . $OUTPUT->pix_icon('book', '', 'moodle', array('class' => 'bigicon')) . '
+                        <span>' . get_string('bibliografiarecomendada', 'block_bloquecero') . '</span>
+                    </a>
+                </div>
+
+                                <!-- Carrusel de tarjetas de secciones -->
+                ' . $sectionscarousel . '
+
+                <script>
+                    function toggleContactInfo(id) {
+                        const contactInfo = document.getElementById(id);
+                        if (contactInfo.style.display === "none" || contactInfo.style.opacity === "0") {
+                            contactInfo.style.display = "block";
+                            setTimeout(() => {
+                                contactInfo.style.opacity = "1";
+                                contactInfo.style.transform = "scaleY(1)";
+                            }, 10);
+                        } else {
+                            contactInfo.style.opacity = "0";
+                            contactInfo.style.transform = "scaleY(0)";
+                            setTimeout(() => {
+                                contactInfo.style.display = "none";
+                            }, 300);
+                        }
                     }
-                }
-                // Otras funciones (toggleZoom, toggleActivities, etc.) se mantienen sin cambios.
-                function toggleActivities() { /* ... */ }
-                function toggleZoom() { /* ... */ }
-            </script>
+                    function toggleSectionActivities(id, btn) {
+                        var content = document.getElementById(id);
+                        var isCollapsed = content.style.display === "none" || content.classList.contains(\'collapsed\');
+                        // Cierra todos los demás
+                        document.querySelectorAll(\'.section-activities\').forEach(function(div) {
+                            div.style.display = "none";
+                            div.classList.add(\'collapsed\');
+                        });
+                        document.querySelectorAll(\'.section-title-btn\').forEach(function(b) {
+                            b.classList.remove(\'open\');
+                        });
+                        // Abre el seleccionado si estaba cerrado
+                        if (isCollapsed) {
+                            content.style.display = "block";
+                            setTimeout(function() {
+                                content.classList.remove(\'collapsed\');
+                            }, 10);
+                            btn.classList.add(\'open\');
+                        }
+                    }
+                </script>
+            </div>
         ';
     
         return $this->content;
