@@ -176,7 +176,7 @@ class block_bloquecero extends block_base {
             $sectionscarousel .= '<div class="section-card" style="flex-direction: column; padding:0;">
                 <button class="section-title-btn section-title-header" type="button" onclick="toggleSectionActivities(\'' . $sectionid . '\', this)">
                     <span class="section-title-text">' . $sectiontitle . '</span>
-                    <span class="section-arrow">&#9654;</span>
+                    <span class="section-arrow" style="color: #004D35;">&#9654;</span>
                 </button>
                 <div id="' . $sectionid . '" class="section-activities collapsed" style="margin:0 16px 8px 16px; display:none;">'
                     . $activities .
@@ -185,6 +185,14 @@ class block_bloquecero extends block_base {
             $sectioncount++;
         }
         $sectionscarousel .= '</div>';
+
+        // Envolver el carrusel en un contenedor con botones laterales
+        $carouselContainer = '
+            <div class="carousel-container" style="position: relative; display: flex; align-items: center; margin-bottom: 20px; padding: 0 40px;">
+                 <button class="carousel-btn carousel-btn-left" onclick="scrollCarousel(-1)" style="background: transparent; border: none; color: #004D35; font-size: 1.5em; padding: 0; cursor: pointer; position: absolute; left: 0; z-index: 2; height: 100%;">&#9664;</button>
+                 ' . $sectionscarousel . '
+                 <button class="carousel-btn carousel-btn-right" onclick="scrollCarousel(1)" style="background: transparent; border: none; color: #004D35; font-size: 1.5em; padding: 0; cursor: pointer; position: absolute; right: 0; z-index: 2; height: 100%;">&#9654;</button>
+            </div>';
 
         // HTML principal del bloque
         $this->content->text = '
@@ -323,15 +331,11 @@ class block_bloquecero extends block_base {
     overflow-x: auto;
     padding: 10px 0 20px 0;
     margin-bottom: 10px;
-    scrollbar-width: thin;
-    scrollbar-color: #004D35 #e0e0e0;
+    scrollbar-width: none; /* Oculta scrollbar en Firefox */
+    -ms-overflow-style: none;  /* IE 10+ */
 }
 .sections-carousel::-webkit-scrollbar {
-    height: 8px;
-}
-.sections-carousel::-webkit-scrollbar-thumb {
-    background: #004D35;
-    border-radius: 4px;
+    display: none; /* Oculta scrollbar en Chrome, Safari y Opera */
 }
 .section-card {
     min-width: 220px;
@@ -376,7 +380,7 @@ class block_bloquecero extends block_base {
     font-size: 1em;
 }
 .section-title-header .section-arrow {
-    color: #fff !important;
+    color: #004D35 !important;
     font-size: 1.1em;
     margin-left: 8px;
     transition: transform 0.3s;
@@ -417,9 +421,15 @@ class block_bloquecero extends block_base {
                 </div>
 
                                 <!-- Carrusel de tarjetas de secciones -->
-                ' . $sectionscarousel . '
+                ' . $carouselContainer . '
 
                 <script>
+                    function scrollCarousel(direction) {
+                        var carousel = document.querySelector(".sections-carousel");
+                        var scrollAmount = carousel.offsetWidth * 0.8; // Desplaza el 80% del ancho visible
+                        carousel.scrollBy({ left: direction * scrollAmount, behavior: "smooth" });
+                        setTimeout(updateCarouselArrows, 500); // Actualiza las flechas después de la animación
+                    }
                     function toggleContactInfo(id) {
                         const contactInfo = document.getElementById(id);
                         if (contactInfo.style.display === "none" || contactInfo.style.opacity === "0") {
@@ -456,6 +466,28 @@ class block_bloquecero extends block_base {
                             btn.classList.add(\'open\');
                         }
                     }
+                    function updateCarouselArrows() {
+                        var carousel = document.querySelector(".sections-carousel");
+                        var leftArrow = document.querySelector(".carousel-btn-left");
+                        var rightArrow = document.querySelector(".carousel-btn-right");
+                        // Si no hay scroll a la izquierda, oculta la flecha izquierda
+                        if (carousel.scrollLeft <= 0) {
+                            leftArrow.style.display = "none";
+                        } else {
+                            leftArrow.style.display = "block";
+                        }
+                        // Si no hay contenido a la derecha, oculta la flecha derecha
+                        if (carousel.scrollWidth <= carousel.clientWidth + carousel.scrollLeft) {
+                            rightArrow.style.display = "none";
+                        } else {
+                            rightArrow.style.display = "block";
+                        }
+                    }
+                    // Actualiza las flechas al cargar la página y al redimensionar la ventana
+                    window.addEventListener(\'load\', updateCarouselArrows);
+                    window.addEventListener(\'resize\', updateCarouselArrows);
+                    // Actualiza las flechas al hacer scroll en el carrusel
+                    document.querySelector(".sections-carousel").addEventListener(\'scroll\', updateCarouselArrows);
                 </script>
             </div>
         ';
