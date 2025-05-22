@@ -173,9 +173,12 @@ class block_bloquecero extends block_base {
             }
 
             $sectionid = 'section-activities-' . $sectioncount;
-            $sectionscarousel .= '<div class="section-card" style="flex-direction: column; padding:0;">
+            $isactive = !empty($section->current);
+            $activeclass = $isactive ? ' active-section' : '';
+            $activesymbol = $isactive ? ' <span title="Sección activa" style="color:#1abc9c;">&#11088;</span>' : '';
+            $sectionscarousel .= '<div class="section-card' . $activeclass . '" style="flex-direction: column; padding:0;">
                 <button class="section-title-btn section-title-header" type="button" onclick="toggleSectionActivities(\'' . $sectionid . '\', this)">
-                    <span class="section-title-text">' . $sectiontitle . '</span>
+                    <span class="section-title-text">' . $sectiontitle . $activesymbol . '</span>
                     <span class="section-arrow" style="color: #004D35;">&#9654;</span>
                 </button>
                 <div id="' . $sectionid . '" class="section-activities collapsed" style="margin:0 16px 8px 16px; display:none;">'
@@ -333,6 +336,7 @@ class block_bloquecero extends block_base {
     margin-bottom: 10px;
     scrollbar-width: none; /* Oculta scrollbar en Firefox */
     -ms-overflow-style: none;  /* IE 10+ */
+    scroll-snap-type: x mandatory; /* <-- Añadido */
 }
 .sections-carousel::-webkit-scrollbar {
     display: none; /* Oculta scrollbar en Chrome, Safari y Opera */
@@ -356,6 +360,11 @@ class block_bloquecero extends block_base {
     cursor: pointer;
     padding: 0;
     overflow: hidden;
+    scroll-snap-align: start; /* <-- Añadido */
+}
+.section-card.active-section {
+    border: 2.5px solid #1abc9c;
+    box-shadow: 0 4px 16px rgba(26,188,156,0.12);
 }
 .section-title-header {
     background: #004D35 !important;
@@ -426,9 +435,10 @@ class block_bloquecero extends block_base {
                 <script>
                     function scrollCarousel(direction) {
                         var carousel = document.querySelector(".sections-carousel");
-                        var scrollAmount = carousel.offsetWidth * 0.8; // Desplaza el 80% del ancho visible
+                        var card = carousel.querySelector(".section-card");
+                        var scrollAmount = card ? card.offsetWidth + 18 : 240; // 18 es el gap
                         carousel.scrollBy({ left: direction * scrollAmount, behavior: "smooth" });
-                        setTimeout(updateCarouselArrows, 500); // Actualiza las flechas después de la animación
+                        setTimeout(updateCarouselArrows, 500);
                     }
                     function toggleContactInfo(id) {
                         const contactInfo = document.getElementById(id);
@@ -488,6 +498,24 @@ class block_bloquecero extends block_base {
                     window.addEventListener(\'resize\', updateCarouselArrows);
                     // Actualiza las flechas al hacer scroll en el carrusel
                     document.querySelector(".sections-carousel").addEventListener(\'scroll\', updateCarouselArrows);
+
+                    window.addEventListener(\'load\', function() {
+                        var carousel = document.querySelector(\'.sections-carousel\');
+                        var active = carousel ? carousel.querySelector(\'.section-card.active-section\') : null;
+                        if (carousel && active) {
+                            // Calcula el scroll para centrar la tarjeta activa
+                            var carouselRect = carousel.getBoundingClientRect();
+                            var activeRect = active.getBoundingClientRect();
+                            var scrollLeft = active.offsetLeft - (carousel.clientWidth / 2) + (active.clientWidth / 2);
+
+                            // Si es la primera, que quede a la izquierda
+                            if (active === carousel.firstElementChild) {
+                                scrollLeft = 0;
+                            }
+                            carousel.scrollLeft = scrollLeft;
+                        }
+                        updateCarouselArrows();
+                    });
                 </script>
             </div>
         ';
