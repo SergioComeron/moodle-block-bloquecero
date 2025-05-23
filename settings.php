@@ -25,34 +25,5 @@
 defined('MOODLE_INTERNAL') || die;
 
 if ($ADMIN->fulltree) {
-    $settings->add(new admin_setting_configtext(
-        'block_bloquecero/client_id',
-        get_string('clientid', 'block_bloquecero'),
-        get_string('clientid_desc', 'block_bloquecero'),
-        '',
-        PARAM_TEXT
-    ));
 
-    $settings->add(new admin_setting_configpasswordunmask(
-        'block_bloquecero/client_secret',
-        get_string('clientsecret', 'block_bloquecero'),
-        get_string('clientsecret_desc', 'block_bloquecero'),
-        ''
-    ));
-
-    $settings->add(new admin_setting_configtext(
-        'block_bloquecero/token_url',
-        get_string('tokenurl', 'block_bloquecero'),
-        get_string('tokenurl_desc', 'block_bloquecero'),
-        '',
-        PARAM_URL
-    ));
-
-    $settings->add(new admin_setting_configtext(
-        'block_bloquecero/scope',
-        get_string('scope', 'block_bloquecero'),
-        get_string('scope_desc', 'block_bloquecero'),
-        '',
-        PARAM_TEXT
-    ));
 }
