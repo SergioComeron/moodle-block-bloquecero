@@ -76,8 +76,27 @@ class block_bloquecero extends block_base {
         $tasks_url = new moodle_url('/path/to/tasks');
 
         /// URLs de las imágenes
-        $fondo_cabecera_img = new moodle_url('/blocks/bloquecero/pix/header_bg2.png');
+        $context = context_system::instance();
+        $fs = get_file_storage();
+        $files = $fs->get_area_files($context->id, 'block_bloquecero', 'header_bg', 0, 'itemid, filepath, filename', false);
 
+
+        if (!empty($files)) {
+            foreach ($files as $file) {
+                echo "Encontrado: " . $file->get_filename() . "<br>";
+            }
+        } else {
+            echo "No se ha encontrado ningún archivo.";
+        }
+        // Si hay archivos, usa el primero como imagen de fondo.
+        if (!empty($files)) {
+            $file = reset($files);
+            $fondo_cabecera_img = moodle_url::make_pluginfile_url(
+                $context->id, 'block_bloquecero', 'header_bg', 0, $file->get_filepath(), $file->get_filename()
+            );
+        } else {
+            $fondo_cabecera_img = new moodle_url('/path/to/default.jpg');
+        }
         // Generar botones de contacto para cada profesor y sus respectivas secciones ocultas.
         $contactButtonsHtml = '';
         $contactBlocksHtml = '';

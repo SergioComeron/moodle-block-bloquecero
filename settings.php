@@ -25,5 +25,12 @@
 defined('MOODLE_INTERNAL') || die;
 
 if ($ADMIN->fulltree) {
-
+    $settings->add(new admin_setting_configstoredfile(
+        'block_bloquecero/header_bg_img',
+        get_string('header_bg_img', 'block_bloquecero'),
+        get_string('header_bg_img_desc', 'block_bloquecero'),
+        'header_bg',
+        0,
+        array('accepted_types' => array('.png', '.jpg', '.jpeg', '.gif'))
+    ));
 }
