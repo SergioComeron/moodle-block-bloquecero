@@ -248,8 +248,27 @@ class block_bloquecero extends block_base {
     '<div style="text-align:center; margin-bottom:1.2em;">
         <button id="bloquecero-mostrarcurso-btn"
             onclick="window.bloquecero_restore()"
-            style="font-size:1.08em;padding:.6em 2em;background:#004D35;color:#fff;border:none;border-radius:8px;cursor:pointer;box-shadow:0 1px 8px #0001;">
-            Mostrar curso completo
+            style="
+                position: fixed;
+                bottom: 20px;
+                left: 50%;
+                transform: translateX(-50%);
+                width: 60px;
+                height: 60px;
+                border-radius: 50%;
+                background: #004D35;
+                color: #fff;
+                border: none;
+                box-shadow: 0 1px 8px rgba(0, 0, 0, 0.2);
+                cursor: pointer;
+                display: flex;
+                flex-direction: column;
+                align-items: center;
+                justify-content: center;
+            "
+            title="Mostrar curso completo">
+            <span style="font-size: 1.5em; line-height: 1;">&#x25BC;</span>
+            <span style="font-size: 0.8em; line-height: 1;">mostrar</span>
         </button>
     </div>
 
