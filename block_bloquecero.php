@@ -89,28 +89,37 @@ class block_bloquecero extends block_base {
         } else {
             $fondo_cabecera_img = new moodle_url('/path/to/default.jpg');
         }
-        // Generar botones de contacto para cada profesor y sus respectivas secciones ocultas.
-        $contactButtonsHtml = '';
+        // Generar botones de contacto para cada profesor (lista separada por comas).
+        $teachersList = array();
         $contactBlocksHtml = '';
         foreach ($teachersP as $teacher) {
             $uniqueId = 'contact-info-' . $teacher->id;
-            // Botón ovalado con el nombre del profesor.
-            $contactButtonsHtml .= '
+            $teachersList[] = '
                 <button style="
-                    padding: 10px 20px;
-                    background-color: #004D35;
-                    color: white;
+                    background: none;
                     border: none;
-                    border-radius: 50px;
-                    cursor: pointer;
+                    color: #004D35;
                     font-size: 1em;
-                    transition: background-color 0.3s ease;
-                    margin: 5px;
-                " 
-                onmouseover="this.style.backgroundColor=\'#00593D\';"
-                onmouseout="this.style.backgroundColor=\'#004D35\';"
-                onclick="toggleContactInfo(\'' . $uniqueId . '\')">
-                    ' . format_string($teacher->fullname) . '
+                    cursor: pointer;
+                    padding: 0;
+                    margin: 0;
+                    display: inline-flex;
+                    align-items: center;
+                    transition: color 0.3s ease;
+                " onmouseover="this.style.color=\'#1abc9c\'" onmouseout="this.style.color=\'#004D35\'" onclick="toggleContactInfo(\'' . $uniqueId . '\')">
+                    <span>' . format_string($teacher->fullname) . '</span>
+                    <span style="
+                        display: inline-flex;
+                        align-items: center;
+                        justify-content: center;
+                        width: 22px;
+                        height: 22px;
+                        margin-left: 6px;
+                        background: #1abc9c;
+                        color: #fff;
+                        border-radius: 50%;
+                        font-size: 0.85em;
+                    ">i</span>
                 </button>';
 
             // Bloque de información de contacto para este profesor (oculto por defecto).
@@ -137,6 +146,9 @@ class block_bloquecero extends block_base {
                     <p><strong>Horario:</strong></p>' . $teacher->schedule . '
                 </div>';
         }
+
+        // Unir los botones con comas
+        $contactButtonsHtml = implode(', ', $teachersList);
 
         // Inicializar array para almacenar las actividades de cada sección (clave: id de la sección)
         $sectionsActivitiesData = array();
@@ -223,6 +235,13 @@ class block_bloquecero extends block_base {
         // Inyectar la definición del array de actividades en JavaScript
         $sectionsActivitiesJson = json_encode($sectionsActivitiesData);
 
+        $courseDates = '';
+        if (!empty($COURSE->startdate)) {
+            $courseDates = userdate($COURSE->startdate, get_string('strftimedateshort'));
+            if (!empty($COURSE->enddate)) {
+                $courseDates .= ' - ' . userdate($COURSE->enddate, get_string('strftimedateshort'));
+            }
+        }
         // HTML principal del bloque (se añade debajo del carrusel el bloque para las actividades)
         $this->content->text = '
             <div style="padding: 0 20px; font-family: Arial, sans-serif;">
@@ -231,16 +250,75 @@ class block_bloquecero extends block_base {
                     <img src="' . $fondo_cabecera_img . '" alt="Fondo" style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; object-fit: cover;">
                     <div style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; padding: 30px; display: flex; flex-direction: column; justify-content: flex-end; align-items: flex-start;">
                         <h1 style="margin: 0 0 10px 0; font-size: 2.5em; color: black;">' . format_string($COURSE->fullname) . '</h1>
-                        <p style="margin: 0 0 10px 0; font-size: 1.2em; color: black;">Equipo docente</p>
-                        <!-- Botones de contacto para cada profesor -->
-                        <div style="display: flex; flex-wrap: wrap;">' . $contactButtonsHtml . '</div>
+                        ' . ($courseDates ? '<p style="margin: 0 0 10px 0; font-size: 1em; color: black;">' . $courseDates . '</p>' : '') . '
+                        <p style="margin: 0 0 10px 0; font-size: 1.2em; color: black;">
+        Equipo docente: ' . $contactButtonsHtml . '
+    </p>
                     </div>
                 </div>
                 <!-- Bloques de información de contacto de cada profesor -->
                 ' . $contactBlocksHtml . '
                 
-
-                
+                <div style="display: flex; justify-content: flex-end; gap: 10px; margin: 20px 0;">
+                    <a href="' . new moodle_url('/grade/report/user/index.php', array('id' => $COURSE->id)) . '" class="round-button" title="' . get_string('calificador', 'block_bloquecero') . '">
+                       ' . $OUTPUT->pix_icon('t/grades', '', 'moodle', ['class' => 'bigicon']) . '
+                       <span class="button-text">' . get_string('calificador', 'block_bloquecero') . '</span>
+                    </a>
+                    <a href="' . new moodle_url('/user/index.php', array('id' => $COURSE->id)) . '" class="round-button" title="' . get_string('participantes', 'block_bloquecero') . '">
+                       ' . $OUTPUT->pix_icon('i/users', '', 'moodle', ['class' => 'bigicon']) . '
+                       <span class="button-text">' . get_string('participantes', 'block_bloquecero') . '</span>
+                    </a>
+                    <a href="' . new moodle_url('/#', array('id' => $COURSE->id)) . '" class="round-button" title="' . get_string('bibliografiarecomendada', 'block_bloquecero') . '">
+                       ' . $OUTPUT->pix_icon('book', '', 'moodle', ['class' => 'bigicon']) . '
+                       <span class="button-text">' . get_string('bibliografiarecomendada', 'block_bloquecero') . '</span>
+                    </a>
+                </div>
+                <style>
+                    .round-button {
+                        position: relative;
+                        display: inline-flex;
+                        align-items: center;
+                        justify-content: center;
+                        min-width: 40px; /* en lugar de width fija */
+                        height: 40px;
+                        padding: 0 5px; /* padding base */
+                        background: #fff;
+                        color: #004D35;
+                        border: 2px solid #004D35;
+                        border-radius: 50%;
+                        text-decoration: none;
+                        overflow: hidden;
+                        transition: all 0.3s ease;
+                        white-space: nowrap;
+                    }
+                    .round-button .bigicon {
+                        transition: transform 0.3s ease;
+                    }
+                    .round-button:hover .bigicon {
+                        transform: scale(1.1);
+                    }
+                    .round-button .button-text {
+                        position: absolute;
+                        right: -100%;
+                        opacity: 0;
+                        padding: 0 10px;
+                        font-size: 0.9em;
+                        transition: right 0.3s ease, opacity 0.3s ease;
+                        color: #004D35;
+                        background: #fff;
+                        height: 100%;
+                        display: flex;
+                        align-items: center;
+                    }
+                    .round-button:hover {
+                        width: auto;  /* Permite que el botón se expanda */
+                        padding-right: 10px;
+                    }
+                    .round-button:hover .button-text {
+                        right: 0;
+                        opacity: 1;
+                    }
+                </style>
                 <!-- Sección de foros y demás secciones -->
                 <div style="padding: 0 40px;">
                     <div style="display: flex; justify-content: center; gap: 20px; margin: 20px 0;">
@@ -266,9 +344,14 @@ class block_bloquecero extends block_base {
                         <!-- Foro de Tutorías -->
                         <a href="' . $forum_tutorias_url . '" style="text-decoration: none; color: inherit; flex: 1;">
                             <div class="forum-card" style="
+                                border: 1px solid #ddd;
+                                border-radius: 8px;
+                                box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+                                text-align: center;
                                 background-color: #004D35;
                                 color: white;
                                 transition: transform 0.3s ease, box-shadow 0.3s ease;
+                                position: relative;
                                 padding: 10px;
                                 display: flex;
                                 align-items: center;
@@ -297,20 +380,7 @@ class block_bloquecero extends block_base {
                         </a>
                     </div>
                 </div>
-                                <div style="display: flex; justify-content: center; gap: 20px; margin: 20px 0;">
-                    <a href="' . new moodle_url('/grade/report/user/index.php', array('id' => $COURSE->id)) . '" class="ghost-button">
-                        ' . $OUTPUT->pix_icon('t/grades', '', 'moodle', ['class' => 'bigicon']) . '
-                        <span>' . get_string('calificador', 'block_bloquecero') . '</span>
-                    </a>
-                    <a href="' . new moodle_url('/user/index.php', array('id' => $COURSE->id)) . '" class="ghost-button">
-                        ' . $OUTPUT->pix_icon('i/users', '', 'moodle', ['class' => 'bigicon']) . '
-                        <span>' . get_string('participantes', 'block_bloquecero') . '</span>
-                    </a>
-                    <a href="' . new moodle_url('/#', array('id' => $COURSE->id)) . '" class="ghost-button">
-                        ' . $OUTPUT->pix_icon('book', '', 'moodle', ['class' => 'bigicon']) . '
-                        <span>' . get_string('bibliografiarecomendada', 'block_bloquecero') . '</span>
-                    </a>
-                </div>
+                
                 <!-- Carrusel de tarjetas de secciones -->
                 ' . $carouselContainer . '
                 <!-- Bloque para mostrar las actividades de la sección seleccionada -->
@@ -355,28 +425,34 @@ class block_bloquecero extends block_base {
                         outline: none;
                         transition: background 0.2s, color 0.2s, border-color 0.2s;
                     }
+                    .carousel-container {
+                        padding: 0 40px;
+                        box-sizing: border-box;
+                    }
                     .sections-carousel {
                         display: flex;
-                        flex-direction: row;
                         gap: 18px;
                         overflow-x: auto;
-                        padding: 10px 0 20px 0;
-                        margin-bottom: 10px;
-                        scrollbar-width: none;
-                        -ms-overflow-style: none;
                         scroll-snap-type: x mandatory;
+                        /* Ocultar scrollbar en Firefox */
+                        scrollbar-width: none;
+                        /* Ocultar scrollbar en IE, Edge */
+                        -ms-overflow-style: none;
                     }
+                    /* Ocultar scrollbar en Chrome, Safari y Opera */
                     .sections-carousel::-webkit-scrollbar {
                         display: none;
                     }
+                    /* Calculamos el ancho para que siempre quepan 4 tarjetas dejando 3 gaps de 18px (54px total) */
                     .section-card {
-                        min-width: 220px;
-                        max-width: 260px;
-                        background: #fff;
+                        flex: 0 0 calc((100% - 54px) / 4);
+                        max-width: calc((100% - 54px) / 4);
+                        min-width: calc((100% - 54px) / 4);
+                        background: #004D35; /* nuevo fondo verde */
                         border: 1.5px solid #004D35;
                         border-radius: 10px;
                         box-shadow: 0 2px 8px rgba(0,0,0,0.08);
-                        color: #004D35;
+                        color: #fff; /* texto en blanco para buen contraste */
                         font-weight: 600;
                         font-size: 0.9em;
                         display: flex;
@@ -384,7 +460,6 @@ class block_bloquecero extends block_base {
                         align-items: stretch;
                         justify-content: flex-start;
                         transition: box-shadow 0.2s;
-                        flex-shrink: 0;
                         cursor: pointer;
                         padding: 0;
                         overflow: hidden;
@@ -396,7 +471,7 @@ class block_bloquecero extends block_base {
                         box-shadow: 0 4px 16px rgba(26,188,156,0.12);
                     }
                     .section-title-header {
-                        background: #004D35 !important;
+                        background: transparent !important;
                         color: #fff !important;
                         border: none;
                         width: 100%;
@@ -425,6 +500,12 @@ class block_bloquecero extends block_base {
                     }
                     .section-title-btn.open .section-arrow {
                         transform: rotate(90deg);
+                    }
+                    .section-title-btn.open {
+                        background: rgba(225, 255, 209, 0.75) !important; /* Verde claro */
+                    }
+                    .section-title-btn.open .section-title-text {
+                        color: #004D35 !important; /* Ajusta el color del texto si es necesario */
                     }
                     .section-activities {
                         background: #fff;
