@@ -243,7 +243,16 @@ class block_bloquecero extends block_base {
             }
         }
         // HTML principal del bloque (se añade debajo del carrusel el bloque para las actividades)
-        $this->content->text = '
+
+        $this->content->text =
+    '<div style="text-align:center; margin-bottom:1.2em;">
+        <button id="bloquecero-mostrarcurso-btn"
+            onclick="window.bloquecero_restore()"
+            style="font-size:1.08em;padding:.6em 2em;background:#004D35;color:#fff;border:none;border-radius:8px;cursor:pointer;box-shadow:0 1px 8px #0001;">
+            Mostrar curso completo
+        </button>
+    </div>
+
             <div style="padding: 0 20px; font-family: Arial, sans-serif;">
                <!-- Cabecera -->
                 <div style="position: relative; border-radius: 12px; overflow: hidden; margin-bottom: 20px; width: 100%; aspect-ratio: 3 / 1;">
@@ -665,6 +674,32 @@ class block_bloquecero extends block_base {
             </div>
         ';
     
+
+global $PAGE;
+
+// Inyecta JS para ocultar todo menos este bloque al cargar la página
+$PAGE->requires->js_init_code("
+    document.addEventListener('DOMContentLoaded', function() {
+        var region = document.getElementById('region-main');
+        if (region) region.style.display = 'none';
+        // Oculta todos los bloques menos el tuyo
+        document.querySelectorAll('.block').forEach(function(b){
+            if (!b.classList.contains('block_bloquecero')) b.style.display = 'none';
+        });
+    });
+    window.bloquecero_restore = function() {
+        var region = document.getElementById('region-main');
+        if (region) region.style.display = '';
+        document.querySelectorAll('.block').forEach(function(b){
+            b.style.display = '';
+        });
+        // Oculta el botón después de pulsarlo si quieres (opcional)
+        var btn = document.getElementById('bloquecero-mostrarcurso-btn');
+        if(btn) btn.style.display = 'none';
+    };
+");
+
+        
         return $this->content;
     }
 
