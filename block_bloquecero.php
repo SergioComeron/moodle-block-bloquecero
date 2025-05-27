@@ -178,6 +178,18 @@ class block_bloquecero extends block_base {
             } else {
                 $activities = '<div style="margin-top:12px; color:#888; font-size:0.95em;">' . get_string('noactivities', 'block_bloquecero') . '</div>';
             }
+            
+            // Generar el enlace "Abrir sección" con un estilo distinto (no apariencia de botón)
+            $sectionurl = new moodle_url('/course/view.php', array('id' => $COURSE->id, 'section' => $section->section));
+            $button = '<div style="margin-bottom: 10px; text-align: right;">
+                            <a href="' . $sectionurl . '" style="color: #004D35; text-decoration: none; font-weight: bold; font-size: 0.9em;">
+                                ' . get_string('abrirseccion', 'block_bloquecero') . '
+                            </a>
+                        </div>';
+            
+            // Colocar el enlace sobre el listado de actividades
+            $activities = $button . $activities;
+            
             // Guardar el contenido HTML de las actividades para esta sección con un id único
             $sectionid = 'section-activities-' . $sectioncount;
             $sectionsActivitiesData[$sectionid] = $activities;
