@@ -179,16 +179,18 @@ class block_bloquecero extends block_base {
                 $activities = '<div style="margin-top:12px; color:#888; font-size:0.95em;">' . get_string('noactivities', 'block_bloquecero') . '</div>';
             }
             
-            // Generar el enlace "Abrir sección" con un estilo distinto (no apariencia de botón)
+            // Generar el enlace "Abrir sección" (sin apariencia de botón)
             $sectionurl = new moodle_url('/course/view.php', array('id' => $COURSE->id, 'section' => $section->section));
-            $button = '<div style="margin-bottom: 10px; text-align: right;">
-                            <a href="' . $sectionurl . '" style="color: #004D35; text-decoration: none; font-weight: bold; font-size: 0.9em;">
-                                ' . get_string('abrirseccion', 'block_bloquecero') . '
-                            </a>
-                        </div>';
+            // Crear un encabezado que muestre el nombre (o fechas) de la sección a la izquierda y el enlace a la derecha
+            $header = '<div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">'
+                        . '<span style="font-weight: bold; color: #004D35;">' . $sectiontitle . '</span>'
+                        . '<a href="' . $sectionurl . '" style="color: #004D35; text-decoration: none; font-weight: bold; font-size: 0.9em;">'
+                            . get_string('abrirseccion', 'block_bloquecero')
+                        . '</a>'
+                    . '</div>';
             
-            // Colocar el enlace sobre el listado de actividades
-            $activities = $button . $activities;
+            // Colocar el encabezado (con el título y el enlace) encima del listado de actividades
+            $activities = $header . $activities;
             
             // Guardar el contenido HTML de las actividades para esta sección con un id único
             $sectionid = 'section-activities-' . $sectioncount;
@@ -240,64 +242,60 @@ class block_bloquecero extends block_base {
 
                 
                 <!-- Sección de foros y demás secciones -->
-                <div style="display: flex; flex-direction: row; justify-content: center; gap: 20px; margin: 20px 0;">
-                    <!-- Tablón de anuncios -->
-                    <a href="' . $forum_anuncios_url . '" style="text-decoration: none; color: inherit; flex: 1;">
-                        <div class="forum-card" style="
-                            border: 1px solid #ddd;
-                            border-radius: 8px;
-                            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
-                            text-align: center;
-                            background-color: #004D35;
-                            color: white;
-                            transition: transform 0.3s ease, box-shadow 0.3s ease;
-                            position: relative;
-                            padding: 10px;
-                            display: flex;
-                            align-items: center;
-                            justify-content: center;
-                        ">
-                            <h3 style="margin: 0; font-size: 1.2em; position: relative; z-index: 1;">Tablón de anuncios</h3>
-                        </div>
-                    </a>
-                    <!-- Foro de Tutorías -->
-                    <a href="' . $forum_tutorias_url . '" style="text-decoration: none; color: inherit; flex: 1;">
-                        <div class="forum-card" style="
-                            border: 1px solid #ddd;
-                            border-radius: 8px;
-                            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
-                            text-align: center;
-                            background-color: #004D35;
-                            color: white;
-                            transition: transform 0.3s ease, box-shadow 0.3s ease;
-                            position: relative;
-                            padding: 10px;
-                            display: flex;
-                            align-items: center;
-                            justify-content: center;
-                        ">
-                            <h3 style="margin: 0; font-size: 1.2em; position: relative; z-index: 1;">Foro de Tutorías</h3>
-                        </div>
-                    </a>
-                    <!-- Foro de Estudiantes -->
-                    <a href="' . $forum_estudiantes_url . '" style="text-decoration: none; color: inherit; flex: 1;">
-                        <div class="forum-card" style="
-                            border: 1px solid #ddd;
-                            border-radius: 8px;
-                            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
-                            text-align: center;
-                            background-color: #004D35;
-                            color: white;
-                            transition: transform 0.3s ease, box-shadow 0.3s ease;
-                            position: relative;
-                            padding: 10px;
-                            display: flex;
-                            align-items: center;
-                            justify-content: center;
-                        ">
-                            <h3 style="margin: 0; font-size: 1.2em; position: relative; z-index: 1;">Foro de Estudiantes</h3>
-                        </div>
-                    </a>
+                <div style="padding: 0 40px;">
+                    <div style="display: flex; justify-content: center; gap: 20px; margin: 20px 0;">
+                        <!-- Tablón de anuncios -->
+                        <a href="' . $forum_anuncios_url . '" style="text-decoration: none; color: inherit; flex: 1;">
+                            <div class="forum-card" style="
+                                border: 1px solid #ddd;
+                                border-radius: 8px;
+                                box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+                                text-align: center;
+                                background-color: #004D35;
+                                color: white;
+                                transition: transform 0.3s ease, box-shadow 0.3s ease;
+                                position: relative;
+                                padding: 10px;
+                                display: flex;
+                                align-items: center;
+                                justify-content: center;
+                            ">
+                                <h3 style="margin: 0; font-size: 1.2em; position: relative; z-index: 1;">Tablón de anuncios</h3>
+                            </div>
+                        </a>
+                        <!-- Foro de Tutorías -->
+                        <a href="' . $forum_tutorias_url . '" style="text-decoration: none; color: inherit; flex: 1;">
+                            <div class="forum-card" style="
+                                background-color: #004D35;
+                                color: white;
+                                transition: transform 0.3s ease, box-shadow 0.3s ease;
+                                padding: 10px;
+                                display: flex;
+                                align-items: center;
+                                justify-content: center;
+                            ">
+                                <h3 style="margin: 0; font-size: 1.2em; position: relative; z-index: 1;">Foro de Tutorías</h3>
+                            </div>
+                        </a>
+                        <!-- Foro de Estudiantes -->
+                        <a href="' . $forum_estudiantes_url . '" style="text-decoration: none; color: inherit; flex: 1;">
+                            <div class="forum-card" style="
+                                border: 1px solid #ddd;
+                                border-radius: 8px;
+                                box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+                                text-align: center;
+                                background-color: #004D35;
+                                color: white;
+                                transition: transform 0.3s ease, box-shadow 0.3s ease;
+                                padding: 10px;
+                                display: flex;
+                                align-items: center;
+                                justify-content: center;
+                            ">
+                                <h3 style="margin: 0; font-size: 1.2em; position: relative; z-index: 1;">Foro de Estudiantes</h3>
+                            </div>
+                        </a>
+                    </div>
                 </div>
                                 <div style="display: flex; justify-content: center; gap: 20px; margin: 20px 0;">
                     <a href="' . new moodle_url('/grade/report/user/index.php', array('id' => $COURSE->id)) . '" class="ghost-button">
@@ -393,6 +391,7 @@ class block_bloquecero extends block_base {
                         scroll-snap-align: start;
                     }
                     .section-card.active-section {
+                        background: rgba(225, 255, 209, 0.75) !important;
                         border: 2.5px solid #1abc9c;
                         box-shadow: 0 4px 16px rgba(26,188,156,0.12);
                     }
