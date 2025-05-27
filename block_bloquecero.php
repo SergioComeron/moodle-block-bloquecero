@@ -174,7 +174,7 @@ class block_bloquecero extends block_base {
                 }
             }
             if ($activities) {
-                $activities = '<ul style="margin: 12px 0 0 0; padding-left: 18px;">' . $activities . '</ul>';
+                $activities = '<ul style="margin: 12px 0 0 0; padding-left: 18px; list-style: none;">' . $activities . '</ul>';
             } else {
                 $activities = '<div style="margin-top:12px; color:#888; font-size:0.95em;">' . get_string('noactivities', 'block_bloquecero') . '</div>';
             }
