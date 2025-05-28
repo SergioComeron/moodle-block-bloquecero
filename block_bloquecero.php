@@ -245,36 +245,9 @@ class block_bloquecero extends block_base {
         // HTML principal del bloque (se añade debajo del carrusel el bloque para las actividades)
 
         $this->content->text =
-    '<div style="text-align:center; margin-bottom:1.2em;">
-        <button id="bloquecero-mostrarcurso-btn"
-            onclick="window.bloquecero_restore()"
-            style="
-                position: fixed;
-                bottom: 20px;
-                left: 50%;
-                transform: translateX(-50%);
-                width: 60px;
-                height: 60px;
-                border-radius: 50%;
-                background: #004D35;
-                color: #fff;
-                border: none;
-                box-shadow: 0 1px 8px rgba(0, 0, 0, 0.2);
-                cursor: pointer;
-                display: flex;
-                flex-direction: column;
-                align-items: center;
-                justify-content: center;
-            "
-            title="Mostrar curso completo">
-            <span style="font-size: 1.5em; line-height: 1;">&#x25BC;</span>
-            <span style="font-size: 0.8em; line-height: 1;">mostrar</span>
-        </button>
-    </div>
-
-            <div style="padding: 0 20px; font-family: Arial, sans-serif;">
-               <!-- Cabecera -->
-                <div style="position: relative; border-radius: 12px; overflow: hidden; margin-bottom: 20px; width: 100%; aspect-ratio: 3 / 1;">
+    '<div style="padding: 0 20px; font-family: Arial, sans-serif;">
+        <!-- Resto del contenido del bloque -->
+            <div style="position: relative; border-radius: 12px; overflow: hidden; margin-bottom: 20px; width: 100%; aspect-ratio: 3 / 1;">
                     <img src="' . $fondo_cabecera_img . '" alt="Fondo" style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; object-fit: cover;">
                     <div style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; padding: 30px; display: flex; flex-direction: column; justify-content: flex-end; align-items: flex-start;">
                         <h1 style="margin: 0 0 10px 0; font-size: 2.5em; color: black;">' . format_string($COURSE->fullname) . '</h1>
@@ -288,64 +261,65 @@ class block_bloquecero extends block_base {
                 ' . $contactBlocksHtml . '
                 
                 <div style="display: flex; justify-content: flex-end; gap: 10px; margin: 20px 0;">
-                    <a href="' . new moodle_url('/grade/report/user/index.php', array('id' => $COURSE->id)) . '" class="round-button" title="' . get_string('calificador', 'block_bloquecero') . '">
-                       ' . $OUTPUT->pix_icon('t/grades', '', 'moodle', ['class' => 'bigicon']) . '
-                       <span class="button-text">' . get_string('calificador', 'block_bloquecero') . '</span>
-                    </a>
-                    <a href="' . new moodle_url('/user/index.php', array('id' => $COURSE->id)) . '" class="round-button" title="' . get_string('participantes', 'block_bloquecero') . '">
-                       ' . $OUTPUT->pix_icon('i/users', '', 'moodle', ['class' => 'bigicon']) . '
-                       <span class="button-text">' . get_string('participantes', 'block_bloquecero') . '</span>
-                    </a>
-                    <a href="' . new moodle_url('/#', array('id' => $COURSE->id)) . '" class="round-button" title="' . get_string('bibliografiarecomendada', 'block_bloquecero') . '">
-                       ' . $OUTPUT->pix_icon('book', '', 'moodle', ['class' => 'bigicon']) . '
-                       <span class="button-text">' . get_string('bibliografiarecomendada', 'block_bloquecero') . '</span>
-                    </a>
+                    <div class="round-button-wrapper">
+                        <a href="' . new moodle_url('/grade/report/user/index.php', array('id' => $COURSE->id)) . '" class="round-button" title="' . get_string('calificador', 'block_bloquecero') . '">
+                            ' . $OUTPUT->pix_icon('t/grades', '', 'moodle', ['class' => 'bigicon']) . '
+                        </a>
+</div>
+<div class="round-button-wrapper">
+    <a href="' . new moodle_url('/user/index.php', array('id' => $COURSE->id)) . '" class="round-button" title="' . get_string('participantes', 'block_bloquecero') . '">
+        ' . $OUTPUT->pix_icon('i/users', '', 'moodle', ['class' => 'bigicon']) . '
+    </a>
+</div>
+<div class="round-button-wrapper">
+    <a href="' . new moodle_url('/#', array('id' => $COURSE->id)) . '" class="round-button" title="' . get_string('bibliografiarecomendada', 'block_bloquecero') . '">
+        ' . $OUTPUT->pix_icon('book', '', 'moodle', ['class' => 'bigicon']) . '
+    </a>
+</div>
                 </div>
                 <style>
-                    .round-button {
+                    .round-button-wrapper {
+                        display: flex;
+                        flex-direction: column;
+                        align-items: center;
                         position: relative;
-                        display: inline-flex;
+                    }
+
+
+                    }
+                    @keyframes fadeInLabel {
+                        from { opacity: 0; transform: translateY(-5px);}
+                        to { opacity: 1; transform: translateY(0);}
+                    }
+                    .round-button {
+                        width: 40px;
+                        height: 40px;
+                        min-width: 40px;
+                        min-height: 40px;
+                        display: flex;
                         align-items: center;
                         justify-content: center;
-                        min-width: 40px; /* en lugar de width fija */
-                        height: 40px;
-                        padding: 0 5px; /* padding base */
+                        padding: 0;
                         background: #fff;
                         color: #004D35;
                         border: 2px solid #004D35;
                         border-radius: 50%;
                         text-decoration: none;
                         overflow: hidden;
-                        transition: all 0.3s ease;
-                        white-space: nowrap;
+                        font-size: 1.2em;
+                        box-shadow: none;
+                        transition: none;
                     }
-                    .round-button .bigicon {
-                        transition: transform 0.3s ease;
-                    }
-                    .round-button:hover .bigicon {
-                        transform: scale(1.1);
-                    }
-                    .round-button .button-text {
-                        position: absolute;
-                        right: -100%;
-                        opacity: 0;
-                        padding: 0 10px;
-                        font-size: 0.9em;
-                        transition: right 0.3s ease, opacity 0.3s ease;
-                        color: #004D35;
-                        background: #fff;
-                        height: 100%;
-                        display: flex;
-                        align-items: center;
-                    }
-                    .round-button:hover {
-                        width: auto;  /* Permite que el botón se expanda */
-                        padding-right: 10px;
-                    }
-                    .round-button:hover .button-text {
-                        right: 0;
-                        opacity: 1;
-                    }
+
+.round-button .bigicon {
+    margin: 0;
+    padding: 0;
+    display: block;
+    width: 22px;
+    height: 22px;
+    line-height: 1;
+    text-align: center;
+}
                 </style>
                 <!-- Sección de foros y demás secciones -->
                 <div style="padding: 0 40px;">
@@ -407,12 +381,106 @@ class block_bloquecero extends block_base {
                             </div>
                         </a>
                     </div>
+                    
                 </div>
                 
                 <!-- Carrusel de tarjetas de secciones -->
                 ' . $carouselContainer . '
                 <!-- Bloque para mostrar las actividades de la sección seleccionada -->
                 ' . $activitiesBlockHtml . '
+                <div style="text-align:center; margin:2em 0 1.2em 0;">
+    <button id="bloquecero-mostrarcurso-btn"
+        onclick="window.bloquecero_toggle()"
+        style="
+            width: 60px;
+            height: 60px;
+            border-radius: 50%;
+            background: #004D35;
+            color: #fff;
+            border: none;
+            box-shadow: 0 1px 8px rgba(0, 0, 0, 0.2);
+            cursor: pointer;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            margin: 0 auto;
+        "
+        title="Mostrar u ocultar curso">
+        <span id="bloquecero-mostrarcurso-icon" style="font-size: 1.5em; line-height: 1;">&#x25BC;</span>
+        <span id="bloquecero-mostrarcurso-text" style="font-size: 0.8em; line-height: 1;">mostrar curso</span>
+    </button>
+</div>
+<script>
+window.bloquecero_toggle = function() {
+    var region = document.getElementById(\'region-main\');
+    var btnicon = document.getElementById(\'bloquecero-mostrarcurso-icon\');
+    var btntext = document.getElementById(\'bloquecero-mostrarcurso-text\');
+    var isHidden = region && region.style.display === \'none\';
+
+    if (isHidden) {
+        // Mostrar curso
+        if (region) region.style.display = \'\';
+        document.querySelectorAll(\'.block\').forEach(function(b){
+            b.style.display = \'\';
+        });
+        [
+            \'.page-header\',\'.page-context-header\',\'.course-header\',\'.page-header-headings\',\'.page-title\',\'.course-title\'
+        ].forEach(function(selector){
+            document.querySelectorAll(selector).forEach(function(e){ e.style.display = \'\'; });
+        });
+        [
+            \'.nav-tabs\',\'.nav-tabs-line\',\'.secondary-navigation\',\'.secondary-nav\'
+        ].forEach(function(selector){
+            document.querySelectorAll(selector).forEach(function(e){ e.style.display = \'\'; });
+        });
+        // Cambia icono y texto a "ocultar curso"
+        if(btnicon) btnicon.innerHTML = \'&#x25B2;\';
+        if(btntext) btntext.innerHTML = \'ocultar curso\';
+    } else {
+        // Ocultar curso
+        if (region) region.style.display = \'none\';
+        document.querySelectorAll(\'.block\').forEach(function(b){
+            if (!b.classList.contains(\'block_bloquecero\')) b.style.display = \'none\';
+        });
+        [
+            \'.page-header\',\'.page-context-header\',\'.course-header\',\'.page-header-headings\',\'.page-title\',\'.course-title\'
+        ].forEach(function(selector){
+            document.querySelectorAll(selector).forEach(function(e){ e.style.display = \'none\'; });
+        });
+        [
+            \'.nav-tabs\',\'.nav-tabs-line\',\'.secondary-navigation\',\'.secondary-nav\'
+        ].forEach(function(selector){
+            document.querySelectorAll(selector).forEach(function(e){ e.style.display = \'none\'; });
+        });
+        // Cambia icono y texto a "mostrar curso"
+        if(btnicon) btnicon.innerHTML = \'&#x25BC;\';
+        if(btntext) btntext.innerHTML = \'mostrar curso\';
+    }
+};
+// Al cargar, oculta el curso y ajusta el botón
+document.addEventListener(\'DOMContentLoaded\', function() {
+    var region = document.getElementById(\'region-main\');
+    var btnicon = document.getElementById(\'bloquecero-mostrarcurso-icon\');
+    var btntext = document.getElementById(\'bloquecero-mostrarcurso-text\');
+    if (region) region.style.display = \'none\';
+    document.querySelectorAll(\'.block\').forEach(function(b){
+        if (!b.classList.contains(\'block_bloquecero\')) b.style.display = \'none\';
+    });
+    [
+        \'.page-header\',\'.page-context-header\',\'.course-header\',\'.page-header-headings\',\'.page-title\',\'.course-title\'
+    ].forEach(function(selector){
+        document.querySelectorAll(selector).forEach(function(e){ e.style.display = \'none\'; });
+    });
+    [
+        \'.nav-tabs\',\'.nav-tabs-line\',\'.secondary-navigation\',\'.secondary-nav\'
+    ].forEach(function(selector){
+        document.querySelectorAll(selector).forEach(function(e){ e.style.display = \'none\'; });
+    });
+    if(btnicon) btnicon.innerHTML = \'&#x25BC;\';
+    if(btntext) btntext.innerHTML = \'mostrar curso\';
+});
+</script>
                 <style>
                     .forum-card:hover {
                         transform: scale(1.05);
@@ -698,23 +766,81 @@ global $PAGE;
 
 // Inyecta JS para ocultar todo menos este bloque al cargar la página
 $PAGE->requires->js_init_code("
-    document.addEventListener('DOMContentLoaded', function() {
-        var region = document.getElementById('region-main');
-        if (region) region.style.display = 'none';
+    document.addEventListener(\'DOMContentLoaded\', function() {
+        var region = document.getElementById(\'region-main\');
+        if (region) region.style.display = \'none\';
+
         // Oculta todos los bloques menos el tuyo
-        document.querySelectorAll('.block').forEach(function(b){
-            if (!b.classList.contains('block_bloquecero')) b.style.display = 'none';
+        document.querySelectorAll(\'.block\').forEach(function(b){
+            if (!b.classList.contains(\'block_bloquecero\')) b.style.display = \'none\';
+        });
+
+        // Oculta la cabecera general (título del curso, cabecera, etc.)
+        var headerClasses = [
+            \'.page-header\',
+            \'.page-context-header\',
+            \'.course-header\',
+            \'.page-header-headings\',
+            \'.page-title\',
+            \'.course-title\'
+        ];
+        headerClasses.forEach(function(selector){
+            document.querySelectorAll(selector).forEach(function(e){
+                e.style.display = \'none\';
+            });
+        });
+
+        // Oculta las tabs de navegación (Course / Settings / Participants...)
+        var tabClasses = [
+            \'.nav-tabs\',
+            \'.nav-tabs-line\',
+            \'.secondary-navigation\',
+            \'.secondary-nav\'
+        ];
+        tabClasses.forEach(function(selector){
+            document.querySelectorAll(selector).forEach(function(e){
+                e.style.display = \'none\';
+            });
         });
     });
+
     window.bloquecero_restore = function() {
-        var region = document.getElementById('region-main');
-        if (region) region.style.display = '';
-        document.querySelectorAll('.block').forEach(function(b){
-            b.style.display = '';
+        var region = document.getElementById(\'region-main\');
+        if (region) region.style.display = \'\';
+        document.querySelectorAll(\'.block\').forEach(function(b){
+            b.style.display = \'\';
         });
-        // Oculta el botón después de pulsarlo si quieres (opcional)
-        var btn = document.getElementById('bloquecero-mostrarcurso-btn');
-        if(btn) btn.style.display = 'none';
+
+        // Restaurar cabecera general y título del curso
+        var headerClasses = [
+            \'.page-header\',
+            \'.page-context-header\',
+            \'.course-header\',
+            \'.page-header-headings\',
+            \'.page-title\',
+            \'.course-title\'
+        ];
+        headerClasses.forEach(function(selector){
+            document.querySelectorAll(selector).forEach(function(e){
+                e.style.display = \'\';
+            });
+        });
+
+        // Restaurar tabs de navegación
+        var tabClasses = [
+            \'.nav-tabs\',
+            \'.nav-tabs-line\',
+            \'.secondary-navigation\',
+            \'.secondary-nav\'
+        ];
+        tabClasses.forEach(function(selector){
+            document.querySelectorAll(selector).forEach(function(e){
+                e.style.display = \'\';
+            });
+        });
+
+        var btn = document.getElementById(\'bloquecero-mostrarcurso-btn\');
+        if(btn) btn.style.display = \'none\';
     };
 ");
 
