@@ -1,6 +1,30 @@
 <?php
 require_once($CFG->dirroot.'/course/format/weeks/lib.php');
 
+// Función para obtener la fecha de inicio de un cm según su tipo
+function get_cm_start_date($cm) {
+    global $DB;
+    $time = 0;
+    switch ($cm->modname) {
+        case 'assign':
+            // En asignaciones, se usa allowsubmissionsfromdate
+            $assignment = $DB->get_record('assign', array('id' => $cm->instance), 'allowsubmissionsfromdate', MUST_EXIST);
+            $time = $assignment->allowsubmissionsfromdate;
+            break;
+        case 'quiz':
+            // En cuestionarios, se usa timeopen
+            $quiz = $DB->get_record('quiz', array('id' => $cm->instance), 'timeopen', MUST_EXIST);
+            $time = $quiz->timeopen;
+            break;
+        // Agregar otros casos según el tipo de actividad
+        default:
+            // Si no se define fecha de inicio para ese tipo, se deja en 0 o se puede devolver NULL
+            $time = 0;
+            break;
+    }
+    return $time;
+}
+
 class block_bloquecero extends block_base {
     public function init() {
         $this->title = get_string('pluginname', 'block_bloquecero');
@@ -126,7 +150,7 @@ class block_bloquecero extends block_base {
             $contactBlocksHtml .= '
                 <div id="' . $uniqueId . '" style="
                     display: none;
-                    margin-top: 10px;
+                    margin: 20px 40px;
                     text-align: left;
                     font-size: 0.9em;
                     color: #333;
@@ -214,7 +238,7 @@ class block_bloquecero extends block_base {
             $sectionscarousel .= '<div class="section-card' . ($isactive ? ' active-section' : '') . '" style="flex-direction: column; padding:0;">
                 <button class="section-title-btn section-title-header" type="button" onclick="showSectionActivities(\'' . $sectionid . '\', this)">
                     <span class="section-title-text">' . $sectiontitle . $activesymbol . '</span>
-                    <span class="section-arrow" style="color: #004D35;">&#9654;</span>
+                    <span class="section-arrow" style="color: #fff !important; z-index: 2 !important;">&#9654;</span>
                 </button>
             </div>';
             $sectioncount++;
@@ -224,13 +248,14 @@ class block_bloquecero extends block_base {
         // Envolver el carrusel en un contenedor con botones laterales
         $carouselContainer = '
             <div class="carousel-container" style="position: relative; display: flex; align-items: center; margin-bottom: 20px; padding: 0 40px;">
-                 <button class="carousel-btn carousel-btn-left" onclick="scrollCarousel(-1)" style="background: transparent; border: none; color: #004D35; font-size: 1.5em; padding: 0; cursor: pointer; position: absolute; left: 0; z-index: 2; height: 100%;">&#9664;</button>
+                 <button class="carousel-btn carousel-btn-left" onclick="scrollCarousel(-1)" style="background: transparent; border: none; color: #004D35; font-size: 1.5em; padding: 0; cursor: pointer; position: absolute; left: 0; z-index: 2; height: 100%;">&lt;</button>
                  ' . $sectionscarousel . '
-                 <button class="carousel-btn carousel-btn-right" onclick="scrollCarousel(1)" style="background: transparent; border: none; color: #004D35; font-size: 1.5em; padding: 0; cursor: pointer; position: absolute; right: 0; z-index: 2; height: 100%;">&#9654;</button>
-            </div>';
+                 <button class="carousel-btn carousel-btn-right" onclick="scrollCarousel(1)" style="background: transparent; border: none; color: #004D35; font-size: 1.5em; padding: 0; cursor: pointer; position: absolute; right: 0; z-index: 2; height: 100%;">&gt;</button>
+            </div>
+        ';
 
         // Bloque vacío para mostrar las actividades de la sección seleccionada (oculto inicialmente)
-        $activitiesBlockHtml = '<div id="section-activities-container" style="margin-top: 20px; text-align: left; font-size: 0.9em; color: #333; border: 1px solid #ddd; border-radius: 8px; padding: 15px; background-color: #f9f9f9; box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1); display: none;"></div>';
+        $activitiesBlockHtml = '<div id="section-activities-container" style="margin: 20px 40px; text-align: left; font-size: 0.9em; color: #333; border: 1px solid #ddd; border-radius: 8px; padding: 15px; background-color: #f9f9f9; box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1); display: none;"></div>';
 
         // Inyectar la definición del array de actividades en JavaScript
         $sectionsActivitiesJson = json_encode($sectionsActivitiesData);
@@ -242,14 +267,131 @@ class block_bloquecero extends block_base {
                 $courseDates .= ' - ' . userdate($COURSE->enddate, get_string('strftimedateshort'));
             }
         }
+
+        // Bloque para mostrar el Calendario de actividades (mismo ancho que el carrusel)
+        $calendarActivities = '';
+        foreach ($modinfo->cms as $cm) {
+            if (!$cm->uservisible) {
+                continue;
+            }
+            $startdate = get_cm_start_date($cm);
+            if ($startdate) {
+                $activitytime = userdate($startdate, get_string('strftimedateshort'));
+                $icon = $OUTPUT->pix_icon('icon', $cm->modfullname, $cm->modname, ['class' => 'activityicon']);
+                $calendarActivities .= '<li data-timestamp="' . $startdate . '" style="margin-bottom: 6px;">' . $icon . 
+                    ' <a href="' . $cm->url . '" style="color:#004D35;text-decoration:none;">' . 
+                    format_string($cm->name) . '</a> <span style="font-size:0.9em; color:#666;">(Inicio: ' . $activitytime . ')</span></li>';
+            }
+        }
+        if ($calendarActivities) {
+            $calendarActivities = '<ul id="activities-list" style="margin: 12px 0 0 0; padding-left: 18px; list-style: none;">' 
+                . $calendarActivities . '</ul>';
+        } else {
+            $calendarActivities = '<div style="margin-top:12px; color:#888; font-size:0.95em;">' . 
+                get_string('noactivities', 'block_bloquecero') . '</div>';
+        }
+
+        // --- Calcular el selector de semanas usando las fechas del curso ---
+$courseStart = $COURSE->startdate;
+$courseEnd = (!empty($COURSE->enddate)) ? $COURSE->enddate : time();
+$weeks = ceil(($courseEnd - $courseStart) / (7 * 24 * 60 * 60));
+$options = '';
+for ($i = 1; $i <= $weeks; $i++) {
+    $options .= '<option value="' . $i . '">Semana ' . $i . '</option>';
+}
+
+// --- Reemplaza la definición de $calendarioActividades por:
+$calendarioActividades = '
+<div class="calendario-actividades-wrapper">
+    <!-- Selector de semana fuera del recuadro de actividades -->
+    <div class="week-selector" style="margin-bottom: 10px; text-align: center;">
+         <button id="prev-week" style="background: none; border: none; font-size: 1.2em; cursor: pointer;">&lt;</button>
+         <span id="week-label" style="font-weight: bold; margin: 0 10px;"></span>
+         <button id="next-week" style="background: none; border: none; font-size: 1.2em; cursor: pointer;">&gt;</button>
+    </div>
+    <!-- Contenedor para las actividades sin recuadro -->
+    <div class="calendario-actividades-container" style="padding: 15px; background-color: #f9f9f9; text-align: center;">
+          <div id="activities-week-content">' . $calendarActivities . '</div>
+    </div>
+</div>
+<script>
+    (function(){
+        const courseStart = ' . $courseStart . ';
+        const totalWeeks = ' . $weeks . ';
+        const now = Math.floor(Date.now() / 1000);
+        let currentWeek = Math.floor((now - courseStart) / (7 * 24 * 60 * 60)) + 1;
+        if (currentWeek < 1) {
+            currentWeek = 1;
+        } else if (currentWeek > totalWeeks) {
+            currentWeek = totalWeeks;
+        }
+        const contentContainer = document.getElementById("activities-week-content");
+        const originalListElement = document.getElementById("activities-list");
+        const originalListHTML = originalListElement ? originalListElement.outerHTML : "";
+        const weekLabel = document.getElementById("week-label");
+        const prevBtn = document.getElementById("prev-week");
+        const nextBtn = document.getElementById("next-week");
+        function formatDate(ts) {
+            const d = new Date(ts * 1000);
+            const day = d.getDate();
+            const monthNames = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+            return day + " " + monthNames[d.getMonth()];
+        }
+        function filterActivities(week) {
+            const weekStart = courseStart + (week - 1) * 7 * 24 * 60 * 60;
+            const weekEnd = weekStart + 7 * 24 * 60 * 60;
+            const parser = new DOMParser();
+            const doc = parser.parseFromString(originalListHTML, "text/html");
+            const lis = doc.querySelectorAll("li");
+            let anyVisible = false;
+            lis.forEach(function(li){
+                const ts = parseInt(li.getAttribute("data-timestamp"), 10);
+                if (ts >= weekStart && ts < weekEnd) {
+                    li.style.display = "list-item";
+                    anyVisible = true;
+                } else {
+                    li.style.display = "none";
+                }
+            });
+            if(anyVisible) {
+                contentContainer.innerHTML = "<ul style=\"margin: 12px 0 0 0; padding-left: 18px; list-style: none;\">" + doc.querySelector("ul").innerHTML + "</ul>";
+            } else {
+                contentContainer.innerHTML = \'<div style="margin-top:12px; color:#888; font-size:0.95em;">No hay actividades para esta semana.</div>\';
+            }
+            const startStr = formatDate(weekStart);
+            const endStr = formatDate(weekEnd - 1);
+            weekLabel.textContent = startStr + " - " + endStr;
+        }
+        prevBtn.addEventListener("click", function(){
+            if(currentWeek > 1) {
+                currentWeek--;
+                filterActivities(currentWeek);
+            }
+        });
+        nextBtn.addEventListener("click", function(){
+            if(currentWeek < totalWeeks) {
+                currentWeek++;
+                filterActivities(currentWeek);
+            }
+        });
+        filterActivities(currentWeek);
+    })();
+</script>';
+
         // HTML principal del bloque (se añade debajo del carrusel el bloque para las actividades)
 
         $this->content->text =
-    '<div style="padding: 0 20px; font-family: Arial, sans-serif;">
+    '<style>
+        /* Asegurar que el encabezado del bloque se alinee a la izquierda */
+        .block_bloquecero .header {
+            text-align: left !important;
+        }
+    </style>
+    <div style="padding: 0 20px; font-family: Arial, sans-serif;">
         <!-- Resto del contenido del bloque -->
             <div style="position: relative; border-radius: 12px; overflow: hidden; margin-bottom: 20px; width: 100%; aspect-ratio: 3 / 1;">
                     <img src="' . $fondo_cabecera_img . '" alt="Fondo" style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; object-fit: cover;">
-                    <div style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; padding: 30px; display: flex; flex-direction: column; justify-content: flex-end; align-items: flex-start;">
+                    <div style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; padding: 30px; display: flex; flex-direction: column; justify-content: flex-start; align-items: flex-end;">
                         <h1 style="margin: 0 0 10px 0; font-size: 2.5em; color: black;">' . format_string($COURSE->fullname) . '</h1>
                         ' . ($courseDates ? '<p style="margin: 0 0 10px 0; font-size: 1em; color: black;">' . $courseDates . '</p>' : '') . '
                         <p style="margin: 0 0 10px 0; font-size: 1.2em; color: black;">
@@ -284,13 +426,6 @@ class block_bloquecero extends block_base {
                         align-items: center;
                         position: relative;
                     }
-
-
-                    }
-                    @keyframes fadeInLabel {
-                        from { opacity: 0; transform: translateY(-5px);}
-                        to { opacity: 1; transform: translateY(0);}
-                    }
                     .round-button {
                         width: 40px;
                         height: 40px;
@@ -310,16 +445,18 @@ class block_bloquecero extends block_base {
                         box-shadow: none;
                         transition: none;
                     }
-
-.round-button .bigicon {
-    margin: 0;
-    padding: 0;
-    display: block;
-    width: 22px;
-    height: 22px;
-    line-height: 1;
-    text-align: center;
-}
+                    a.round-button, a.round-button:visited, a.round-button:hover, a.round-button:active {
+                        text-decoration: none !important;
+                    }
+                    .round-button .bigicon {
+                        margin: 0;
+                        padding: 0;
+                        display: block;
+                        width: 22px;
+                        height: 22px;
+                        line-height: 1;
+                        text-align: center;
+                    }
                 </style>
                 <!-- Sección de foros y demás secciones -->
                 <div style="padding: 0 40px;">
@@ -385,20 +522,34 @@ class block_bloquecero extends block_base {
                 </div>
                 
                 <!-- Carrusel de tarjetas de secciones -->
-                ' . $carouselContainer . '
+                <div style="text-align: left; padding: 0 40px; margin-bottom: 10px;">
+    <h3 style="color: #004D35; margin-top: 0;">Secciones del curso</h3>
+</div>' .
+$carouselContainer . '
                 <!-- Bloque para mostrar las actividades de la sección seleccionada -->
                 ' . $activitiesBlockHtml . '
+                <!-- Bloques divididos en dos columnas -->
+<div style="display: flex; gap: 20px; margin: 20px 40px;">
+    <div style="flex: 1; border: 1px solid #ddd; border-radius: 8px; padding: 15px; background-color: #f9f9f9;">
+        <h3 style="color:#004D35; margin-top:0;">Sesiones en directo</h3>
+        <p>Próximamente se mostrarán las sesiones en directo.</p>
+    </div>
+    <div style="flex: 1; border: 1px solid #ddd; border-radius: 8px; padding: 15px; background-color: #f9f9f9;">
+        <h3 style="color:#004D35; margin-top:0;">Calendario de actividades</h3>
+        ' . $calendarioActividades . '
+    </div>
+</div>
                 <div style="text-align:center; margin:2em 0 1.2em 0;">
     <button id="bloquecero-mostrarcurso-btn"
         onclick="window.bloquecero_toggle()"
         style="
-            width: 60px;
-            height: 60px;
+            width: 40px;
+            height: 40px;
             border-radius: 50%;
             background: #004D35;
             color: #fff;
             border: none;
-            box-shadow: 0 1px 8px rgba(0, 0, 0, 0.2);
+            box-shadow: 0 1px 6px rgba(0, 0, 0, 0.2);
             cursor: pointer;
             display: flex;
             flex-direction: column;
@@ -407,8 +558,8 @@ class block_bloquecero extends block_base {
             margin: 0 auto;
         "
         title="Mostrar u ocultar curso">
-        <span id="bloquecero-mostrarcurso-icon" style="font-size: 1.5em; line-height: 1;">&#x25BC;</span>
-        <span id="bloquecero-mostrarcurso-text" style="font-size: 0.8em; line-height: 1;">mostrar curso</span>
+        <span id="bloquecero-mostrarcurso-icon" style="font-size: 0.8em; line-height: 1;">&#x25BC;</span>
+        <span id="bloquecero-mostrarcurso-text" style="font-size: 0.6em; line-height: 1;">mostrar curso</span>
     </button>
 </div>
 <script>
@@ -595,8 +746,8 @@ document.addEventListener(\'DOMContentLoaded\', function() {
                         transition: transform 0.3s;
                     }
                     .section-title-btn.open .section-arrow {
-                        transform: rotate(90deg);
-                    }
+    transform: rotate(90deg);
+}
                     .section-title-btn.open {
                         background: rgba(225, 255, 209, 0.75) !important; /* Verde claro */
                     }
@@ -634,7 +785,11 @@ document.addEventListener(\'DOMContentLoaded\', function() {
 
                     function showSectionActivities(sectionId, btn) {
                         var container = document.getElementById("section-activities-container");
-                        // Si se pulsa la misma sección que ya está activa y el bloque es visible, se oculta
+                        // Quitar la clase "open" de todos los botones.
+                        document.querySelectorAll(\'.section-title-btn\').forEach(function(b){
+                            b.classList.remove(\'open\');
+                        });
+                        // Si se pulsa la misma sección que ya está activa y el bloque es visible, se oculta.
                         if (lastSectionShown === sectionId && container.style.display === "block") {
                             container.innerHTML = "";
                             container.style.display = "none";
@@ -643,6 +798,8 @@ document.addEventListener(\'DOMContentLoaded\', function() {
                             if (sectionsActivitiesData[sectionId]) {
                                 container.innerHTML = sectionsActivitiesData[sectionId];
                                 container.style.display = "block";
+                                // Agregar la clase "open" al botón actual para girar la flecha.
+                                btn.classList.add(\'open\');
                                 lastSectionShown = sectionId;
                             } else {
                                 container.innerHTML = "";
