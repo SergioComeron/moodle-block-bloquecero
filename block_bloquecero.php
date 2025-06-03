@@ -180,6 +180,7 @@ class block_bloquecero extends block_base {
         // Carrusel de tarjetas de secciones (sin mostrar las actividades inline)
         $sectionscarousel = '<div class="sections-carousel">';
         $modinfo = get_fast_modinfo($COURSE);
+        
         $sectioncount = 0;
         foreach ($modinfo->get_section_info_all() as $section) {
             if ($section->section == 0) continue;
@@ -198,6 +199,19 @@ class block_bloquecero extends block_base {
             } else {
                 $sectiontitle = format_string($section->name ?: get_string('section', 'moodle') . ' ' . $section->section);
             }
+
+
+        // --- NUEVO: determinar si es marker en formato topics ---
+            $isactive = !empty($section->current);
+            $is_marker_topics = ($course->format === 'topics' && $COURSE->marker == $section->section);
+
+            $activesymbol = $isactive ? ' <span title="Sección activa" style="color:#1abc9c;">&#11088;</span>' : '';
+            $section_card_extra_style = $is_marker_topics ? 'border: 2.5px solid #FFD600 !important;' : '';
+            $section_card_extra_class = $is_marker_topics ? ' marker-section' : '';
+
+
+
+
 
             // Generar las actividades de la sección (guardarlas para mostrarlas en el bloque aparte)
             $activities = '';
@@ -235,7 +249,7 @@ class block_bloquecero extends block_base {
             // Se muestra en el carrusel sólo el botón con el título de la sección
             $isactive = !empty($section->current);
             $activesymbol = $isactive ? ' <span title="Sección activa" style="color:#1abc9c;">&#11088;</span>' : '';
-            $sectionscarousel .= '<div class="section-card' . ($isactive ? ' active-section' : '') . '" style="flex-direction: column; padding:0;">
+            $sectionscarousel .= '<div class="section-card' . ($isactive ? ' active-section' : '') . $section_card_extra_class . '" style="flex-direction: column; padding:0;' . $section_card_extra_style . '">
                 <button class="section-title-btn section-title-header" type="button" onclick="showSectionActivities(\'' . $sectionid . '\', this)">
                     <span class="section-title-text">' . $sectiontitle . $activesymbol . '</span>
                     <span class="section-arrow" style="color: #fff !important; z-index: 2 !important;">&#9654;</span>
@@ -716,6 +730,10 @@ document.addEventListener(\'DOMContentLoaded\', function() {
                         background: rgba(225, 255, 209, 0.75) !important;
                         border: 2.5px solid #1abc9c;
                         box-shadow: 0 4px 16px rgba(26,188,156,0.12);
+                    }
+                    .section-card.marker-section {
+                        border: 2.5px solid #FFD600 !important;
+                        box-shadow: 0 4px 16px rgba(255,214,0,0.12);
                     }
                     .section-title-header {
                         background: transparent !important;
