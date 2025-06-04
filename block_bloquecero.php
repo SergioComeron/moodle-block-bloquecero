@@ -96,6 +96,15 @@ class block_bloquecero extends block_base {
             ];
         }
 
+        // Obtener el número máximo de profesores a mostrar desde la configuración del bloque
+        $maxteachers = 3;
+        if (!empty($this->config->maxteachers) && is_numeric($this->config->maxteachers)) {
+            $maxteachers = (int)$this->config->maxteachers;
+        }
+
+        // Limitar el array de profesores a mostrar según config_maxteachers
+        $teachersP = array_slice($teachersP, 0, $maxteachers);
+
         // URLs de los foros y demás secciones
         $forum_anuncios_url = '#';
         if (!empty($this->config->forumid)) {

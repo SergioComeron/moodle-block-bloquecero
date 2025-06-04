@@ -85,5 +85,17 @@ class block_bloquecero_edit_form extends block_edit_form {
             $mform->setDefault('config_userschedule_' . $USER->id, '');
             $mform->addHelpButton('config_userschedule_' . $USER->id, 'userschedule', 'block_bloquecero');
         }
+
+        // Selector para el número máximo de profesores a mostrar en el bloque.
+        $maxteachersoptions = [
+            1 => '1',
+            2 => '2',
+            3 => '3',
+            4 => '4',
+            5 => '5'
+        ];
+        $mform->addElement('select', 'config_maxteachers', get_string('maxteachers', 'block_bloquecero'), $maxteachersoptions);
+        $mform->setDefault('config_maxteachers', 3);
+        $mform->addHelpButton('config_maxteachers', 'maxteachers', 'block_bloquecero');
     }
 }

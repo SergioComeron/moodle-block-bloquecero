@@ -21,3 +21,5 @@ $string['userphone'] = 'Teacher phone number';
 $string['userphone_help'] = 'Enter your phone number to display it in the teacher profile.';
 $string['userschedule'] = 'Office hours';
 $string['userschedule_help'] = 'Enter your office hours to display them in the teacher profile.';
+$string['maxteachers'] = 'Maximum number of teachers';
+$string['maxteachers_help'] = 'Select the maximum number of teachers allowed in the course. The default value is set to 3.';
