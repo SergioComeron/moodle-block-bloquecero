@@ -11,3 +11,5 @@ $string['nolocation'] = 'Ubicación no especificada.';
 $string['nocoordinator'] = 'Coordinador no especificado.';
 $string['nozoomlink'] = 'No hay enlace de Zoom disponible.';
 $string['addinstance'] = 'Añadir un nuevo bloque de sesiones de Zoom';
+$string['guide_url'] = 'Guide URL';
+$string['guide_url_help'] = 'Enter the URL of the course guide. This link will be available to users in the block.';

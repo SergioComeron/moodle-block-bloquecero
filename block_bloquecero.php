@@ -80,22 +80,35 @@ class block_bloquecero extends block_base {
         global $OUTPUT;
         $teachersP = array();
         foreach ($teachersraw as $teacher) {
+            // Recupera el teléfono y horario personalizados si existen en la configuración del bloque
+            $phonekey = 'userphone_' . $teacher->id;
+            $schedulekey = 'userschedule_' . $teacher->id;
+            $phone = isset($this->config->$phonekey) ? $this->config->$phonekey : (isset($teacher->phone1) ? $teacher->phone1 : '');
+            $schedule = isset($this->config->$schedulekey) ? $this->config->$schedulekey : '<ul><li>Horarios no disponibles</li></ul>';
+
             $teachersP[] = (object)[
-                'id'       => $teacher->id,
-                'fullname' => fullname($teacher),
-                'email'    => $teacher->email,
-                'phone'    => isset($teacher->phone1) ? $teacher->phone1 : '',
+                'id'          => $teacher->id,
+                'fullname'    => fullname($teacher),
+                'email'       => $teacher->email,
+                'phone'       => $phone,
                 'picturehtml' => $OUTPUT->user_picture($teacher, array('size' => 100)),
-                'schedule' => '<ul><li>Horarios no disponibles</li></ul>'
+                'schedule'    => $schedule
             ];
         }
 
         // URLs de los foros y demás secciones
-        $forum_anuncios_url = new moodle_url('/mod/forum/view.php', array('id' => 64));
-        $forum_tutorias_url = new moodle_url('/mod/forum/view.php', array('id' => 64));
-        $forum_estudiantes_url = new moodle_url('/mod/forum/view.php', array('id' => 64));
-        $guide_url = new moodle_url('/path/to/guide');
-        $bibliography_url = new moodle_url('/path/to/bibliography');
+        $forum_anuncios_url = '#';
+        if (!empty($this->config->forumid)) {
+            $forum_anuncios_url = new moodle_url('/mod/forum/view.php', array('id' => $this->config->forumid));
+        }
+        $forum_tutorias_url = '#';
+        if (!empty($this->config->forumtutoriasid)) {
+            $forum_tutorias_url = new moodle_url('/mod/forum/view.php', array('id' => $this->config->forumtutoriasid));
+        }
+        $forum_estudiantes_url = new moodle_url('/mod/forum/view.php', array('id' => $this->config->forumestudiantesid));
+        $guide_url = !empty($this->config->guide_url) ? $this->config->guide_url : '#';
+        // $bibliography_url = !empty($this->config->bibliography_url) ? $this->config->bibliography_url : '#';
+
         $zoom_url = new moodle_url('/path/to/zoom');
         $tasks_url = new moodle_url('/path/to/tasks');
 
@@ -306,243 +319,249 @@ class block_bloquecero extends block_base {
         }
 
         // --- Calcular el selector de semanas usando las fechas del curso ---
-$courseStart = $COURSE->startdate;
-$courseEnd = (!empty($COURSE->enddate)) ? $COURSE->enddate : time();
-$weeks = ceil(($courseEnd - $courseStart) / (7 * 24 * 60 * 60));
-$options = '';
-for ($i = 1; $i <= $weeks; $i++) {
-    $options .= '<option value="' . $i . '">Semana ' . $i . '</option>';
-}
+        $courseStart = $COURSE->startdate;
+        $courseEnd = (!empty($COURSE->enddate)) ? $COURSE->enddate : time();
+        $weeks = ceil(($courseEnd - $courseStart) / (7 * 24 * 60 * 60));
+        $options = '';
+        for ($i = 1; $i <= $weeks; $i++) {
+            $options .= '<option value="' . $i . '">Semana ' . $i . '</option>';
+        }
 
-// --- Reemplaza la definición de $calendarioActividades por:
-$calendarioActividades = '
-<div class="calendario-actividades-wrapper">
-    <!-- Selector de semana fuera del recuadro de actividades -->
-    <div class="week-selector" style="margin-bottom: 10px; text-align: center;">
-         <button id="prev-week" style="background: none; border: none; font-size: 1.2em; cursor: pointer;">&lt;</button>
-         <span id="week-label" style="font-weight: bold; margin: 0 10px;"></span>
-         <button id="next-week" style="background: none; border: none; font-size: 1.2em; cursor: pointer;">&gt;</button>
-    </div>
-    <!-- Contenedor para las actividades sin recuadro -->
-    <div class="calendario-actividades-container" style="padding: 15px; background-color: #f9f9f9; text-align: center;">
-          <div id="activities-week-content">' . $calendarActivities . '</div>
-    </div>
-</div>
-<script>
-    (function(){
-        const courseStart = ' . $courseStart . ';
-        const totalWeeks = ' . $weeks . ';
-        const now = Math.floor(Date.now() / 1000);
-        let currentWeek = Math.floor((now - courseStart) / (7 * 24 * 60 * 60)) + 1;
-        if (currentWeek < 1) {
-            currentWeek = 1;
-        } else if (currentWeek > totalWeeks) {
-            currentWeek = totalWeeks;
-        }
-        const contentContainer = document.getElementById("activities-week-content");
-        const originalListElement = document.getElementById("activities-list");
-        const originalListHTML = originalListElement ? originalListElement.outerHTML : "";
-        const weekLabel = document.getElementById("week-label");
-        const prevBtn = document.getElementById("prev-week");
-        const nextBtn = document.getElementById("next-week");
-        function formatDate(ts) {
-            const d = new Date(ts * 1000);
-            const day = d.getDate();
-            const monthNames = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
-            return day + " " + monthNames[d.getMonth()];
-        }
-        function filterActivities(week) {
-            const weekStart = courseStart + (week - 1) * 7 * 24 * 60 * 60;
-            const weekEnd = weekStart + 7 * 24 * 60 * 60;
-            const parser = new DOMParser();
-            const doc = parser.parseFromString(originalListHTML, "text/html");
-            const lis = doc.querySelectorAll("li");
-            let anyVisible = false;
-            lis.forEach(function(li){
-                const ts = parseInt(li.getAttribute("data-timestamp"), 10);
-                if (ts >= weekStart && ts < weekEnd) {
-                    li.style.display = "list-item";
-                    anyVisible = true;
-                } else {
-                    li.style.display = "none";
+        // --- Reemplaza la definición de $calendarioActividades por:
+        $calendarioActividades = '
+        <div class="calendario-actividades-wrapper">
+            <!-- Selector de semana fuera del recuadro de actividades -->
+            <div class="week-selector" style="margin-bottom: 10px; text-align: center;">
+                <button id="prev-week" style="background: none; border: none; font-size: 1.2em; cursor: pointer;">&lt;</button>
+                <span id="week-label" style="font-weight: bold; margin: 0 10px;"></span>
+                <button id="next-week" style="background: none; border: none; font-size: 1.2em; cursor: pointer;">&gt;</button>
+            </div>
+            <!-- Contenedor para las actividades sin recuadro -->
+            <div class="calendario-actividades-container" style="padding: 15px; background-color: #f9f9f9; text-align: center;">
+                <div id="activities-week-content">' . $calendarActivities . '</div>
+            </div>
+        </div>
+        <script>
+            (function(){
+                const courseStart = ' . $courseStart . ';
+                const totalWeeks = ' . $weeks . ';
+                const now = Math.floor(Date.now() / 1000);
+                let currentWeek = Math.floor((now - courseStart) / (7 * 24 * 60 * 60)) + 1;
+                if (currentWeek < 1) {
+                    currentWeek = 1;
+                } else if (currentWeek > totalWeeks) {
+                    currentWeek = totalWeeks;
                 }
-            });
-            if(anyVisible) {
-                contentContainer.innerHTML = "<ul style=\"margin: 12px 0 0 0; padding-left: 18px; list-style: none;\">" + doc.querySelector("ul").innerHTML + "</ul>";
-            } else {
-                contentContainer.innerHTML = \'<div style="margin-top:12px; color:#888; font-size:0.95em;">No hay actividades para esta semana.</div>\';
-            }
-            const startStr = formatDate(weekStart);
-            const endStr = formatDate(weekEnd - 1);
-            weekLabel.textContent = startStr + " - " + endStr;
-        }
-        prevBtn.addEventListener("click", function(){
-            if(currentWeek > 1) {
-                currentWeek--;
+                const contentContainer = document.getElementById("activities-week-content");
+                const originalListElement = document.getElementById("activities-list");
+                const originalListHTML = originalListElement ? originalListElement.outerHTML : "";
+                const weekLabel = document.getElementById("week-label");
+                const prevBtn = document.getElementById("prev-week");
+                const nextBtn = document.getElementById("next-week");
+                function formatDate(ts) {
+                    const d = new Date(ts * 1000);
+                    const day = d.getDate();
+                    const monthNames = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+                    return day + " " + monthNames[d.getMonth()];
+                }
+                function filterActivities(week) {
+                    const weekStart = courseStart + (week - 1) * 7 * 24 * 60 * 60;
+                    const weekEnd = weekStart + 7 * 24 * 60 * 60;
+                    const parser = new DOMParser();
+                    const doc = parser.parseFromString(originalListHTML, "text/html");
+                    const lis = doc.querySelectorAll("li");
+                    let anyVisible = false;
+                    lis.forEach(function(li){
+                        const ts = parseInt(li.getAttribute("data-timestamp"), 10);
+                        if (ts >= weekStart && ts < weekEnd) {
+                            li.style.display = "list-item";
+                            anyVisible = true;
+                        } else {
+                            li.style.display = "none";
+                        }
+                    });
+                    if(anyVisible) {
+                        contentContainer.innerHTML = "<ul style=\"margin: 12px 0 0 0; padding-left: 18px; list-style: none;\">" + doc.querySelector("ul").innerHTML + "</ul>";
+                    } else {
+                        contentContainer.innerHTML = \'<div style="margin-top:12px; color:#888; font-size:0.95em;">No hay actividades para esta semana.</div>\';
+                    }
+                    const startStr = formatDate(weekStart);
+                    const endStr = formatDate(weekEnd - 1);
+                    weekLabel.textContent = startStr + " - " + endStr;
+                }
+                prevBtn.addEventListener("click", function(){
+                    if(currentWeek > 1) {
+                        currentWeek--;
+                        filterActivities(currentWeek);
+                    }
+                });
+                nextBtn.addEventListener("click", function(){
+                    if(currentWeek < totalWeeks) {
+                        currentWeek++;
+                        filterActivities(currentWeek);
+                    }
+                });
                 filterActivities(currentWeek);
-            }
-        });
-        nextBtn.addEventListener("click", function(){
-            if(currentWeek < totalWeeks) {
-                currentWeek++;
-                filterActivities(currentWeek);
-            }
-        });
-        filterActivities(currentWeek);
-    })();
-</script>';
+            })();
+        </script>';
 
         // HTML principal del bloque (se añade debajo del carrusel el bloque para las actividades)
 
         $this->content->text =
-    '<style>
-        /* Asegurar que el encabezado del bloque se alinee a la izquierda */
-        .block_bloquecero .header {
-            text-align: left !important;
-        }
-    </style>
-    <div style="padding: 0 20px; font-family: Arial, sans-serif;">
-        <!-- Resto del contenido del bloque -->
-            <div style="position: relative; border-radius: 12px; overflow: hidden; margin-bottom: 20px; width: 100%; aspect-ratio: 3 / 1;">
-                    <img src="' . $fondo_cabecera_img . '" alt="Fondo" style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; object-fit: cover;">
-                    <div style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; padding: 30px; display: flex; flex-direction: column; justify-content: flex-start; align-items: flex-end;">
-                        <h1 style="margin: 0 0 10px 0; font-size: 2.5em; color: black;">' . format_string($COURSE->fullname) . '</h1>
-                        ' . ($courseDates ? '<p style="margin: 0 0 10px 0; font-size: 1em; color: black;">' . $courseDates . '</p>' : '') . '
-                        <p style="margin: 0 0 10px 0; font-size: 1.2em; color: black;">
-        Equipo docente: ' . $contactButtonsHtml . '
-    </p>
-                    </div>
-                </div>
-                <!-- Bloques de información de contacto de cada profesor -->
-                ' . $contactBlocksHtml . '
-                
+            '<style>
+                /* Asegurar que el encabezado del bloque se alinee a la izquierda */
+                .block_bloquecero .header {
+                    text-align: left !important;
+                }
+            </style>
+            <div style="padding: 0 20px; font-family: Arial, sans-serif;">
+    <!-- Resto del contenido del bloque -->
+    <div style="position: relative; border-radius: 12px; overflow: hidden; margin-bottom: 20px; width: 100%; aspect-ratio: 5 / 1;">
+        <img src="' . $fondo_cabecera_img . '" alt="Fondo" style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; object-fit: contain;">
+        <div style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; padding: 30px; display: flex; flex-direction: column; justify-content: flex-start; align-items: flex-end;">
+            <h1 style="margin: 0 0 10px 0; font-size: 2.5em; color: black;">' . format_string($COURSE->fullname) . '</h1>
+            ' . ($courseDates ? '<p style="margin: 0 0 10px 0; font-size: 1em; color: black;">' . $courseDates . '</p>' : '') . '
+            <p style="margin: 0 0 10px 0; font-size: 1.2em; color: black;">
+                Equipo docente: ' . $contactButtonsHtml . '
+            </p>
+        </div>
+    </div>
+    <!-- Bloques de información de contacto de cada profesor -->
+    ' . $contactBlocksHtml . '
+    
+
+    <!-- Sección de foros y demás secciones -->
+    <div style="padding: 0 40px;">
                 <div style="display: flex; justify-content: flex-end; gap: 10px; margin: 20px 0;">
-                    <div class="round-button-wrapper">
-                        <a href="' . new moodle_url('/grade/report/user/index.php', array('id' => $COURSE->id)) . '" class="round-button" title="' . get_string('calificador', 'block_bloquecero') . '">
-                            ' . $OUTPUT->pix_icon('t/grades', '', 'moodle', ['class' => 'bigicon']) . '
-                        </a>
+    <div class="round-button-wrapper">
+        <a href="' . new moodle_url('/grade/report/user/index.php', array('id' => $COURSE->id)) . '" class="round-button" title="' . get_string('calificador', 'block_bloquecero') . '">
+            ' . $OUTPUT->pix_icon('t/grades', '', 'moodle', ['class' => 'bigicon']) . '
+        </a>
+    </div>
+    <div class="round-button-wrapper">
+        <a href="' . new moodle_url('/user/index.php', array('id' => $COURSE->id)) . '" class="round-button" title="' . get_string('participantes', 'block_bloquecero') . '">
+            ' . $OUTPUT->pix_icon('i/users', '', 'moodle', ['class' => 'bigicon']) . '
+        </a>
+    </div>
+    <div class="round-button-wrapper">
+        <a href="' . new moodle_url('/#', array('id' => $COURSE->id)) . '" class="round-button" title="' . get_string('bibliografiarecomendada', 'block_bloquecero') . '">
+            ' . $OUTPUT->pix_icon('book', '', 'moodle', ['class' => 'bigicon']) . '
+        </a>
+    </div>
+    <div class="round-button-wrapper">
+        <a href="' . $guide_url . '" class="round-button" title="Guía docente" target="_blank">
+            ' . $OUTPUT->pix_icon('i/info', '', 'moodle', ['class' => 'bigicon']) . '
+        </a>
+    </div>
 </div>
-<div class="round-button-wrapper">
-    <a href="' . new moodle_url('/user/index.php', array('id' => $COURSE->id)) . '" class="round-button" title="' . get_string('participantes', 'block_bloquecero') . '">
-        ' . $OUTPUT->pix_icon('i/users', '', 'moodle', ['class' => 'bigicon']) . '
-    </a>
-</div>
-<div class="round-button-wrapper">
-    <a href="' . new moodle_url('/#', array('id' => $COURSE->id)) . '" class="round-button" title="' . get_string('bibliografiarecomendada', 'block_bloquecero') . '">
-        ' . $OUTPUT->pix_icon('book', '', 'moodle', ['class' => 'bigicon']) . '
-    </a>
-</div>
-                </div>
-                <style>
-                    .round-button-wrapper {
-                        display: flex;
-                        flex-direction: column;
-                        align-items: center;
+        <style>
+            .round-button-wrapper {
+                display: flex;
+                flex-direction: column;
+                align-items: center;
+                position: relative;
+            }
+            .round-button {
+                width: 40px;
+                height: 40px;
+                min-width: 40px;
+                min-height: 40px;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                padding: 0;
+                background: #fff;
+                color: #004D35;
+                border: 2px solid #004D35;
+                border-radius: 50%;
+                text-decoration: none;
+                overflow: hidden;
+                font-size: 1.2em;
+                box-shadow: none;
+                transition: none;
+            }
+            a.round-button, a.round-button:visited, a.round-button:hover, a.round-button:active {
+                text-decoration: none !important;
+            }
+            .round-button .bigicon {
+                margin: 0;
+                padding: 0;
+                display: block;
+                width: 22px;
+                height: 22px;
+                line-height: 1;
+                text-align: center;
+            }
+        </style>
+            <div style="display: flex; justify-content: center; gap: 20px; margin: 20px 0;">
+                <!-- Tablón de anuncios -->
+                <a href="' . $forum_anuncios_url . '" style="text-decoration: none; color: inherit; flex: 1;">
+                    <div class="forum-card" style="
+                        border: 1px solid #ddd;
+                        border-radius: 8px;
+                        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+                        text-align: center;
+                        background-color: #004D35;
+                        color: white;
+                        transition: transform 0.3s ease, box-shadow 0.3s ease;
                         position: relative;
-                    }
-                    .round-button {
-                        width: 40px;
-                        height: 40px;
-                        min-width: 40px;
-                        min-height: 40px;
+                        padding: 10px;
                         display: flex;
                         align-items: center;
                         justify-content: center;
-                        padding: 0;
-                        background: #fff;
-                        color: #004D35;
-                        border: 2px solid #004D35;
-                        border-radius: 50%;
-                        text-decoration: none;
-                        overflow: hidden;
-                        font-size: 1.2em;
-                        box-shadow: none;
-                        transition: none;
-                    }
-                    a.round-button, a.round-button:visited, a.round-button:hover, a.round-button:active {
-                        text-decoration: none !important;
-                    }
-                    .round-button .bigicon {
-                        margin: 0;
-                        padding: 0;
-                        display: block;
-                        width: 22px;
-                        height: 22px;
-                        line-height: 1;
-                        text-align: center;
-                    }
-                </style>
-                <!-- Sección de foros y demás secciones -->
-                <div style="padding: 0 40px;">
-                    <div style="display: flex; justify-content: center; gap: 20px; margin: 20px 0;">
-                        <!-- Tablón de anuncios -->
-                        <a href="' . $forum_anuncios_url . '" style="text-decoration: none; color: inherit; flex: 1;">
-                            <div class="forum-card" style="
-                                border: 1px solid #ddd;
-                                border-radius: 8px;
-                                box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
-                                text-align: center;
-                                background-color: #004D35;
-                                color: white;
-                                transition: transform 0.3s ease, box-shadow 0.3s ease;
-                                position: relative;
-                                padding: 10px;
-                                display: flex;
-                                align-items: center;
-                                justify-content: center;
-                            ">
-                                <h3 style="margin: 0; font-size: 1.2em; position: relative; z-index: 1;">Tablón de anuncios</h3>
-                            </div>
-                        </a>
-                        <!-- Foro de Tutorías -->
-                        <a href="' . $forum_tutorias_url . '" style="text-decoration: none; color: inherit; flex: 1;">
-                            <div class="forum-card" style="
-                                border: 1px solid #ddd;
-                                border-radius: 8px;
-                                box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
-                                text-align: center;
-                                background-color: #004D35;
-                                color: white;
-                                transition: transform 0.3s ease, box-shadow 0.3s ease;
-                                position: relative;
-                                padding: 10px;
-                                display: flex;
-                                align-items: center;
-                                justify-content: center;
-                            ">
-                                <h3 style="margin: 0; font-size: 1.2em; position: relative; z-index: 1;">Foro de Tutorías</h3>
-                            </div>
-                        </a>
-                        <!-- Foro de Estudiantes -->
-                        <a href="' . $forum_estudiantes_url . '" style="text-decoration: none; color: inherit; flex: 1;">
-                            <div class="forum-card" style="
-                                border: 1px solid #ddd;
-                                border-radius: 8px;
-                                box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
-                                text-align: center;
-                                background-color: #004D35;
-                                color: white;
-                                transition: transform 0.3s ease, box-shadow 0.3s ease;
-                                padding: 10px;
-                                display: flex;
-                                align-items: center;
-                                justify-content: center;
-                            ">
-                                <h3 style="margin: 0; font-size: 1.2em; position: relative; z-index: 1;">Foro de Estudiantes</h3>
-                            </div>
-                        </a>
+                    ">
+                        <h3 style="margin: 0; font-size: 1.2em; position: relative; z-index: 1;">Tablón de anuncios</h3>
                     </div>
-                    
-                </div>
-                
-                <!-- Carrusel de tarjetas de secciones -->
-                <div style="text-align: left; padding: 0 40px; margin-bottom: 10px;">
-    <h3 style="color: #004D35; margin-top: 0;">Secciones del curso</h3>
+                </a>
+                <!-- Foro de Tutorías -->
+                <a href="' . $forum_tutorias_url . '" style="text-decoration: none; color: inherit; flex: 1;">
+                    <div class="forum-card" style="
+                        border: 1px solid #ddd;
+                        border-radius: 8px;
+                        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+                        text-align: center;
+                        background-color: #004D35;
+                        color: white;
+                        transition: transform 0.3s ease, box-shadow 0.3s ease;
+                        position: relative;
+                        padding: 10px;
+                        display: flex;
+                        align-items: center;
+                        justify-content: center;
+                    ">
+                        <h3 style="margin: 0; font-size: 1.2em; position: relative; z-index: 1;">Foro de Tutorías</h3>
+                    </div>
+                </a>
+                <!-- Foro de Estudiantes -->
+                <a href="' . $forum_estudiantes_url . '" style="text-decoration: none; color: inherit; flex: 1;">
+                    <div class="forum-card" style="
+                        border: 1px solid #ddd;
+                        border-radius: 8px;
+                        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+                        text-align: center;
+                        background-color: #004D35;
+                        color: white;
+                        transition: transform 0.3s ease, box-shadow 0.3s ease;
+                        padding: 10px;
+                        display: flex;
+                        align-items: center;
+                        justify-content: center;
+                    ">
+                        <h3 style="margin: 0; font-size: 1.2em; position: relative; z-index: 1;">Foro de Estudiantes</h3>
+                    </div>
+                </a>
+            </div>
+            
+        </div>
+        
+        <!-- Carrusel de tarjetas de secciones -->
+        <div style="text-align: left; padding: 0 40px; margin-bottom: 10px;">
+<h3 style="color: #004D35; margin-top: 0;">Secciones del curso</h3>
 </div>' .
 $carouselContainer . '
-                <!-- Bloque para mostrar las actividades de la sección seleccionada -->
-                ' . $activitiesBlockHtml . '
-                <!-- Bloques divididos en dos columnas -->
+        <!-- Bloque para mostrar las actividades de la sección seleccionada -->
+        ' . $activitiesBlockHtml . '
+        <!-- Bloques divididos en dos columnas -->
 <div style="display: flex; gap: 20px; margin: 20px 40px;">
     <div style="flex: 1; border: 1px solid #ddd; border-radius: 8px; padding: 15px; background-color: #f9f9f9;">
         <h3 style="color:#004D35; margin-top:0;">Sesiones en directo</h3>
@@ -553,7 +572,7 @@ $carouselContainer . '
         ' . $calendarioActividades . '
     </div>
 </div>
-                <div style="text-align:center; margin:2em 0 1.2em 0;">
+        <div style="text-align:center; margin:2em 0 1.2em 0;">
     <button id="bloquecero-mostrarcurso-btn"
         onclick="window.bloquecero_toggle()"
         style="
@@ -646,308 +665,308 @@ document.addEventListener(\'DOMContentLoaded\', function() {
     if(btntext) btntext.innerHTML = \'mostrar curso\';
 });
 </script>
-                <style>
-                    .forum-card:hover {
-                        transform: scale(1.05);
-                        box-shadow: 0 6px 10px rgba(0, 0, 0, 0.15);
-                    }
-                    .ghost-button {
-                        display: flex;
-                        align-items: center;
-                        background: #fff;
-                        color: #004D35;
-                        border: 2px solid #004D35;
-                        border-radius: 8px;
-                        padding: 10px 20px;
-                        font-weight: 600;
-                        gap: 10px;
-                        min-width: 160px;
-                        transition: background 0.2s, box-shadow 0.2s;
-                        box-shadow: none;
-                        cursor: pointer;
-                        font-size: 1em;
-                        text-decoration: none !important;
-                        width: 220px;
-                        justify-content: center;
-                    }
-                    .ghost-button:visited,
-                    .ghost-button:focus,
-                    .ghost-button:hover,
-                    .ghost-button:active {
-                        text-decoration: none !important;
-                        color: #004D35;
-                    }
-                    .ghost-button:hover,
-                    .ghost-button:focus {
-                        background: #004D35 !important;
-                        color: #fff !important;
-                        border-color: #004D35 !important;
-                        box-shadow: 0 6px 16px rgba(0, 77, 53, 0.10);
-                        outline: none;
-                        transition: background 0.2s, color 0.2s, border-color 0.2s;
-                    }
-                    .carousel-container {
-                        padding: 0 40px;
-                        box-sizing: border-box;
-                    }
-                    .sections-carousel {
-                        display: flex;
-                        gap: 18px;
-                        overflow-x: auto;
-                        scroll-snap-type: x mandatory;
-                        /* Ocultar scrollbar en Firefox */
-                        scrollbar-width: none;
-                        /* Ocultar scrollbar en IE, Edge */
-                        -ms-overflow-style: none;
+            <style>
+                .forum-card:hover {
+                    transform: scale(1.05);
+                    box-shadow: 0 6px 10px rgba(0, 0, 0, 0.15);
+                }
+                .ghost-button {
+                    display: flex;
+                    align-items: center;
+                    background: #fff;
+                    color: #004D35;
+                    border: 2px solid #004D35;
+                    border-radius: 8px;
+                    padding: 10px 20px;
+                    font-weight: 600;
+                    gap: 10px;
+                    min-width: 160px;
+                    transition: background 0.2s, box-shadow 0.2s;
+                    box-shadow: none;
+                    cursor: pointer;
+                    font-size: 1em;
+                    text-decoration: none !important;
+                    width: 220px;
+                    justify-content: center;
+                }
+                .ghost-button:visited,
+                .ghost-button:focus,
+                .ghost-button:hover,
+                .ghost-button:active {
+                    text-decoration: none !important;
+                    color: #004D35;
+                }
+                .ghost-button:hover,
+                .ghost-button:focus {
+                    background: #004D35 !important;
+                    color: #fff !important;
+                    border-color: #004D35 !important;
+                    box-shadow: 0 6px 16px rgba(0, 77, 53, 0.10);
+                    outline: none;
+                    transition: background 0.2s, color 0.2s, border-color 0.2s;
+                }
+                .carousel-container {
+                    padding: 0 40px;
+                    box-sizing: border-box;
+                }
+                .sections-carousel {
+                    display: flex;
+                    gap: 18px;
+                    overflow-x: auto;
+                    scroll-snap-type: x mandatory;
+                    /* Ocultar scrollbar en Firefox */
+                    scrollbar-width: none;
+                    /* Ocultar scrollbar en IE, Edge */
+                    -ms-overflow-style: none;
     width: 100%;
 
-                    }
-                    /* Ocultar scrollbar en Chrome, Safari y Opera */
-                    .sections-carousel::-webkit-scrollbar {
-                        display: none;
-                    }
-                    /* Calculamos el ancho para que siempre quepan 4 tarjetas dejando 3 gaps de 18px (54px total) */
-                    .section-card {
+                }
+                /* Ocultar scrollbar en Chrome, Safari y Opera */
+                .sections-carousel::-webkit-scrollbar {
+                    display: none;
+                }
+                /* Calculamos el ancho para que siempre quepan 4 tarjetas dejando 3 gaps de 18px (54px total) */
+                .section-card {
     flex: 1 1 0;
     min-width: 0;
     max-width: 100%;
-                        background: #004D35; /* nuevo fondo verde */
-                        border: 1.5px solid #004D35;
-                        border-radius: 10px;
-                        box-shadow: 0 2px 8px rgba(0,0,0,0.08);
-                        color: #fff; /* texto en blanco para buen contraste */
-                        font-weight: 600;
-                        font-size: 0.9em;
-                        display: flex;
-                        flex-direction: column;
-                        align-items: stretch;
-                        justify-content: flex-start;
-                        transition: box-shadow 0.2s;
-                        cursor: pointer;
-                        padding: 0;
-                        overflow: hidden;
-                        scroll-snap-align: start;
-                    }
-                    .section-card.active-section {
-                        background: rgba(225, 255, 209, 0.75) !important;
-                        border: 2.5px solid #1abc9c;
-                        box-shadow: 0 4px 16px rgba(26,188,156,0.12);
-                    }
-                    .section-card.marker-section {
-                        border: 2.5px solid #FFD600 !important;
-                        box-shadow: 0 4px 16px rgba(255,214,0,0.12);
-                    }
-                    .section-title-header {
-                        background: transparent !important;
-                        color: #fff !important;
-                        border: none;
-                        width: 100%;
-                        text-align: left;
-                        padding: 14px 16px;
-                        margin: 0;
-                        cursor: pointer;
-                        display: flex;
-                        align-items: center;
-                        justify-content: space-between;
-                        font-size: 1em;
-                        outline: none;
-                        border-radius: 10px 10px 0 0;
-                        transition: background 0.2s, color 0.2s;
-                    }
+                    background: #004D35; /* nuevo fondo verde */
+                    border: 1.5px solid #004D35;
+                    border-radius: 10px;
+                    box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+                    color: #fff; /* texto en blanco para buen contraste */
+                    font-weight: 600;
+                    font-size: 0.9em;
+                    display: flex;
+                    flex-direction: column;
+                    align-items: stretch;
+                    justify-content: flex-start;
+                    transition: box-shadow 0.2s;
+                    cursor: pointer;
+                    padding: 0;
+                    overflow: hidden;
+                    scroll-snap-align: start;
+                }
+                .section-card.active-section {
+                    background: rgba(225, 255, 209, 0.75) !important;
+                    border: 2.5px solid #1abc9c;
+                    box-shadow: 0 4px 16px rgba(26,188,156,0.12);
+                }
+                .section-card.marker-section {
+                    border: 2.5px solid #FFD600 !important;
+                    box-shadow: 0 4px 16px rgba(255,214,0,0.12);
+                }
+                .section-title-header {
+                    background: transparent !important;
+                    color: #fff !important;
+                    border: none;
+                    width: 100%;
+                    text-align: left;
+                    padding: 14px 16px;
+                    margin: 0;
+                    cursor: pointer;
+                    display: flex;
+                    align-items: center;
+                    justify-content: space-between;
+                    font-size: 1em;
+                    outline: none;
+                    border-radius: 10px 10px 0 0;
+                    transition: background 0.2s, color 0.2s;
+                }
     .sections-carousel:has(.section-card:nth-child(n+5)) .section-card {
     flex: 0 0 calc((100% - 54px) / 4);
     max-width: calc((100% - 54px) / 4);
     min-width: calc((100% - 54px) / 4);
 }
-                    .section-title-header .section-title-text {
-                        color: #fff !important;
-                        font-weight: 600;
-                        font-size: 1em;
-                        white-space: nowrap;
+                .section-title-header .section-title-text {
+                    color: #fff !important;
+                    font-weight: 600;
+                    font-size: 1em;
+                    white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
     display: block;
     width: 100%;
     max-width: 100%;
-                    }
-                    .section-title-header .section-arrow {
-                        color: #004D35 !important;
-                        font-size: 1.1em;
-                        margin-left: 8px;
-                        transition: transform 0.3s;
-                    }
-                    .section-title-btn.open .section-arrow {
+                }
+                .section-title-header .section-arrow {
+                    color: #004D35 !important;
+                    font-size: 1.1em;
+                    margin-left: 8px;
+                    transition: transform 0.3s;
+                }
+                .section-title-btn.open .section-arrow {
     transform: rotate(90deg);
 }
-                    .section-title-btn.open {
-                        background: rgba(225, 255, 209, 0.75) !important; /* Verde claro */
-                    }
-                    .section-title-btn.open .section-title-text {
-                        color: #004D35 !important; /* Ajusta el color del texto si es necesario */
-                    }
-                    .section-activities {
-                        background: #fff;
-                        transition: max-height 0.3s ease, opacity 0.3s;
-                        overflow: hidden;
-                        opacity: 1;
-                        max-height: 1000px;
-                        border-radius: 0 0 10px 10px;
-                        padding-bottom: 8px;
-                    }
-                    .section-activities.collapsed {
-                        opacity: 0;
-                        max-height: 0;
-                        padding: 0 !important;
-                    }
-                </style>
-                <script>
-                    // Datos con las actividades de cada sección (clave: id de la sección)
-                    const sectionsActivitiesData = ' . $sectionsActivitiesJson . ';
+                .section-title-btn.open {
+                    background: rgba(225, 255, 209, 0.75) !important; /* Verde claro */
+                }
+                .section-title-btn.open .section-title-text {
+                    color: #004D35 !important; /* Ajusta el color del texto si es necesario */
+                }
+                .section-activities {
+                    background: #fff;
+                    transition: max-height 0.3s ease, opacity 0.3s;
+                    overflow: hidden;
+                    opacity: 1;
+                    max-height: 1000px;
+                    border-radius: 0 0 10px 10px;
+                    padding-bottom: 8px;
+                }
+                .section-activities.collapsed {
+                    opacity: 0;
+                    max-height: 0;
+                    padding: 0 !important;
+                }
+            </style>
+            <script>
+                // Datos con las actividades de cada sección (clave: id de la sección)
+                const sectionsActivitiesData = ' . $sectionsActivitiesJson . ';
 
-                    function scrollCarousel(direction) {
-                        var carousel = document.querySelector(".sections-carousel");
-                        var card = carousel.querySelector(".section-card");
-                        var scrollAmount = card ? card.offsetWidth + 18 : 240;
-                        carousel.scrollBy({ left: direction * scrollAmount, behavior: "smooth" });
-                        setTimeout(updateCarouselArrows, 500);
-                    }
-                    // Variable para almacenar la sección actualmente mostrada
-                    let lastSectionShown = null;
+                function scrollCarousel(direction) {
+                    var carousel = document.querySelector(".sections-carousel");
+                    var card = carousel.querySelector(".section-card");
+                    var scrollAmount = card ? card.offsetWidth + 18 : 240;
+                    carousel.scrollBy({ left: direction * scrollAmount, behavior: "smooth" });
+                    setTimeout(updateCarouselArrows, 500);
+                }
+                // Variable para almacenar la sección actualmente mostrada
+                let lastSectionShown = null;
 
-                    function showSectionActivities(sectionId, btn) {
-                        var container = document.getElementById("section-activities-container");
-                        // Quitar la clase "open" de todos los botones.
-                        document.querySelectorAll(\'.section-title-btn\').forEach(function(b){
-                            b.classList.remove(\'open\');
-                        });
-                        // Si se pulsa la misma sección que ya está activa y el bloque es visible, se oculta.
-                        if (lastSectionShown === sectionId && container.style.display === "block") {
+                function showSectionActivities(sectionId, btn) {
+                    var container = document.getElementById("section-activities-container");
+                    // Quitar la clase "open" de todos los botones.
+                    document.querySelectorAll(\'.section-title-btn\').forEach(function(b){
+                        b.classList.remove(\'open\');
+                    });
+                    // Si se pulsa la misma sección que ya está activa y el bloque es visible, se oculta.
+                    if (lastSectionShown === sectionId && container.style.display === "block") {
+                        container.innerHTML = "";
+                        container.style.display = "none";
+                        lastSectionShown = null;
+                    } else {
+                        if (sectionsActivitiesData[sectionId]) {
+                            container.innerHTML = sectionsActivitiesData[sectionId];
+                            container.style.display = "block";
+                            // Agregar la clase "open" al botón actual para girar la flecha.
+                            btn.classList.add(\'open\');
+                            lastSectionShown = sectionId;
+                        } else {
                             container.innerHTML = "";
                             container.style.display = "none";
                             lastSectionShown = null;
-                        } else {
-                            if (sectionsActivitiesData[sectionId]) {
-                                container.innerHTML = sectionsActivitiesData[sectionId];
-                                container.style.display = "block";
-                                // Agregar la clase "open" al botón actual para girar la flecha.
-                                btn.classList.add(\'open\');
-                                lastSectionShown = sectionId;
-                            } else {
-                                container.innerHTML = "";
-                                container.style.display = "none";
-                                lastSectionShown = null;
-                            }
                         }
                     }
-                    function updateCarouselArrows() {
-                        var carousel = document.querySelector(".sections-carousel");
-                        var leftArrow = document.querySelector(".carousel-btn-left");
-                        var rightArrow = document.querySelector(".carousel-btn-right");
-                        if (carousel.scrollLeft <= 0) {
-                            leftArrow.style.display = "none";
-                        } else {
-                            leftArrow.style.display = "block";
-                        }
-                        if (carousel.scrollWidth <= carousel.clientWidth + carousel.scrollLeft) {
-                            rightArrow.style.display = "none";
-                        } else {
-                            rightArrow.style.display = "block";
-                        }
+                }
+                function updateCarouselArrows() {
+                    var carousel = document.querySelector(".sections-carousel");
+                    var leftArrow = document.querySelector(".carousel-btn-left");
+                    var rightArrow = document.querySelector(".carousel-btn-right");
+                    if (carousel.scrollLeft <= 0) {
+                        leftArrow.style.display = "none";
+                    } else {
+                        leftArrow.style.display = "block";
                     }
-                    window.addEventListener("load", updateCarouselArrows);
-                    window.addEventListener("resize", updateCarouselArrows);
-                    document.querySelector(".sections-carousel").addEventListener("scroll", updateCarouselArrows);
-                    window.addEventListener("load", function() {
-                        var carousel = document.querySelector(".sections-carousel");
-                        var active = carousel ? carousel.querySelector(".section-card.active-section") : null;
-                        if (carousel && active) {
-                            var scrollLeft = active.offsetLeft - (carousel.clientWidth / 2) + (active.clientWidth / 2);
-                            if (active === carousel.firstElementChild) {
-                                scrollLeft = 0;
-                            }
-                            carousel.scrollLeft = scrollLeft;
+                    if (carousel.scrollWidth <= carousel.clientWidth + carousel.scrollLeft) {
+                        rightArrow.style.display = "none";
+                    } else {
+                        rightArrow.style.display = "block";
+                    }
+                }
+                window.addEventListener("load", updateCarouselArrows);
+                window.addEventListener("resize", updateCarouselArrows);
+                document.querySelector(".sections-carousel").addEventListener("scroll", updateCarouselArrows);
+                window.addEventListener("load", function() {
+                    var carousel = document.querySelector(".sections-carousel");
+                    var active = carousel ? carousel.querySelector(".section-card.active-section") : null;
+                    if (carousel && active) {
+                        var scrollLeft = active.offsetLeft - (carousel.clientWidth / 2) + (active.clientWidth / 2);
+                        if (active === carousel.firstElementChild) {
+                            scrollLeft = 0;
                         }
-                        updateCarouselArrows();
-                    });
-                </script>
-                <!-- Fila de botones adicionales para otras secciones -->
+                        carousel.scrollLeft = scrollLeft;
+                    }
+                    updateCarouselArrows();
+                });
+            </script>
+            <!-- Fila de botones adicionales para otras secciones -->
 
 
-                <script>
-                    function scrollCarousel(direction) {
-                        var carousel = document.querySelector(".sections-carousel");
-                        var card = carousel.querySelector(".section-card");
-                        var scrollAmount = card ? card.offsetWidth + 18 : 240;
-                        carousel.scrollBy({ left: direction * scrollAmount, behavior: "smooth" });
-                        setTimeout(updateCarouselArrows, 500);
+            <script>
+                function scrollCarousel(direction) {
+                    var carousel = document.querySelector(".sections-carousel");
+                    var card = carousel.querySelector(".section-card");
+                    var scrollAmount = card ? card.offsetWidth + 18 : 240;
+                    carousel.scrollBy({ left: direction * scrollAmount, behavior: "smooth" });
+                    setTimeout(updateCarouselArrows, 500);
+                }
+                function toggleContactInfo(id) {
+                    const contactInfo = document.getElementById(id);
+                    if (contactInfo.style.display === "none" || contactInfo.style.opacity === "0") {
+                        contactInfo.style.display = "block";
+                        setTimeout(() => {
+                            contactInfo.style.opacity = "1";
+                            contactInfo.style.transform = "scaleY(1)";
+                        }, 10);
+                    } else {
+                        contactInfo.style.opacity = "0";
+                        contactInfo.style.transform = "scaleY(0)";
+                        setTimeout(() => {
+                            contactInfo.style.display = "none";
+                    }, 300);
                     }
-                    function toggleContactInfo(id) {
-                        const contactInfo = document.getElementById(id);
-                        if (contactInfo.style.display === "none" || contactInfo.style.opacity === "0") {
-                            contactInfo.style.display = "block";
-                            setTimeout(() => {
-                                contactInfo.style.opacity = "1";
-                                contactInfo.style.transform = "scaleY(1)";
-                            }, 10);
-                        } else {
-                            contactInfo.style.opacity = "0";
-                            contactInfo.style.transform = "scaleY(0)";
-                            setTimeout(() => {
-                                contactInfo.style.display = "none";
-                            }, 300);
-                        }
-                    }
-                    function toggleSectionActivities(id, btn) {
-                        var content = document.getElementById(id);
-                        var isCollapsed = content.style.display === "none" || content.classList.contains(\'collapsed\');
-                        document.querySelectorAll(\'.section-activities\').forEach(function(div) {
-                            div.style.display = "none";
-                            div.classList.add(\'collapsed\');
-                        });
-                        document.querySelectorAll(\'.section-title-btn\').forEach(function(b) {
-                            b.classList.remove(\'open\');
-                        });
-                        if (isCollapsed) {
-                            content.style.display = "block";
-                            setTimeout(function() {
-                                content.classList.remove(\'collapsed\');
-                            }, 10);
-                            btn.classList.add(\'open\');
-                        }
-                    }
-                    function updateCarouselArrows() {
-                        var carousel = document.querySelector(".sections-carousel");
-                        var leftArrow = document.querySelector(".carousel-btn-left");
-                        var rightArrow = document.querySelector(".carousel-btn-right");
-                        if (carousel.scrollLeft <= 0) {
-                            leftArrow.style.display = "none";
-                        } else {
-                            leftArrow.style.display = "block";
-                        }
-                        if (carousel.scrollWidth <= carousel.clientWidth + carousel.scrollLeft) {
-                            rightArrow.style.display = "none";
-                        } else {
-                            rightArrow.style.display = "block";
-                        }
-                    }
-                    window.addEventListener(\'load\', updateCarouselArrows);
-                    window.addEventListener(\'resize\', updateCarouselArrows);
-                    document.querySelector(".sections-carousel").addEventListener(\'scroll\', updateCarouselArrows);
-                    window.addEventListener(\'load\', function() {
-                        var carousel = document.querySelector(\'.sections-carousel\');
-                        var active = carousel ? carousel.querySelector(\'.section-card.active-section\') : null;
-                        if (carousel && active) {
-                            var scrollLeft = active.offsetLeft - (carousel.clientWidth / 2) + (active.clientWidth / 2);
-                            if (active === carousel.firstElementChild) {
-                                scrollLeft = 0;
-                            }
-                            carousel.scrollLeft = scrollLeft;
-                        }
-                        updateCarouselArrows();
+                }
+                function toggleSectionActivities(id, btn) {
+                    var content = document.getElementById(id);
+                    var isCollapsed = content.style.display === "none" || content.classList.contains(\'collapsed\');
+                    document.querySelectorAll(\'.section-activities\').forEach(function(div) {
+                        div.style.display = "none";
+                        div.classList.add(\'collapsed\');
                     });
-                </script>
-            </div>
-        ';
+                    document.querySelectorAll(\'.section-title-btn\').forEach(function(b) {
+                        b.classList.remove(\'open\');
+                    });
+                    if (isCollapsed) {
+                        content.style.display = "block";
+                        setTimeout(function() {
+                            content.classList.remove(\'collapsed\');
+                        }, 10);
+                        btn.classList.add(\'open\');
+                    }
+                }
+                function updateCarouselArrows() {
+                    var carousel = document.querySelector(".sections-carousel");
+                    var leftArrow = document.querySelector(".carousel-btn-left");
+                    var rightArrow = document.querySelector(".carousel-btn-right");
+                    if (carousel.scrollLeft <= 0) {
+                        leftArrow.style.display = "none";
+                    } else {
+                        leftArrow.style.display = "block";
+                    }
+                    if (carousel.scrollWidth <= carousel.clientWidth + carousel.scrollLeft) {
+                        rightArrow.style.display = "none";
+                    } else {
+                        rightArrow.style.display = "block";
+                    }
+                }
+                window.addEventListener(\'load\', updateCarouselArrows);
+                window.addEventListener(\'resize\', updateCarouselArrows);
+                document.querySelector(".sections-carousel").addEventListener(\'scroll\', updateCarouselArrows);
+                window.addEventListener(\'load\', function() {
+                    var carousel = document.querySelector(\'.sections-carousel\');
+                    var active = carousel ? carousel.querySelector(\'.section-card.active-section\') : null;
+                    if (carousel && active) {
+                        var scrollLeft = active.offsetLeft - (carousel.clientWidth / 2) + (active.clientWidth / 2);
+                        if (active === carousel.firstElementChild) {
+                            scrollLeft = 0;
+                        }
+                        carousel.scrollLeft = scrollLeft;
+                    }
+                    updateCarouselArrows();
+                });
+            </script>
+        </div>
+    ';
     
 
 global $PAGE;
@@ -1030,9 +1049,24 @@ $PAGE->requires->js_init_code("
         var btn = document.getElementById(\'bloquecero-mostrarcurso-btn\');
         if(btn) btn.style.display = \'none\';
     };
-");
 
+    // Detectar cambio de modo edición y mostrar el curso automáticamente
+    document.addEventListener('DOMContentLoaded', function() {
+        var observer = new MutationObserver(function(mutations) {
+            mutations.forEach(function(mutation) {
+                // Moodle añade la clase 'editing' al body al activar el modo edición
+                if (document.body.classList.contains('editing')) {
+                    if (typeof window.bloquecero_restore === 'function') {
+                        window.bloquecero_restore();
+                    }
+                }
+            });
+        });
+        observer.observe(document.body, { attributes: true, attributeFilter: ['class'] });
+    });
+");
         
+
         return $this->content;
     }
 

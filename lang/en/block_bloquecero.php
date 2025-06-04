@@ -1,10 +1,23 @@
 <?php
-$string['pluginname'] = 'Bloque cero';
+$string['pluginname'] = 'Block zero';
 $string['calificador'] = 'Grader';
 $string['tareas'] = 'Tasks';
 $string['participantes'] = 'Participants';
-$string['bibliografiarecomendada'] = 'Bibliography';
+$string['bibliografiarecomendada'] = 'Recommended bibliography';
 $string['noactivities'] = 'No activities';
 $string['header_bg_img'] = 'Header background image';
 $string['header_bg_img_desc'] = 'Description for the header background image';
 $string['abrirseccion'] = 'Open section';
+$string['guide_url'] = 'Guide URL';
+$string['guide_url_help'] = 'Enter the URL of the course guide. This link will be available to users in the block.';
+$string['forum_announcement'] = 'Announcements forum';
+$string['forum_announcement_help'] = 'Select the forum to be used for course announcements in this block.';
+$string['forum_tutorias'] = 'Tutorials forum';
+$string['forum_tutorias_help'] = 'Select the forum to be used for course tutorials in this block.';
+$string['forum_estudiantes'] = 'Students forum';
+$string['forum_estudiantes_help'] = 'Select the forum to be used for student discussions in this block.';
+$string['teachercustom'] = 'Teacher profile settings';
+$string['userphone'] = 'Teacher phone number';
+$string['userphone_help'] = 'Enter your phone number to display it in the teacher profile.';
+$string['userschedule'] = 'Office hours';
+$string['userschedule_help'] = 'Enter your office hours to display them in the teacher profile.';
