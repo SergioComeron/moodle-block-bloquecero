@@ -718,18 +718,19 @@ document.addEventListener(\'DOMContentLoaded\', function() {
                     scrollbar-width: none;
                     /* Ocultar scrollbar en IE, Edge */
                     -ms-overflow-style: none;
-    width: 100%;
-
+                    width: 100%;
                 }
+
                 /* Ocultar scrollbar en Chrome, Safari y Opera */
                 .sections-carousel::-webkit-scrollbar {
                     display: none;
                 }
+                    
                 /* Calculamos el ancho para que siempre quepan 4 tarjetas dejando 3 gaps de 18px (54px total) */
                 .section-card {
-    flex: 1 1 0;
-    min-width: 0;
-    max-width: 100%;
+                    flex: 1 1 0;
+                    min-width: 0;
+                    max-width: 100%;
                     background: #004D35; /* nuevo fondo verde */
                     border: 1.5px solid #004D35;
                     border-radius: 10px;
@@ -750,7 +751,7 @@ document.addEventListener(\'DOMContentLoaded\', function() {
                 .section-card.active-section {
                     background: rgba(225, 255, 209, 0.75) !important;
                     border: 2.5px solid #1abc9c;
-                    box-shadow: 0 4px 16px rgba(26,188,156,0.12);
+                    box-shadow: 0 4px 16px rgba(225, 255, 209, 0.75);
                 }
                 .section-card.marker-section {
                     border: 2.5px solid #FFD600 !important;
@@ -773,21 +774,21 @@ document.addEventListener(\'DOMContentLoaded\', function() {
                     border-radius: 10px 10px 0 0;
                     transition: background 0.2s, color 0.2s;
                 }
-    .sections-carousel:has(.section-card:nth-child(n+5)) .section-card {
-    flex: 0 0 calc((100% - 54px) / 4);
-    max-width: calc((100% - 54px) / 4);
-    min-width: calc((100% - 54px) / 4);
-}
+                .sections-carousel:has(.section-card:nth-child(n+5)) .section-card {
+                    flex: 0 0 calc((100% - 54px) / 4);
+                    max-width: calc((100% - 54px) / 4);
+                    min-width: calc((100% - 54px) / 4);
+                }
                 .section-title-header .section-title-text {
                     color: #fff !important;
                     font-weight: 600;
                     font-size: 1em;
                     white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    display: block;
-    width: 100%;
-    max-width: 100%;
+                    overflow: hidden;
+                    text-overflow: ellipsis;
+                    display: block;
+                    width: 100%;
+                    max-width: 100%;
                 }
                 .section-title-header .section-arrow {
                     color: #004D35 !important;
@@ -796,8 +797,8 @@ document.addEventListener(\'DOMContentLoaded\', function() {
                     transition: transform 0.3s;
                 }
                 .section-title-btn.open .section-arrow {
-    transform: rotate(90deg);
-}
+                    transform: rotate(90deg);
+                }
                 .section-title-btn.open {
                     background: rgba(225, 255, 209, 0.75) !important; /* Verde claro */
                 }
@@ -818,7 +819,10 @@ document.addEventListener(\'DOMContentLoaded\', function() {
                     max-height: 0;
                     padding: 0 !important;
                 }
+
+                
             </style>
+            
             <script>
                 // Datos con las actividades de cada sección (clave: id de la sección)
                 const sectionsActivitiesData = ' . $sectionsActivitiesJson . ';
