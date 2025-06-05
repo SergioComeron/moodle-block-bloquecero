@@ -31,7 +31,9 @@ class block_bloquecero extends block_base {
     }
 
     public function get_content() {
-        global $COURSE, $DB, $USER, $CFG, $OUTPUT;
+        global $COURSE, $DB, $USER, $CFG, $OUTPUT, $PAGE;
+        
+        $is_editing = $PAGE->user_is_editing();
 
         if ($this->content !== null) {
             return $this->content;
@@ -84,8 +86,17 @@ class block_bloquecero extends block_base {
             $phonekey = 'userphone_' . $teacher->id;
             $schedulekey = 'userschedule_' . $teacher->id;
             $phone = isset($this->config->$phonekey) ? $this->config->$phonekey : (isset($teacher->phone1) ? $teacher->phone1 : '');
-            $schedule = isset($this->config->$schedulekey) ? $this->config->$schedulekey : '<ul><li>Horarios no disponibles</li></ul>';
-
+            $schedulekey = 'userschedule_' . $teacher->id;
+            $schedule = '';
+            if (isset($this->config->$schedulekey)) {
+                if (is_array($this->config->$schedulekey) && isset($this->config->{$schedulekey}['text'])) {
+                    $schedule = $this->config->{$schedulekey}['text'];
+                } else {
+                    $schedule = $this->config->$schedulekey;
+                }
+            } else {
+                $schedule = '<ul><li>Horarios no disponibles</li></ul>';
+            }
             $teachersP[] = (object)[
                 'id'          => $teacher->id,
                 'fullname'    => fullname($teacher),
@@ -120,6 +131,58 @@ class block_bloquecero extends block_base {
 
         $zoom_url = new moodle_url('/path/to/zoom');
         $tasks_url = new moodle_url('/path/to/tasks');
+
+        $togglebuttonhtml = '';
+        if (!$is_editing) {
+            $togglebuttonhtml = '
+            <div style="text-align:center; margin:2em 0 1.2em 0;"> 
+                <button id="bloquecero-mostrarcurso-btn"
+                    onclick="window.bloquecero_toggle()"
+                    style="
+                        width: 40px;
+                        height: 40px;
+                        border-radius: 50%;
+                        background: #004D35;
+                        color: #fff;
+                        border: none;
+                        box-shadow: 0 1px 6px rgba(0, 0, 0, 0.2);
+                        cursor: pointer;
+                        display: flex;
+                        flex-direction: column;
+                        align-items: center;
+                        justify-content: center;
+                        margin: 0 auto;
+                    "
+                    title="Mostrar u ocultar curso">
+                    <span id="bloquecero-mostrarcurso-icon" style="font-size: 0.8em; line-height: 1;">&#x25BC;</span>
+                    <span id="bloquecero-mostrarcurso-text" style="font-size: 0.6em; line-height: 1;">mostrar curso</span>
+                </button>
+            </div>';
+        }
+        
+        if ($is_editing) {
+            $PAGE->requires->js_init_code("
+                document.addEventListener('DOMContentLoaded', function() {
+                    var region = document.getElementById('region-main');
+                    if (region) region.style.display = '';
+                    document.querySelectorAll('.block').forEach(function(b){
+                        b.style.display = '';
+                    });
+                    [
+                        '.page-header','.page-context-header','.course-header','.page-header-headings','.page-title','.course-title'
+                    ].forEach(function(selector){
+                        document.querySelectorAll(selector).forEach(function(e){ e.style.display = ''; });
+                    });
+                    [
+                        '.nav-tabs','.nav-tabs-line','.secondary-navigation','.secondary-nav'
+                    ].forEach(function(selector){
+                        document.querySelectorAll(selector).forEach(function(e){ e.style.display = ''; });
+                    });
+                });
+            ");
+        }
+
+
 
         /// URLs de las imágenes
         $context = context_system::instance();
@@ -580,30 +643,8 @@ $carouselContainer . '
         <h3 style="color:#004D35; margin-top:0;">Calendario de actividades</h3>
         ' . $calendarioActividades . '
     </div>
-</div>
-        <div style="text-align:center; margin:2em 0 1.2em 0;">
-    <button id="bloquecero-mostrarcurso-btn"
-        onclick="window.bloquecero_toggle()"
-        style="
-            width: 40px;
-            height: 40px;
-            border-radius: 50%;
-            background: #004D35;
-            color: #fff;
-            border: none;
-            box-shadow: 0 1px 6px rgba(0, 0, 0, 0.2);
-            cursor: pointer;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
-            margin: 0 auto;
-        "
-        title="Mostrar u ocultar curso">
-        <span id="bloquecero-mostrarcurso-icon" style="font-size: 0.8em; line-height: 1;">&#x25BC;</span>
-        <span id="bloquecero-mostrarcurso-text" style="font-size: 0.6em; line-height: 1;">mostrar curso</span>
-    </button>
-</div>
+</div> 
+        ' . $togglebuttonhtml . '
 <script>
 window.bloquecero_toggle = function() {
     var region = document.getElementById(\'region-main\');
@@ -982,109 +1023,93 @@ document.addEventListener(\'DOMContentLoaded\', function() {
     ';
     
 
-global $PAGE;
+if (!$is_editing) {
+    // Inyecta JS para ocultar todo menos este bloque al cargar la página
+    $PAGE->requires->js_init_code("
+        document.addEventListener(\'DOMContentLoaded\', function() {
+            var region = document.getElementById(\'region-main\');
+            if (region) region.style.display = \'none\';
 
-// Inyecta JS para ocultar todo menos este bloque al cargar la página
-$PAGE->requires->js_init_code("
-    document.addEventListener(\'DOMContentLoaded\', function() {
-        var region = document.getElementById(\'region-main\');
-        if (region) region.style.display = \'none\';
+            // Oculta todos los bloques menos el tuyo
+            document.querySelectorAll(\'.block\').forEach(function(b){
+                if (!b.classList.contains(\'block_bloquecero\')) b.style.display = \'none\';
+            });
 
-        // Oculta todos los bloques menos el tuyo
-        document.querySelectorAll(\'.block\').forEach(function(b){
-            if (!b.classList.contains(\'block_bloquecero\')) b.style.display = \'none\';
-        });
+            // Oculta la cabecera general (título del curso, cabecera, etc.)
+            var headerClasses = [
+                \'.page-header\',
+                \'.page-context-header\',
+                \'.course-header\',
+                \'.page-header-headings\',
+                \'.page-title\',
+                \'.course-title\'
+            ];
+            headerClasses.forEach(function(selector){
+                document.querySelectorAll(selector).forEach(function(e){
+                    e.style.display = \'none\';
+                });
+            });
 
-        // Oculta la cabecera general (título del curso, cabecera, etc.)
-        var headerClasses = [
-            \'.page-header\',
-            \'.page-context-header\',
-            \'.course-header\',
-            \'.page-header-headings\',
-            \'.page-title\',
-            \'.course-title\'
-        ];
-        headerClasses.forEach(function(selector){
-            document.querySelectorAll(selector).forEach(function(e){
-                e.style.display = \'none\';
+            // Oculta las tabs de navegación (Course / Settings / Participants...)
+            var tabClasses = [
+                \'.nav-tabs\',
+                \'.nav-tabs-line\',
+                \'.secondary-navigation\',
+                \'.secondary-nav\'
+            ];
+            tabClasses.forEach(function(selector){
+                document.querySelectorAll(selector).forEach(function(e){
+                    e.style.display = \'none\';
+                });
             });
         });
 
-        // Oculta las tabs de navegación (Course / Settings / Participants...)
-        var tabClasses = [
-            \'.nav-tabs\',
-            \'.nav-tabs-line\',
-            \'.secondary-navigation\',
-            \'.secondary-nav\'
-        ];
-        tabClasses.forEach(function(selector){
-            document.querySelectorAll(selector).forEach(function(e){
-                e.style.display = \'none\';
+        window.bloquecero_restore = function() {
+            var region = document.getElementById(\'region-main\');
+            if (region) region.style.display = \'\';
+            document.querySelectorAll(\'.block\').forEach(function(b){
+                b.style.display = \'\';
             });
-        });
-    });
 
-    window.bloquecero_restore = function() {
-        var region = document.getElementById(\'region-main\');
-        if (region) region.style.display = \'\';
-        document.querySelectorAll(\'.block\').forEach(function(b){
-            b.style.display = \'\';
-        });
-
-        // Restaurar cabecera general y título del curso
-        var headerClasses = [
-            \'.page-header\',
-            \'.page-context-header\',
-            \'.course-header\',
-            \'.page-header-headings\',
-            \'.page-title\',
-            \'.course-title\'
-        ];
-        headerClasses.forEach(function(selector){
-            document.querySelectorAll(selector).forEach(function(e){
-                e.style.display = \'\';
+            // Restaurar cabecera general y título del curso
+            var headerClasses = [
+                \'.page-header\',
+                \'.page-context-header\',
+                \'.course-header\',
+                \'.page-header-headings\',
+                \'.page-title\',
+                \'.course-title\'
+            ];
+            headerClasses.forEach(function(selector){
+                document.querySelectorAll(selector).forEach(function(e){
+                    e.style.display = \'\';
+                });
             });
-        });
 
-        // Restaurar tabs de navegación
-        var tabClasses = [
-            \'.nav-tabs\',
-            \'.nav-tabs-line\',
-            \'.secondary-navigation\',
-            \'.secondary-nav\'
-        ];
-        tabClasses.forEach(function(selector){
-            document.querySelectorAll(selector).forEach(function(e){
-                e.style.display = \'\';
+            // Restaurar tabs de navegación
+            var tabClasses = [
+                \'.nav-tabs\',
+                \'.nav-tabs-line\',
+                \'.secondary-navigation\',
+                \'.secondary-nav\'
+            ];
+            tabClasses.forEach(function(selector){
+                document.querySelectorAll(selector).forEach(function(e){
+                    e.style.display = \'\';
+                });
             });
-        });
 
-        var btn = document.getElementById(\'bloquecero-mostrarcurso-btn\');
-        if(btn) btn.style.display = \'none\';
-    };
-
-    // Detectar cambio de modo edición y mostrar el curso automáticamente
-    document.addEventListener('DOMContentLoaded', function() {
-        var observer = new MutationObserver(function(mutations) {
-            mutations.forEach(function(mutation) {
-                // Moodle añade la clase 'editing' al body al activar el modo edición
-                if (document.body.classList.contains('editing')) {
-                    if (typeof window.bloquecero_restore === 'function') {
-                        window.bloquecero_restore();
-                    }
-                }
-            });
-        });
-        observer.observe(document.body, { attributes: true, attributeFilter: ['class'] });
-    });
-");
-        
+            var btn = document.getElementById(\'bloquecero-mostrarcurso-btn\');
+            if(btn) btn.style.display = \'none\';
+        };
+    ");
+}
 
         return $this->content;
     }
 
     public function applicable_formats() {
-        return array("site" => true, "course" => true, "my" => true);
+        return array("course-view-topics" => true, "course-view-weeks" => true);
     }    
 
     public function has_config() {

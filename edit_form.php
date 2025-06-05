@@ -80,8 +80,8 @@ class block_bloquecero_edit_form extends block_edit_form {
             $mform->setDefault('config_userphone_' . $USER->id, '');
             $mform->addHelpButton('config_userphone_' . $USER->id, 'userphone', 'block_bloquecero');
 
-            $mform->addElement('textarea', 'config_userschedule_' . $USER->id, get_string('userschedule', 'block_bloquecero'), 'wrap="virtual" rows="3" cols="40"');
-            $mform->setType('config_userschedule_' . $USER->id, PARAM_TEXT);
+            $mform->addElement('editor', 'config_userschedule_' . $USER->id, get_string('userschedule', 'block_bloquecero'));
+            $mform->setType('config_userschedule_' . $USER->id, PARAM_RAW);
             $mform->setDefault('config_userschedule_' . $USER->id, '');
             $mform->addHelpButton('config_userschedule_' . $USER->id, 'userschedule', 'block_bloquecero');
         }
