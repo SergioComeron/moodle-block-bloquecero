@@ -135,29 +135,20 @@ class block_bloquecero extends block_base {
         $togglebuttonhtml = '';
         if (!$is_editing) {
             $togglebuttonhtml = '
-            <div style="text-align:center; margin:2em 0 1.2em 0;"> 
-                <button id="bloquecero-mostrarcurso-btn"
-                    onclick="window.bloquecero_toggle()"
-                    style="
-                        width: 40px;
-                        height: 40px;
-                        border-radius: 50%;
-                        background: #004D35;
-                        color: #fff;
-                        border: none;
-                        box-shadow: 0 1px 6px rgba(0, 0, 0, 0.2);
-                        cursor: pointer;
-                        display: flex;
-                        flex-direction: column;
-                        align-items: center;
-                        justify-content: center;
-                        margin: 0 auto;
-                    "
-                    title="Mostrar u ocultar curso">
-                    <span id="bloquecero-mostrarcurso-icon" style="font-size: 0.8em; line-height: 1;">&#x25BC;</span>
-                    <span id="bloquecero-mostrarcurso-text" style="font-size: 0.6em; line-height: 1;">mostrar curso</span>
-                </button>
-            </div>';
+                <div class="moodle-toggle-centering">
+                    <button id="bloquecero-mostrarcurso-btn"
+                        type="button"
+                        onclick="window.bloquecero_toggle()"
+                        class="moodle-toggle-btn"
+                        title="Mostrar u ocultar curso">
+                        <span class="moodle-toggle-circle">
+                            <svg id="bloquecero-mostrarcurso-icon" class="moodle-toggle-chevron" width="24" height="24" viewBox="0 0 24 24">
+                                <polyline points="6 9 12 15 18 9" fill="none" stroke="#1655A0" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round"/>
+                            </svg>
+                        </span>
+                        <span id="bloquecero-mostrarcurso-text" class="moodle-toggle-label">mostrar curso</span>
+                    </button>
+                    </div>';
         }
         
         if ($is_editing) {
@@ -240,7 +231,7 @@ class block_bloquecero extends block_base {
                     font-size: 0.9em;
                     color: #333;
                     border: 1px solid #ddd;
-                    border-radius: 8px;
+                    border-radius: 6px;
                     padding: 15px;
                     background-color: #f9f9f9;
                     box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
@@ -334,10 +325,11 @@ class block_bloquecero extends block_base {
             // Se muestra en el carrusel sólo el botón con el título de la sección
             $isactive = !empty($section->current);
             $activesymbol = $isactive ? ' <span title="Sección activa" style="color:#1abc9c;">&#11088;</span>' : '';
-            $sectionscarousel .= '<div class="section-card' . ($isactive ? ' active-section' : '') . $section_card_extra_class . '" style="flex-direction: column; padding:0;' . $section_card_extra_style . '">
+            $sectionscarousel .= '<div class="section-card udima-card' . ($isactive ? ' active-section' : '') . $section_card_extra_class . '" style="' . $section_card_extra_style . '">
+                <span class="section-number">' . str_pad($sectioncount, 2, '0', STR_PAD_LEFT) . '</span>
                 <button class="section-title-btn section-title-header" type="button" onclick="showSectionActivities(\'' . $sectionid . '\', this)">
                     <span class="section-title-text">' . $sectiontitle . $activesymbol . '</span>
-                    <span class="section-arrow" style="color: #fff !important; z-index: 2 !important;">&#9654;</span>
+                    <span class="section-arrow">&#9654;</span>
                 </button>
             </div>';
             $sectioncount++;
@@ -354,7 +346,7 @@ class block_bloquecero extends block_base {
         ';
 
         // Bloque vacío para mostrar las actividades de la sección seleccionada (oculto inicialmente)
-        $activitiesBlockHtml = '<div id="section-activities-container" style="margin: 20px 40px; text-align: left; font-size: 0.9em; color: #333; border: 1px solid #ddd; border-radius: 8px; padding: 15px; background-color: #f9f9f9; box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1); display: none;"></div>';
+        $activitiesBlockHtml = '<div id="section-activities-container" style="margin: 20px 40px; text-align: left; font-size: 0.9em; color: #333; border: 1px solid #ddd; border-radius: 6px; padding: 15px; background-color: #f9f9f9; box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1); display: none;"></div>';
 
         // Inyectar la definición del array de actividades en JavaScript
         $sectionsActivitiesJson = json_encode($sectionsActivitiesData);
@@ -486,6 +478,24 @@ class block_bloquecero extends block_base {
                     text-align: left !important;
                 }
             </style>
+            <div class="udima-menu-bar">
+    <a href="' . new moodle_url('/grade/report/user/index.php', array('id' => $COURSE->id)) . '" class="udima-menu-link">
+        ' . $OUTPUT->pix_icon('t/grades', '', 'moodle', ['class' => 'menu-icon']) . '
+        <span>Calificaciones</span>
+    </a>
+    <a href="' . new moodle_url('/user/index.php', array('id' => $COURSE->id)) . '" class="udima-menu-link">
+        ' . $OUTPUT->pix_icon('i/users', '', 'moodle', ['class' => 'menu-icon']) . '
+        <span>Participantes</span>
+    </a>
+    <a href="#" id="bloquecero-bibliografia-btn" class="udima-menu-link">
+        ' . $OUTPUT->pix_icon('book', '', 'moodle', ['class' => 'menu-icon']) . '
+        <span>Bibliografía</span>
+    </a>
+    <a href="' . $guide_url . '" class="udima-menu-link" target="_blank">
+        ' . $OUTPUT->pix_icon('i/info', '', 'moodle', ['class' => 'menu-icon']) . '
+        <span>Guía docente</span>
+    </a>
+</div>
             <div style="padding: 0 20px; font-family: Arial, sans-serif;">
     <!-- Resto del contenido del bloque -->
     <div style="position: relative; border-radius: 12px; overflow: hidden; margin-bottom: 20px; width: 100%; aspect-ratio: 5 / 1;">
@@ -504,122 +514,23 @@ class block_bloquecero extends block_base {
 
     <!-- Sección de foros y demás secciones -->
     <div style="padding: 0 40px;">
-                <div style="display: flex; justify-content: flex-end; gap: 10px; margin: 20px 0;">
-    <div class="round-button-wrapper">
-        <a href="' . new moodle_url('/grade/report/user/index.php', array('id' => $COURSE->id)) . '" class="round-button" title="' . get_string('calificador', 'block_bloquecero') . '">
-            ' . $OUTPUT->pix_icon('t/grades', '', 'moodle', ['class' => 'bigicon']) . '
-        </a>
-    </div>
-    <div class="round-button-wrapper">
-        <a href="' . new moodle_url('/user/index.php', array('id' => $COURSE->id)) . '" class="round-button" title="' . get_string('participantes', 'block_bloquecero') . '">
-            ' . $OUTPUT->pix_icon('i/users', '', 'moodle', ['class' => 'bigicon']) . '
-        </a>
-    </div>
-    <div class="round-button-wrapper">
-        <a href="#" id="bloquecero-bibliografia-btn" class="round-button" title="' . get_string('bibliografiarecomendada', 'block_bloquecero') . '">
-            ' . $OUTPUT->pix_icon('book', '', 'moodle', ['class' => 'bigicon']) . '
-        </a>
-    </div>
-    <div class="round-button-wrapper">
-        <a href="' . $guide_url . '" class="round-button" title="Guía docente" target="_blank">
-            ' . $OUTPUT->pix_icon('i/info', '', 'moodle', ['class' => 'bigicon']) . '
-        </a>
-    </div>
-</div>
-        <style>
-            .round-button-wrapper {
-                display: flex;
-                flex-direction: column;
-                align-items: center;
-                position: relative;
-            }
-            .round-button {
-                width: 40px;
-                height: 40px;
-                min-width: 40px;
-                min-height: 40px;
-                display: flex;
-                align-items: center;
-                justify-content: center;
-                padding: 0;
-                background: #fff;
-                color: #004D35;
-                border: 2px solid #004D35;
-                border-radius: 50%;
-                text-decoration: none;
-                overflow: hidden;
-                font-size: 1.2em;
-                box-shadow: none;
-                transition: none;
-            }
-            a.round-button, a.round-button:visited, a.round-button:hover, a.round-button:active {
-                text-decoration: none !important;
-            }
-            .round-button .bigicon {
-                margin: 0;
-                padding: 0;
-                display: block;
-                width: 22px;
-                height: 22px;
-                line-height: 1;
-                text-align: center;
-            }
-        </style>
             <div style="display: flex; justify-content: center; gap: 20px; margin: 20px 0;">
                 <!-- Tablón de anuncios -->
                 <a href="' . $forum_anuncios_url . '" style="text-decoration: none; color: inherit; flex: 1;">
-                    <div class="forum-card" style="
-                        border: 1px solid #ddd;
-                        border-radius: 8px;
-                        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
-                        text-align: center;
-                        background-color: #004D35;
-                        color: white;
-                        transition: transform 0.3s ease, box-shadow 0.3s ease;
-                        position: relative;
-                        padding: 10px;
-                        display: flex;
-                        align-items: center;
-                        justify-content: center;
-                    ">
-                        <h3 style="margin: 0; font-size: 1.2em; position: relative; z-index: 1;">Tablón de anuncios</h3>
+                    <div class="forum-card udima-forum-card">
+                        <h3>Tablón de anuncios</h3>
                     </div>
                 </a>
                 <!-- Foro de Tutorías -->
                 <a href="' . $forum_tutorias_url . '" style="text-decoration: none; color: inherit; flex: 1;">
-                    <div class="forum-card" style="
-                        border: 1px solid #ddd;
-                        border-radius: 8px;
-                        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
-                        text-align: center;
-                        background-color: #004D35;
-                        color: white;
-                        transition: transform 0.3s ease, box-shadow 0.3s ease;
-                        position: relative;
-                        padding: 10px;
-                        display: flex;
-                        align-items: center;
-                        justify-content: center;
-                    ">
-                        <h3 style="margin: 0; font-size: 1.2em; position: relative; z-index: 1;">Foro de Tutorías</h3>
+                    <div class="forum-card udima-forum-card">
+                        <h3>Foro de Tutorías</h3>
                     </div>
                 </a>
                 <!-- Foro de Estudiantes -->
                 <a href="' . $forum_estudiantes_url . '" style="text-decoration: none; color: inherit; flex: 1;">
-                    <div class="forum-card" style="
-                        border: 1px solid #ddd;
-                        border-radius: 8px;
-                        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
-                        text-align: center;
-                        background-color: #004D35;
-                        color: white;
-                        transition: transform 0.3s ease, box-shadow 0.3s ease;
-                        padding: 10px;
-                        display: flex;
-                        align-items: center;
-                        justify-content: center;
-                    ">
-                        <h3 style="margin: 0; font-size: 1.2em; position: relative; z-index: 1;">Foro de Estudiantes</h3>
+                    <div class="forum-card udima-forum-card">
+                        <h3>Foro de Estudiantes</h3>
                     </div>
                 </a>
             </div>
@@ -635,25 +546,26 @@ $carouselContainer . '
         ' . $activitiesBlockHtml . '
         <!-- Bloques divididos en dos columnas -->
 <div style="display: flex; gap: 20px; margin: 20px 40px;">
-    <div style="flex: 1; border: 1px solid #ddd; border-radius: 8px; padding: 15px; background-color: #f9f9f9;">
-        <h3 style="color:#004D35; margin-top:0;">Sesiones en directo</h3>
+    <div class="udima-maincard">
+        <h3>Sesiones en directo</h3>
         <p>Próximamente se mostrarán las sesiones en directo.</p>
     </div>
-    <div style="flex: 1; border: 1px solid #ddd; border-radius: 8px; padding: 15px; background-color: #f9f9f9;">
-        <h3 style="color:#004D35; margin-top:0;">Calendario de actividades</h3>
+    <div class="udima-maincard">
+        <h3>Calendario de actividades</h3>
         ' . $calendarioActividades . '
     </div>
-</div> 
+</div>
         ' . $togglebuttonhtml . '
 <script>
 window.bloquecero_toggle = function() {
+    var btn = document.getElementById(\'bloquecero-mostrarcurso-btn\');
     var region = document.getElementById(\'region-main\');
-    var btnicon = document.getElementById(\'bloquecero-mostrarcurso-icon\');
     var btntext = document.getElementById(\'bloquecero-mostrarcurso-text\');
     var isHidden = region && region.style.display === \'none\';
 
     if (isHidden) {
-        // Mostrar curso
+        if(btn) btn.classList.add(\'open\');
+        if(btntext) btntext.innerHTML = \'ocultar curso\';
         if (region) region.style.display = \'\';
         document.querySelectorAll(\'.block\').forEach(function(b){
             b.style.display = \'\';
@@ -669,10 +581,14 @@ window.bloquecero_toggle = function() {
             document.querySelectorAll(selector).forEach(function(e){ e.style.display = \'\'; });
         });
         // Cambia icono y texto a "ocultar curso"
-        if(btnicon) btnicon.innerHTML = \'&#x25B2;\';
+        var btn = document.getElementById(\'bloquecero-mostrarcurso-btn\');
+        if(btn) {
+            btn.classList.toggle(\'cerrado\', !isHidden);
+        }
         if(btntext) btntext.innerHTML = \'ocultar curso\';
     } else {
-        // Ocultar curso
+        if(btn) btn.classList.remove(\'open\');
+        if(btntext) btntext.innerHTML = \'mostrar curso\';
         if (region) region.style.display = \'none\';
         document.querySelectorAll(\'.block\').forEach(function(b){
             if (!b.classList.contains(\'block_bloquecero\')) b.style.display = \'none\';
@@ -711,8 +627,8 @@ document.addEventListener(\'DOMContentLoaded\', function() {
     ].forEach(function(selector){
         document.querySelectorAll(selector).forEach(function(e){ e.style.display = \'none\'; });
     });
-    if(btnicon) btnicon.innerHTML = \'&#x25BC;\';
-    if(btntext) btntext.innerHTML = \'mostrar curso\';
+    if(btnicon) btnicon.innerHTML = \'&#x25B6;\';
+    if(btntext) btntext.innerHTML = \'Mostrar curso\';
 });
 </script>
             <style>
@@ -726,7 +642,7 @@ document.addEventListener(\'DOMContentLoaded\', function() {
                     background: #fff;
                     color: #004D35;
                     border: 2px solid #004D35;
-                    border-radius: 8px;
+                    border-radius: 6px;
                     padding: 10px 20px;
                     font-weight: 600;
                     gap: 10px;
@@ -870,7 +786,233 @@ document.addEventListener(\'DOMContentLoaded\', function() {
                     padding: 0 !important;
                 }
 
-                
+                .udima-card {
+                    background: #fff !important;
+                    border: 1.5px solid #E2EDE4 !important;
+                    border-radius: 6px !important;
+                    box-shadow: 0 2px 14px rgba(89,157,74,0.05);
+                    color: #0C3B2E !important;
+                    font-family: \'Inter\', Arial, sans-serif;
+                    font-size: 1.1em;
+                    font-weight: 400;
+                    padding: 30px 24px 22px 24px !important;
+                    margin-bottom: 16px;
+                    min-width: 260px;
+                    display: flex;
+                    flex-direction: column;
+                    align-items: flex-start;
+                    justify-content: flex-start;
+                    transition: box-shadow 0.2s, border-color 0.2s;
+                    position: relative;
+                }
+                .udima-forum-card {
+                    background: #fff !important;
+                    border: 1.5px solid #E2EDE4 !important;
+                    border-radius: 6px !important;
+                    box-shadow: 0 2px 14px rgba(89,157,74,0.05);
+                    color: #0C3B2E !important;
+                    font-family: \'Inter\', Arial, sans-serif;
+                    font-size: 1.08em;
+                    font-weight: 500;
+                    padding: 24px 18px 20px 18px !important;
+                    margin-bottom: 0;
+                    min-width: 0;
+                    display: flex;
+                    flex-direction: column;
+                    align-items: center;
+                    justify-content: center;
+                    transition: box-shadow 0.18s, border-color 0.18s;
+                    position: relative;
+                    text-align: center;
+                    cursor: pointer;
+                }
+                .udima-forum-card h3 {
+                    font-size: 1.17em;
+                    font-weight: 600;
+                    margin: 0;
+                    color: #0C3B2E !important;
+                    letter-spacing: 0.01em;
+                }
+                a:has(.udima-forum-card):hover .udima-forum-card,
+                .udima-forum-card:hover {
+                    border-color: #B7C65C !important;
+                    box-shadow: 0 8px 32px rgba(183,198,92,0.12);
+                    background: #F7FAF6 !important;
+                    color: #0C3B2E !important;
+                }
+                .udima-card .section-number {
+                    color: #B7C65C !important;
+                    font-size: 2em;
+                    font-weight: 700;
+                    margin-bottom: 16px;
+                    display: block;
+                    line-height: 1;
+                    letter-spacing: 0.01em;
+                }
+                .udima-card .section-title-header {
+                    background: none !important;
+                    color: #0C3B2E !important;
+                    border: none;
+                    font-weight: 600;
+                    font-size: 1.14em;
+                    padding: 0;
+                    margin: 0;
+                    text-align: left;
+                    width: 100%;
+                    justify-content: space-between;
+                    display: flex;
+                    align-items: center;
+                    outline: none;
+                    border-radius: 0;
+                    transition: color 0.2s;
+                }
+                .udima-card .section-arrow {
+                    color: #B7C65C !important;
+                    font-size: 1.6em;
+                    margin-left: 18px;
+                    transition: transform 0.3s;
+                }
+                .udima-card.active-section, .udima-card .section-title-btn.open {
+                    border-color: #B7C65C !important;
+                    box-shadow: 0 6px 24px rgba(183,198,92,0.08);
+                    background: #F7FAF6 !important;
+                }
+                .udima-card:hover {
+                    box-shadow: 0 10px 36px rgba(89,157,74,0.11);
+                    border-color: #B7C65C !important;
+                }
+                .udima-maincard {
+                    background: #fff !important;
+                    border: 1.5px solid #E2EDE4 !important;
+                    border-radius: 6px !important;
+                    box-shadow: 0 2px 14px rgba(89,157,74,0.05);
+                    color: #0C3B2E !important;
+                    font-family: \'Inter\', Arial, sans-serif;
+                    font-size: 1.04em;
+                    font-weight: 400;
+                    padding: 28px 22px 22px 22px !important;
+                    margin-bottom: 0;
+                    min-width: 0;
+                    display: flex;
+                    flex-direction: column;
+                    align-items: flex-start;
+                    justify-content: flex-start;
+                    transition: box-shadow 0.18s, border-color 0.18s;
+                    position: relative;
+                    text-align: left;
+                }
+                .udima-maincard h3 {
+                    font-size: 1.19em;
+                    font-weight: 600;
+                    margin: 0 0 12px 0;
+                    color: #0C3B2E !important;
+                    letter-spacing: 0.01em;
+                }
+                .udima-maincard:hover {
+                    border-color: #B7C65C !important;
+                    box-shadow: 0 8px 32px rgba(183,198,92,0.11);
+                    background: #F7FAF6 !important;
+                }
+                .udima-menu-bar {
+                    display: flex;
+                    gap: 28px;
+                    justify-content: flex-end;
+                    align-items: center;
+                    padding: 8px 24px 0 24px;
+                    background: none;
+                    margin-bottom: 8px;
+                    border-bottom: 1.5px solid #E2EDE4;
+                    min-height: 38px;
+                }
+                .udima-menu-link {
+                    display: flex;
+                    align-items: center;
+                    gap: 7px;
+                    background: none;
+                    color: #0C3B2E;
+                    border: none;
+                    border-radius: 0;
+                    font-size: 1em;
+                    font-weight: 500;
+                    padding: 0 4px 3px 4px;
+                    text-decoration: none !important;
+                    transition: color 0.13s, border-bottom 0.15s;
+                    box-shadow: none;
+                    position: relative;
+                    height: 36px;
+                }
+                .udima-menu-link .menu-icon {
+                    width: 18px;
+                    height: 18px;
+                    font-size: 1.07em;
+                    margin-right: 3px;
+                    display: inline-block;
+                    color: #6FA24A;
+                }
+                .udima-menu-link:hover,
+                .udima-menu-link:focus {
+                    color: #1abc9c;
+                    border-bottom: 2.5px solid #1abc9c;
+                    outline: none;
+                    background: none;
+                }
+                .udima-menu-link:active {
+                    color: #004D35;
+                }
+
+                .moodle-toggle-centering {
+                    display: flex;
+                    justify-content: center;
+                    margin: 32px 0 18px 0;
+                    width: 100%;
+                }
+                .moodle-toggle-btn {
+                    display: flex;
+                    align-items: center;
+                    gap: 18px;
+                    background: none;
+                    border: none;
+                    outline: none;
+                    cursor: pointer;
+                    padding: 0;
+                    font-size: 1.3em;
+                    font-family: inherit;
+                    transition: filter 0.17s;
+                }
+                .moodle-toggle-btn:focus,
+                .moodle-toggle-btn:hover {
+                    filter: brightness(0.95);
+                }
+                .moodle-toggle-circle {
+                    width: 44px;
+                    height: 44px;
+                    display: flex;
+                    align-items: center;
+                    justify-content: center;
+                    background: #EDF3FB;
+                    border-radius: 50%;
+                    box-shadow: 0 2px 8px rgba(22,85,160,0.06);
+                    transition: background 0.18s;
+                }
+                .moodle-toggle-btn:hover .moodle-toggle-circle {
+                    background: #e2eefe;
+                }
+                .moodle-toggle-chevron {
+                    transition: transform 0.22s cubic-bezier(.4,2,.6,1), stroke 0.18s;
+                    transform: rotate(0deg);
+                    display: block;
+                }
+                .moodle-toggle-btn.open .moodle-toggle-chevron {
+                    transform: rotate(180deg);
+                }
+                .moodle-toggle-label {
+                    font-weight: 700;
+                    color: #222;
+                    font-size: 1.16em;
+                    letter-spacing: 0.01em;
+                    line-height: 1.18;
+                    margin-top: 1px;
+                }
             </style>
             
             <script>
@@ -955,21 +1097,33 @@ document.addEventListener(\'DOMContentLoaded\', function() {
                     setTimeout(updateCarouselArrows, 500);
                 }
                 function toggleContactInfo(id) {
-                    const contactInfo = document.getElementById(id);
-                    if (contactInfo.style.display === "none" || contactInfo.style.opacity === "0") {
-                        contactInfo.style.display = "block";
-                        setTimeout(() => {
-                            contactInfo.style.opacity = "1";
-                            contactInfo.style.transform = "scaleY(1)";
-                        }, 10);
-                    } else {
-                        contactInfo.style.opacity = "0";
-                        contactInfo.style.transform = "scaleY(0)";
-                        setTimeout(() => {
-                            contactInfo.style.display = "none";
-                    }, 300);
-                    }
-                }
+    // Oculta todas las fichas de profesor
+    document.querySelectorAll(\'div[id^="contact-info-"]\').forEach(function(block) {
+        if (block.id !== id) {
+            block.style.opacity = "0";
+            block.style.transform = "scaleY(0)";
+            setTimeout(function() {
+                block.style.display = "none";
+            }, 300);
+        }
+    });
+    // Activa/desactiva solo la ficha pulsada
+    const contactInfo = document.getElementById(id);
+    const isHidden = contactInfo.style.display === "none" || contactInfo.style.opacity === "0";
+    if (isHidden) {
+        contactInfo.style.display = "block";
+        setTimeout(() => {
+            contactInfo.style.opacity = "1";
+            contactInfo.style.transform = "scaleY(1)";
+        }, 10);
+    } else {
+        contactInfo.style.opacity = "0";
+        contactInfo.style.transform = "scaleY(0)";
+        setTimeout(() => {
+            contactInfo.style.display = "none";
+        }, 300);
+    }
+}
                 function toggleSectionActivities(id, btn) {
                     var content = document.getElementById(id);
                     var isCollapsed = content.style.display === "none" || content.classList.contains(\'collapsed\');
