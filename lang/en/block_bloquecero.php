@@ -23,3 +23,7 @@ $string['userschedule'] = 'Office hours';
 $string['userschedule_help'] = 'Enter your office hours to display them in the teacher profile.';
 $string['maxteachers'] = 'Maximum number of teachers';
 $string['maxteachers_help'] = 'Select the maximum number of teachers allowed in the course. The default value is set to 3.';
+$string['bookname'] = 'Book name';
+$string['bookurl'] = 'Book URL';
+$string['addbook'] = 'Add another book';
+$string['bibliography'] = 'Bibliography';

@@ -516,7 +516,7 @@ class block_bloquecero extends block_base {
         </a>
     </div>
     <div class="round-button-wrapper">
-        <a href="' . new moodle_url('/#', array('id' => $COURSE->id)) . '" class="round-button" title="' . get_string('bibliografiarecomendada', 'block_bloquecero') . '">
+        <a href="#" id="bloquecero-bibliografia-btn" class="round-button" title="' . get_string('bibliografiarecomendada', 'block_bloquecero') . '">
             ' . $OUTPUT->pix_icon('book', '', 'moodle', ['class' => 'bigicon']) . '
         </a>
     </div>
@@ -1021,7 +1021,37 @@ document.addEventListener(\'DOMContentLoaded\', function() {
             </script>
         </div>
     ';
-    
+
+    // Justo antes de cerrar el div principal del bloque, añade el HTML del modal:
+    $this->content->text .= '
+    <!-- Modal de Bibliografía -->
+    <div id="bloquecero-bibliografia-modal" style="display:none; position:fixed; z-index:9999; left:0; top:0; width:100vw; height:100vh; background:rgba(0,0,0,0.35); align-items:center; justify-content:center;">
+        <div style="background:#fff; border-radius:10px; padding:32px 28px; min-width:260px; max-width:90vw; box-shadow:0 8px 32px rgba(0,0,0,0.18); position:relative; text-align:center;">
+            <button onclick="document.getElementById(\'bloquecero-bibliografia-modal\').style.display=\'none\'" style="position:absolute; top:10px; right:14px; background:none; border:none; font-size:1.5em; color:#888; cursor:pointer;">&times;</button>
+            <h2 style="margin-top:0;">Bibliography</h2>
+        </div>
+    </div>
+    ';
+
+    // Añade este script al final del bloque (antes del cierre del último </div>):
+    $this->content->text .= '
+    <script>
+    document.addEventListener("DOMContentLoaded", function() {
+        var btn = document.getElementById("bloquecero-bibliografia-btn");
+        var modal = document.getElementById("bloquecero-bibliografia-modal");
+        if(btn && modal) {
+            btn.addEventListener("click", function(e){
+                e.preventDefault();
+                modal.style.display = "flex";
+            });
+            // Cierra el modal si se hace clic fuera del contenido
+            modal.addEventListener("click", function(e){
+                if(e.target === modal) modal.style.display = "none";
+            });
+        }
+    });
+    </script>
+    ';
 
 if (!$is_editing) {
     // Inyecta JS para ocultar todo menos este bloque al cargar la página

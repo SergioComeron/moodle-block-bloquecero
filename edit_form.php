@@ -97,5 +97,32 @@ class block_bloquecero_edit_form extends block_edit_form {
         $mform->addElement('select', 'config_maxteachers', get_string('maxteachers', 'block_bloquecero'), $maxteachersoptions);
         $mform->setDefault('config_maxteachers', 3);
         $mform->addHelpButton('config_maxteachers', 'maxteachers', 'block_bloquecero');
+
+        // --- Configuración de bibliografía (lista de libros) ---
+        $mform->addElement('header', 'bibliographyheader', get_string('bibliography', 'block_bloquecero'));
+
+        // Número de libros a mostrar por defecto (puedes cambiarlo)
+        $numbooks = 3;
+        if (!empty($this->block->config) && !empty($this->block->config->bibliography_name)) {
+            $numbooks = max(3, count($this->block->config->bibliography_name));
+        }
+
+        $repeatarray = [];
+        $repeatarray[] = $mform->createElement('text', 'bibliography_name', get_string('bookname', 'block_bloquecero'));
+        $mform->setType('bibliography_name', PARAM_TEXT);
+        $repeatarray[] = $mform->createElement('text', 'bibliography_url', get_string('bookurl', 'block_bloquecero'));
+        $mform->setType('bibliography_url', PARAM_URL);
+
+        $repeats = $numbooks;
+        $this->repeat_elements(
+            $repeatarray,
+            $repeats,
+            [],
+            'bibliography_repeats',
+            'bibliography_add_fields',
+            1,
+            get_string('addbook', 'block_bloquecero'),
+            true
+        );
     }
 }
