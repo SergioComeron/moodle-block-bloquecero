@@ -1,4 +1,26 @@
 <?php
+// This file is part of Moodle - http://moodle.org/
+//
+// Moodle is free software: you can redistribute it and/or modify
+// it under the terms of the GNU General Public License as published by
+// the Free Software Foundation, either version 3 of the License, or
+// (at your option) any later version.
+//
+// Moodle is distributed in the hope that it will be useful,
+// but WITHOUT ANY WARRANTY; without even the implied warranty of
+// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+// GNU General Public License for more details.
+//
+// You should have received a copy of the GNU General Public License
+// along with Moodle.  If not, see <http://www.gnu.org/licenses/>.
+
+/**
+ * TODO describe file block_bloquecero
+ *
+ * @package    block_bloquecero
+ * @copyright  2025 Sergio Comerón <info@sergiocomeron.com>
+ * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
+ */
 require_once($CFG->dirroot.'/course/format/weeks/lib.php');
 
 // Función para obtener la fecha de inicio de un cm según su tipo
@@ -138,12 +160,12 @@ class block_bloquecero extends block_base {
                 <div class="moodle-toggle-centering">
                     <button id="bloquecero-mostrarcurso-btn"
                         type="button"
-                        onclick="window.bloquecero_toggle()"
+                        onclick="event.preventDefault(); window.bloquecero_toggle()"
                         class="moodle-toggle-btn"
                         title="Mostrar u ocultar curso">
                         <span class="moodle-toggle-circle">
                             <svg id="bloquecero-mostrarcurso-icon" class="moodle-toggle-chevron" width="24" height="24" viewBox="0 0 24 24">
-                                <polyline points="6 9 12 15 18 9" fill="none" stroke="#1655A0" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round"/>
+                                <polyline points="9 6 15 12 9 18" fill="none" stroke="#1655A0" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round"/>
                             </svg>
                         </span>
                         <span id="bloquecero-mostrarcurso-text" class="moodle-toggle-label">mostrar curso</span>
@@ -256,7 +278,20 @@ class block_bloquecero extends block_base {
         // Carrusel de tarjetas de secciones (sin mostrar las actividades inline)
         $sectionscarousel = '<div class="sections-carousel">';
         $modinfo = get_fast_modinfo($COURSE);
-        
+
+        // Obtener formato y sección destacada/actual
+        $format = $modinfo->get_course()->format;
+        $highlightedsection = ($format === 'topics') ? $COURSE->marker : null;
+        $todaysection = null;
+        if ($format === 'weeks') {
+            $startdate = $modinfo->get_course()->startdate;
+            $now = time();
+            $weekduration = 7 * 24 * 60 * 60;
+            $todaysection = floor(($now - $startdate) / $weekduration) + 1;
+            if ($todaysection < 1) $todaysection = 1;
+        }
+
+        $section_cards = [];
         $sectioncount = 0;
         foreach ($modinfo->get_section_info_all() as $section) {
             if ($section->section == 0) continue;
@@ -276,64 +311,78 @@ class block_bloquecero extends block_base {
                 $sectiontitle = format_string($section->name ?: get_string('section', 'moodle') . ' ' . $section->section);
             }
 
+            // --- NUEVO BLOQUE: preview/expand actividades sección ---
+            $maxactivities = !empty($this->config->maxactivitiespersection) && is_numeric($this->config->maxactivitiespersection)
+                ? (int)$this->config->maxactivitiespersection
+                : 3; // Valor por defecto si no está configurado
+            $visibleactivities = 0;
+            $totalactivities = 0;
+            $all_activities_array = [];
 
-        // --- NUEVO: determinar si es marker en formato topics ---
-            $isactive = !empty($section->current);
-            $is_marker_topics = ($course->format === 'topics' && $COURSE->marker == $section->section);
-
-            $activesymbol = $isactive ? ' <span title="Sección activa" style="color:#1abc9c;">&#11088;</span>' : '';
-            $section_card_extra_style = $is_marker_topics ? 'border: 2.5px solid #FFD600 !important;' : '';
-            $section_card_extra_class = $is_marker_topics ? ' marker-section' : '';
-
-
-
-
-
-            // Generar las actividades de la sección (guardarlas para mostrarlas en el bloque aparte)
-            $activities = '';
             if (!empty($modinfo->sections[$section->section])) {
                 foreach ($modinfo->sections[$section->section] as $cmid) {
                     $cm = $modinfo->cms[$cmid];
                     if (!$cm->uservisible) continue;
                     $icon = $OUTPUT->pix_icon('icon', $cm->modfullname, $cm->modname, ['class' => 'activityicon']);
-                    $activities .= '<li style="margin-bottom: 6px;">' . $icon . ' <a href="' . $cm->url . '" style="color:#004D35;text-decoration:none;">' . format_string($cm->name) . '</a></li>';
+                    $all_activities_array[] = '<li>' . $icon . ' <a href="' . $cm->url . '" style="color:#004D35;text-decoration:none;">' . format_string($cm->name) . '</a></li>';
+                    $visibleactivities++;
+                    $totalactivities++;
                 }
             }
-            if ($activities) {
-                $activities = '<ul style="margin: 12px 0 0 0; padding-left: 18px; list-style: none;">' . $activities . '</ul>';
-            } else {
-                $activities = '<div style="margin-top:12px; color:#888; font-size:0.95em;">' . get_string('noactivities', 'block_bloquecero') . '</div>';
+            // Generar previews y full lists
+            $activities_preview = array_slice($all_activities_array, 0, $maxactivities);
+            $remaining = count($all_activities_array) - $maxactivities;
+            if ($remaining > 0) {
+                $activities_preview[] = '<li class="bloquecero-vermas">+' . $remaining . ' más</li>';
             }
-            
-            // Generar el enlace "Abrir sección" (sin apariencia de botón)
-            $sectionurl = new moodle_url('/course/view.php', array('id' => $COURSE->id, 'section' => $section->section));
-            // Crear un encabezado que muestre el nombre (o fechas) de la sección a la izquierda y el enlace a la derecha
-            $header = '<div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">'
-                        . '<span style="font-weight: bold; color: #004D35;">' . $sectiontitle . '</span>'
-                        . '<a href="' . $sectionurl . '" style="color: #004D35; text-decoration: none; font-weight: bold; font-size: 0.9em;">'
-                            . get_string('abrirseccion', 'block_bloquecero')
-                        . '</a>'
-                    . '</div>';
-            
-            // Colocar el encabezado (con el título y el enlace) encima del listado de actividades
-            $activities = $header . $activities;
-            
+            $activitieslist = '<ul class="bloquecero-section-activities" data-preview="1" style="margin: 12px 0 0 0; padding-left: 0; list-style: none;">' . implode('', $activities_preview) . '</ul>';
+            $activitieslist_full = '<ul class="bloquecero-section-activities" data-full="1" style="margin: 12px 0 0 0; padding-left: 0; list-style: none; display:none;">' . implode('', $all_activities_array) . '</ul>';
+            if (!$all_activities_array) {
+                $activitieslist = '<div style="margin-top:12px; color:#888; font-size:0.95em;" class="bloquecero-section-activities" data-preview="1">' . get_string('noactivities', 'block_bloquecero') . '</div>';
+                $activitieslist_full = '<div style="margin-top:12px; color:#888; font-size:0.95em; display:none;" class="bloquecero-section-activities" data-full="1">' . get_string('noactivities', 'block_bloquecero') . '</div>';
+            }
+
             // Guardar el contenido HTML de las actividades para esta sección con un id único
             $sectionid = 'section-activities-' . $sectioncount;
-            $sectionsActivitiesData[$sectionid] = $activities;
+            $sectionsActivitiesData[$sectionid] = $activitieslist_full;
 
-            // Se muestra en el carrusel sólo el botón con el título de la sección
-            $isactive = !empty($section->current);
-            $activesymbol = $isactive ? ' <span title="Sección activa" style="color:#1abc9c;">&#11088;</span>' : '';
-            $sectionscarousel .= '<div class="section-card udima-card' . ($isactive ? ' active-section' : '') . $section_card_extra_class . '" style="' . $section_card_extra_style . '">
-                <span class="section-number">' . str_pad($sectioncount, 2, '0', STR_PAD_LEFT) . '</span>
-                <button class="section-title-btn section-title-header" type="button" onclick="showSectionActivities(\'' . $sectionid . '\', this)">
-                    <span class="section-title-text">' . $sectiontitle . $activesymbol . '</span>
-                    <span class="section-arrow">&#9654;</span>
-                </button>
-            </div>';
+            // Colores alternos por índice de tarjeta
+            $tarjeta_colores = [
+                ['bg' => '#F2F5F3', 'linea' => '#B7C65C'], // gris verdoso claro
+                ['bg' => '#F8FBED', 'linea' => '#B7C65C'], // verde clarito
+                ['bg' => '#FAFAFA', 'linea' => '#B7C65C'], // blanco-gris
+            ];
+            $tarjeta_idx = $sectioncount % count($tarjeta_colores);
+            $bg_color = $tarjeta_colores[$tarjeta_idx]['bg'];
+            $line_color = $tarjeta_colores[$tarjeta_idx]['linea'];
+
+            // Badge destacado si corresponde
+            $badge = null;
+            if ($format === 'weeks' && $section->section == $todaysection) {
+                $badge = 'Hoy';
+            } else if ($format === 'topics' && $section->section == $highlightedsection) {
+                $badge = 'Destacada';
+            }
+
+            // Construir la tarjeta como string (con badge si corresponde)
+            $card_html = '<div class="bloquecero-section-card" style="background: '.$bg_color.'" onclick="expandSectionCard(this)">';
+            if ($badge) {
+                $card_html .= '<span class="bloquecero-section-badge">' . $badge . '</span>';
+            }
+            $card_html .= '
+    <div class="bloquecero-section-number" style="margin-bottom:8px;">'.str_pad($section->section,2,"0",STR_PAD_LEFT).'</div>
+    <div class="bloquecero-section-line" style="background: '.$line_color.'; margin-bottom:12px;"></div>
+    <div class="bloquecero-section-title" style="margin-bottom:20px;">'. $sectiontitle .'</div>
+    <div class="bloquecero-section-content">
+        '.$activitieslist.'
+        '.$activitieslist_full.'
+    </div>
+</div>';
+            // Añadir todas las tarjetas al mismo array, sin separar.
+            $section_cards[] = $card_html;
             $sectioncount++;
         }
+        $sectionscarousel .= implode('', $section_cards);
         $sectionscarousel .= '</div>';
 
         // Envolver el carrusel en un contenedor con botones laterales
@@ -400,9 +449,9 @@ class block_bloquecero extends block_base {
                 <span id="week-label" style="font-weight: bold; margin: 0 10px;"></span>
                 <button id="next-week" style="background: none; border: none; font-size: 1.2em; cursor: pointer;">&gt;</button>
             </div>
-            <!-- Contenedor para las actividades sin recuadro -->
-            <div class="calendario-actividades-container" style="padding: 15px; background-color: #f9f9f9; text-align: center;">
-                <div id="activities-week-content">' . $calendarActivities . '</div>
+            <!-- Contenedor para las actividades centrado SIEMPRE -->
+            <div class="calendario-actividades-container" style="padding: 15px; height: 100%; display: flex; flex-direction: column; justify-content: center; align-items: center; width: 100%;">
+                <div id="activities-week-content" style="width: 100%; display: flex; flex-direction: column; align-items: center; justify-content: center;">' . $calendarActivities . '</div>
             </div>
         </div>
         <script>
@@ -445,9 +494,9 @@ class block_bloquecero extends block_base {
                         }
                     });
                     if(anyVisible) {
-                        contentContainer.innerHTML = "<ul style=\"margin: 12px 0 0 0; padding-left: 18px; list-style: none;\">" + doc.querySelector("ul").innerHTML + "</ul>";
+                        contentContainer.innerHTML = "<ul style=\'margin: 12px 0 0 0; padding-left: 18px; list-style: none; display: flex; flex-direction: column; align-items: center; justify-content: center;\'>" + doc.querySelector("ul").innerHTML + "</ul>";
                     } else {
-                        contentContainer.innerHTML = \'<div style="margin-top:12px; color:#888; font-size:0.95em;">No hay actividades para esta semana.</div>\';
+                        contentContainer.innerHTML = \'<div style="margin-top:12px; color:#888; font-size:0.95em; text-align:center;">No hay actividades para esta semana.</div>\';
                     }
                     const startStr = formatDate(weekStart);
                     const endStr = formatDate(weekEnd - 1);
@@ -494,18 +543,20 @@ class block_bloquecero extends block_base {
     <a href="' . $guide_url . '" class="udima-menu-link" target="_blank">
         ' . $OUTPUT->pix_icon('i/info', '', 'moodle', ['class' => 'menu-icon']) . '
         <span>Guía docente</span>
-    </a>
-</div>
+    </a>' . ((has_capability('moodle/course:update', $coursecontext)) ? '
+    <a href="' . (new moodle_url('/course/edit.php', array('id' => $COURSE->id))) . '" class="udima-menu-link">
+        ' . $OUTPUT->pix_icon('i/settings', '', 'moodle', ['class' => 'menu-icon']) . '
+        <span>Configuración</span>
+    </a>' : '') .
+'</div>
             <div style="padding: 0 20px; font-family: Arial, sans-serif;">
     <!-- Resto del contenido del bloque -->
-    <div style="position: relative; border-radius: 12px; overflow: hidden; margin-bottom: 20px; width: 100%; aspect-ratio: 5 / 1;">
-        <img src="' . $fondo_cabecera_img . '" alt="Fondo" style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; object-fit: contain;">
-        <div style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; padding: 30px; display: flex; flex-direction: column; justify-content: flex-start; align-items: flex-end;">
-            <h1 style="margin: 0 0 10px 0; font-size: 2.5em; color: black;">' . format_string($COURSE->fullname) . '</h1>
-            ' . ($courseDates ? '<p style="margin: 0 0 10px 0; font-size: 1em; color: black;">' . $courseDates . '</p>' : '') . '
-            <p style="margin: 0 0 10px 0; font-size: 1.2em; color: black;">
-                Equipo docente: ' . $contactButtonsHtml . '
-            </p>
+    <div class="bloquecero-header-responsive">
+        <img src="' . $fondo_cabecera_img . '" alt="Fondo" class="bloquecero-header-bg-img">
+        <div class="bloquecero-header-content">
+            <h1 class="bloquecero-header-title">' . format_string($COURSE->fullname) . '</h1>
+            ' . ($courseDates ? '<p class="bloquecero-header-dates">' . $courseDates . '</p>' : '') . '
+            <p class="bloquecero-header-teachers">Equipo docente: ' . $contactButtonsHtml . '</p>
         </div>
     </div>
     <!-- Bloques de información de contacto de cada profesor -->
@@ -514,7 +565,7 @@ class block_bloquecero extends block_base {
 
     <!-- Sección de foros y demás secciones -->
     <div style="padding: 0 40px;">
-            <div style="display: flex; justify-content: center; gap: 20px; margin: 20px 0;">
+            <div class="forum-card-group">
                 <!-- Tablón de anuncios -->
                 <a href="' . $forum_anuncios_url . '" style="text-decoration: none; color: inherit; flex: 1;">
                     <div class="forum-card udima-forum-card">
@@ -546,11 +597,11 @@ $carouselContainer . '
         ' . $activitiesBlockHtml . '
         <!-- Bloques divididos en dos columnas -->
 <div style="display: flex; gap: 20px; margin: 20px 40px;">
-    <div class="udima-maincard">
+    <div class="udima-maincard" style="width: 50%; box-sizing: border-box;">
         <h3>Sesiones en directo</h3>
         <p>Próximamente se mostrarán las sesiones en directo.</p>
     </div>
-    <div class="udima-maincard">
+    <div class="udima-maincard" style="width: 50%; box-sizing: border-box;">
         <h3>Calendario de actividades</h3>
         ' . $calendarioActividades . '
     </div>
@@ -580,7 +631,7 @@ window.bloquecero_toggle = function() {
         ].forEach(function(selector){
             document.querySelectorAll(selector).forEach(function(e){ e.style.display = \'\'; });
         });
-        // Cambia icono y texto a "ocultar curso"
+        // Cambia texto a "ocultar curso"
         var btn = document.getElementById(\'bloquecero-mostrarcurso-btn\');
         if(btn) {
             btn.classList.toggle(\'cerrado\', !isHidden);
@@ -603,8 +654,7 @@ window.bloquecero_toggle = function() {
         ].forEach(function(selector){
             document.querySelectorAll(selector).forEach(function(e){ e.style.display = \'none\'; });
         });
-        // Cambia icono y texto a "mostrar curso"
-        if(btnicon) btnicon.innerHTML = \'&#x25BC;\';
+        // Cambia texto a "mostrar curso"
         if(btntext) btntext.innerHTML = \'mostrar curso\';
     }
 };
@@ -627,11 +677,27 @@ document.addEventListener(\'DOMContentLoaded\', function() {
     ].forEach(function(selector){
         document.querySelectorAll(selector).forEach(function(e){ e.style.display = \'none\'; });
     });
-    if(btnicon) btnicon.innerHTML = \'&#x25B6;\';
     if(btntext) btntext.innerHTML = \'Mostrar curso\';
 });
 </script>
             <style>
+            .bloquecero-section-badge {
+                position: absolute;
+                top: 10px;
+                right: 16px;
+                background: #B7C65C;
+                color: #fff;
+                font-weight: 600;
+                font-size: 1em;
+                border-radius: 16px;
+                padding: 2px 16px;
+                z-index: 4;
+                box-shadow: 0 2px 8px rgba(183,198,92,0.14);
+                letter-spacing: 0.01em;
+            }
+            .bloquecero-section-card {
+                position: relative;
+            }
                 .forum-card:hover {
                     transform: scale(1.05);
                     box-shadow: 0 6px 10px rgba(0, 0, 0, 0.15);
@@ -923,6 +989,22 @@ document.addEventListener(\'DOMContentLoaded\', function() {
                     margin-bottom: 8px;
                     border-bottom: 1.5px solid #E2EDE4;
                     min-height: 38px;
+                    flex-wrap: nowrap;
+                    overflow-x: auto;
+                    overflow-y: hidden;
+                    white-space: nowrap;
+                    scrollbar-width: thin;
+                    scrollbar-color: #B7C65C #f0f0f0;
+                }
+                .udima-menu-bar::-webkit-scrollbar {
+                    height: 6px;
+                }
+                .udima-menu-bar::-webkit-scrollbar-thumb {
+                    background: #B7C65C;
+                    border-radius: 6px;
+                }
+                .udima-menu-bar::-webkit-scrollbar-track {
+                    background: #f0f0f0;
                 }
                 .udima-menu-link {
                     display: flex;
@@ -1003,7 +1085,7 @@ document.addEventListener(\'DOMContentLoaded\', function() {
                     display: block;
                 }
                 .moodle-toggle-btn.open .moodle-toggle-chevron {
-                    transform: rotate(180deg);
+                    transform: rotate(90deg);
                 }
                 .moodle-toggle-label {
                     font-weight: 700;
@@ -1013,6 +1095,180 @@ document.addEventListener(\'DOMContentLoaded\', function() {
                     line-height: 1.18;
                     margin-top: 1px;
                 }
+                    .bloquecero-section-card {
+    border-radius: 12px;
+    box-shadow: 0 2px 12px rgba(185,200,160,0.10);
+    padding: 18px 16px 16px 16px;
+    margin: 0 8px 24px 0;
+    width: 370px;
+    min-width: 320px;
+    display: flex;
+    flex-direction: column;
+    justify-content: flex-start;
+    align-items: flex-start;
+    transition: box-shadow 0.19s;
+}
+.bloquecero-section-card:hover {
+    box-shadow: 0 6px 22px rgba(183,198,92,0.12);
+}
+.bloquecero-section-header {
+    width: 100%;
+    display: flex;
+    align-items: center;
+    gap: 20px;
+    margin-bottom: 28px;
+}
+.bloquecero-section-number {
+    font-size: 0.9em;
+    font-weight: 400;
+    color: #B7C65C;
+    flex: none;
+    letter-spacing: 0.05em;
+}
+.bloquecero-section-line {
+    width: 100%;
+    height: 2px;
+    background: #B7C65C;
+    border-radius: 2px;
+    margin: 0 0 12px 0;
+}
+.bloquecero-section-title {
+    font-size: 1.11em;
+    font-weight: 500;
+    color: #222;
+    flex: none;
+    white-space: nowrap;
+    margin-left: 0;
+}
+.bloquecero-section-content {
+    flex: 1;
+    font-size: 1.09em;
+    color: #333;
+    margin-top: 0;
+    display: block;
+    height: auto;
+}
+.bloquecero-section-content ul {
+    padding-left: 0;
+    margin: 0;
+    list-style: none;
+}
+.bloquecero-section-content li {
+    margin-bottom: 12px;
+}
+            </style>
+            <style>
+            .bloquecero-header-responsive {
+                position: relative;
+                border-radius: 12px;
+                overflow: hidden;
+                margin-bottom: 20px;
+                width: 100%;
+                aspect-ratio: 5 / 1;
+                min-height: 120px;
+                background: #fff;
+            }
+            .bloquecero-header-bg-img {
+                position: absolute;
+                top: 0; left: 0; width: 100%; height: 100%;
+                object-fit: contain;
+                z-index: 0;
+                pointer-events: none;
+                opacity: 0.9;
+            }
+            .bloquecero-header-content {
+                position: absolute;
+                top: 0; left: 0; width: 100%; height: 100%;
+                display: flex;
+                flex-direction: column;
+                justify-content: flex-start;
+                align-items: flex-end;
+                padding: 30px;
+                z-index: 2;
+            }
+            .bloquecero-header-title {
+                margin: 0 0 10px 0;
+                font-size: 2.5em;
+                color: black;
+                text-shadow: 0 2px 12px #fff8;
+            }
+            .bloquecero-header-dates {
+                margin: 0 0 10px 0;
+                font-size: 1em;
+                color: black;
+            }
+            .bloquecero-header-teachers {
+                margin: 0 0 10px 0;
+                font-size: 1.2em;
+                color: black;
+                font-weight: 500;
+            }
+
+            @media (max-width: 800px) {
+                .bloquecero-header-content {
+                    align-items: flex-start;
+                    padding: 12px 10px 10px 10px;
+                }
+                .bloquecero-header-title {
+                    font-size: 1.35em;
+                    line-height: 1.18;
+                    margin-bottom: 5px;
+                }
+                .bloquecero-header-dates {
+                    font-size: 0.92em;
+                    margin-bottom: 5px;
+                }
+                .bloquecero-header-teachers {
+                    font-size: 1em;
+                    margin-bottom: 5px;
+                }
+                .bloquecero-header-responsive {
+                    aspect-ratio: 2.2 / 1;
+                    min-height: 84px;
+                }
+            }
+
+            @media (max-width: 540px) {
+                .bloquecero-header-title {
+                    font-size: 1em;
+                }
+                .bloquecero-header-content {
+                    padding: 6px 4px;
+                }
+                .bloquecero-header-responsive {
+                    min-height: 48px;
+                }
+            }
+            </style>
+            <style>
+            @media (max-width: 900px) {
+                .udima-forum-card {
+                    min-width: 0 !important;
+                    width: 100% !important;
+                    padding: 18px 8px 16px 8px !important;
+                    font-size: 0.97em !important;
+                    box-sizing: border-box;
+                }
+                .forum-card-group {
+                    flex-direction: column !important;
+                    gap: 16px !important;
+                    align-items: stretch !important;
+                }
+            }
+            .forum-card-group {
+                display: flex;
+                justify-content: center;
+                gap: 20px;
+                margin: 20px 0;
+                align-items: stretch;
+            }
+            .udima-forum-card {
+                min-height: 72px;
+                display: flex;
+                flex-direction: column;
+                justify-content: center;
+                align-items: center;
+            }
             </style>
             
             <script>
@@ -1073,14 +1329,16 @@ document.addEventListener(\'DOMContentLoaded\', function() {
                 window.addEventListener("resize", updateCarouselArrows);
                 document.querySelector(".sections-carousel").addEventListener("scroll", updateCarouselArrows);
                 window.addEventListener("load", function() {
-                    var carousel = document.querySelector(".sections-carousel");
-                    var active = carousel ? carousel.querySelector(".section-card.active-section") : null;
-                    if (carousel && active) {
-                        var scrollLeft = active.offsetLeft - (carousel.clientWidth / 2) + (active.clientWidth / 2);
-                        if (active === carousel.firstElementChild) {
-                            scrollLeft = 0;
+                    var carousel = document.querySelector(\'.sections-carousel\');
+                    var badgeCard = carousel ? carousel.querySelector(\'.bloquecero-section-card .bloquecero-section-badge\') : null;
+                    if (carousel && badgeCard) {
+                        var card = badgeCard.closest(\'.bloquecero-section-card\');
+                        if (card) {
+                            // Calcula el padding-left del carrusel para ajustar el scroll
+                            var leftPadding = parseInt(window.getComputedStyle(carousel).paddingLeft) || 0;
+                            var scrollLeft = card.offsetLeft - leftPadding;
+                            carousel.scrollTo({left: scrollLeft, behavior: \'smooth\'});
                         }
-                        carousel.scrollLeft = scrollLeft;
                     }
                     updateCarouselArrows();
                 });
@@ -1160,15 +1418,22 @@ document.addEventListener(\'DOMContentLoaded\', function() {
                 window.addEventListener(\'load\', updateCarouselArrows);
                 window.addEventListener(\'resize\', updateCarouselArrows);
                 document.querySelector(".sections-carousel").addEventListener(\'scroll\', updateCarouselArrows);
-                window.addEventListener(\'load\', function() {
+                window.addEventListener("load", function() {
                     var carousel = document.querySelector(\'.sections-carousel\');
-                    var active = carousel ? carousel.querySelector(\'.section-card.active-section\') : null;
-                    if (carousel && active) {
-                        var scrollLeft = active.offsetLeft - (carousel.clientWidth / 2) + (active.clientWidth / 2);
-                        if (active === carousel.firstElementChild) {
-                            scrollLeft = 0;
+                    var badgeCard = carousel ? carousel.querySelector(\'.bloquecero-section-card .bloquecero-section-badge\') : null;
+                    if (carousel && badgeCard) {
+                        var card = badgeCard.closest(\'.bloquecero-section-card\');
+                        var allCards = Array.from(carousel.querySelectorAll(\'.bloquecero-section-card\'));
+                        var idx = allCards.indexOf(card);
+                        if (card && idx > 0) {
+                            var prevCard = allCards[idx - 1];
+                            var leftPadding = parseInt(window.getComputedStyle(carousel).paddingLeft) || 0;
+                            var scrollLeft = prevCard.offsetLeft - leftPadding;
+                            carousel.scrollTo({left: scrollLeft, behavior: \'smooth\'});
+                        } else if (card) {
+                            // Si la marcada es la primera, deja scroll al principio
+                            carousel.scrollTo({left: 0, behavior: \'smooth\'});
                         }
-                        carousel.scrollLeft = scrollLeft;
                     }
                     updateCarouselArrows();
                 });
@@ -1287,6 +1552,25 @@ if (!$is_editing) {
             if(btn) btn.style.display = \'none\';
         };
     ");
+    // --- Script para expandir tarjeta de sección ---
+        $this->content->text .= '
+<script>
+function expandSectionCard(card) {
+    if (card.classList.contains("expanded")) return;
+    var full = card.querySelector(\'.bloquecero-section-activities[data-full="1"]\');
+    var preview = card.querySelector(\'.bloquecero-section-activities[data-preview="1"]\');
+    if (full && preview) {
+        preview.style.display = "none";
+        full.style.display = "block";
+    }
+    card.classList.add("expanded");
+}
+</script>
+<style>
+.bloquecero-section-card { cursor: pointer; }
+.bloquecero-vermas { color: #6FA24A; font-weight: 500; cursor: pointer; }
+</style>
+';
 }
 
         return $this->content;
@@ -1304,3 +1588,4 @@ if (!$is_editing) {
         return true;
     }
 }
+        

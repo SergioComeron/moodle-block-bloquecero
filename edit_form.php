@@ -124,5 +124,14 @@ class block_bloquecero_edit_form extends block_edit_form {
             get_string('addbook', 'block_bloquecero'),
             true
         );
+
+        // Selector para el número máximo de actividades a mostrar en cada ficha de sección.
+        $maxactivitiesoptions = [];
+        for ($i = 1; $i <= 10; $i++) {
+            $maxactivitiesoptions[$i] = (string)$i;
+        }
+        $mform->addElement('select', 'config_maxactivitiespersection', get_string('maxactivitiespersection', 'block_bloquecero'), $maxactivitiesoptions);
+        $mform->setDefault('config_maxactivitiespersection', 4);
+        $mform->addHelpButton('config_maxactivitiespersection', 'maxactivitiespersection', 'block_bloquecero');
     }
 }
