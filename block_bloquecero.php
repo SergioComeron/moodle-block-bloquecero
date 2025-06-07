@@ -526,7 +526,8 @@ class block_bloquecero extends block_base {
         // HTML principal del bloque (se añade debajo del carrusel el bloque para las actividades)
 
         $this->content->text =
-            '<style>
+            '<link href="https://fonts.googleapis.com/css?family=Inter:700,600,400&display=swap" rel="stylesheet">
+            <style>
                 /* Asegurar que el encabezado del bloque se alinee a la izquierda */
                 .block_bloquecero .header {
                     text-align: left !important;
@@ -1192,10 +1193,14 @@ document.addEventListener(\'DOMContentLoaded\', function() {
                 z-index: 2;
             }
             .bloquecero-header-title {
+                font-family: \'Inter\', Arial, sans-serif !important;
+                font-weight: 400 !important;
+                font-size: 2.5em !important;
+                color: #222 !important;
+                letter-spacing: -0.02em !important;
+                line-height: 1.05;
+                text-shadow: none !important;
                 margin: 0 0 10px 0;
-                font-size: 2.5em;
-                color: black;
-                text-shadow: 0 2px 12px #fff8;
             }
             .bloquecero-header-dates {
                 margin: 0 0 10px 0;
@@ -1215,7 +1220,7 @@ document.addEventListener(\'DOMContentLoaded\', function() {
                     padding: 12px 10px 10px 10px;
                 }
                 .bloquecero-header-title {
-                    font-size: 1.35em;
+                    font-size: 1.35em !important;
                     line-height: 1.18;
                     margin-bottom: 5px;
                 }
@@ -1235,7 +1240,7 @@ document.addEventListener(\'DOMContentLoaded\', function() {
 
             @media (max-width: 540px) {
                 .bloquecero-header-title {
-                    font-size: 1em;
+                    font-size: 1em !important;
                 }
                 .bloquecero-header-content {
                     padding: 6px 4px;
