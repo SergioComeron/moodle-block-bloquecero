@@ -54,6 +54,12 @@ class block_bloquecero extends block_base {
 
     public function get_content() {
         global $COURSE, $DB, $USER, $CFG, $OUTPUT, $PAGE;
+
+        // Oculta el bloque si no estamos en la página principal del curso (ni en weeks ni en topics)
+        $pagetype = $PAGE->pagetype;
+        if ($pagetype !== 'course-view-weeks' && $pagetype !== 'course-view-topics' && $pagetype !== 'course-view') {
+            return null;
+        }
         
         $is_editing = $PAGE->user_is_editing();
 
@@ -370,9 +376,8 @@ class block_bloquecero extends block_base {
                 $card_html .= '<span class="bloquecero-section-badge">' . $badge . '</span>';
             }
             $card_html .= '
-    <div class="bloquecero-section-number" style="margin-bottom:8px;">'.str_pad($section->section,2,"0",STR_PAD_LEFT).'</div>
+    <div class="bloquecero-section-number" style="margin-bottom:8px;">'. $sectiontitle .'</div>
     <div class="bloquecero-section-line" style="background: '.$line_color.'; margin-bottom:12px;"></div>
-    <div class="bloquecero-section-title" style="margin-bottom:20px;">'. $sectiontitle .'</div>
     <div class="bloquecero-section-content">
         '.$activitieslist.'
         '.$activitieslist_full.'
@@ -1577,8 +1582,17 @@ function expandSectionCard(card) {
     }
 
     public function applicable_formats() {
-        return array("course-view-topics" => true, "course-view-weeks" => true);
-    }    
+        return array(
+            'course-view' => true,
+            'course-view-weeks' => true,
+            'course-view-topics' => true,
+            'my' => false,
+            'site' => false,
+            'mod' => false,
+            'admin' => false,
+            'all' => false
+        );
+    }
 
     public function has_config() {
         return true;
