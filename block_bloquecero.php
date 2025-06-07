@@ -330,7 +330,7 @@ class block_bloquecero extends block_base {
                     $cm = $modinfo->cms[$cmid];
                     if (!$cm->uservisible) continue;
                     $icon = $OUTPUT->pix_icon('icon', $cm->modfullname, $cm->modname, ['class' => 'activityicon']);
-                    $all_activities_array[] = '<li>' . $icon . ' <a href="' . $cm->url . '" style="color:#004D35;text-decoration:none;">' . format_string($cm->name) . '</a></li>';
+                    $all_activities_array[] = '<li>' . $icon . ' <a href="' . $cm->url . '">' . format_string($cm->name) . '</a></li>';
                     $visibleactivities++;
                     $totalactivities++;
                 }
@@ -423,8 +423,8 @@ class block_bloquecero extends block_base {
             if ($startdate) {
                 $activitytime = userdate($startdate, get_string('strftimedateshort'));
                 $icon = $OUTPUT->pix_icon('icon', $cm->modfullname, $cm->modname, ['class' => 'activityicon']);
-                $calendarActivities .= '<li data-timestamp="' . $startdate . '" style="margin-bottom: 6px;">' . $icon . 
-                    ' <a href="' . $cm->url . '" style="color:#004D35;text-decoration:none;">' . 
+                $calendarActivities .= '<li data-timestamp="' . $startdate . '" style="margin-bottom: 6px;">' . $icon .
+                    ' <a href="' . $cm->url . '">' .
                     format_string($cm->name) . '</a> <span style="font-size:0.9em; color:#666;">(Inicio: ' . $activitytime . ')</span></li>';
             }
         }
@@ -445,83 +445,202 @@ class block_bloquecero extends block_base {
             $options .= '<option value="' . $i . '">Semana ' . $i . '</option>';
         }
 
-        // --- Reemplaza la definición de $calendarioActividades por:
+        // --- SESIONES EN DIRECTO ---
+        $sesionesZoom = [
+            ['titulo' => 'Clase inaugural', 'fecha' => strtotime('+2 days 18:00'), 'url' => 'https://zoom.us/j/123456789'],
+            ['titulo' => 'Repaso Tema 1', 'fecha' => strtotime('+5 days 17:00'), 'url' => 'https://zoom.us/j/987654321'],
+            ['titulo' => 'Consultas generales', 'fecha' => strtotime('+12 days 19:00'), 'url' => 'https://zoom.us/j/112233445'],
+            ['titulo' => 'Resolución ejercicios', 'fecha' => strtotime('+20 days 16:30'), 'url' => 'https://zoom.us/j/556677889'],
+        ];
+        $sesionesZoomList = '';
+        foreach ($sesionesZoom as $sesion) {
+            $fecha = userdate($sesion['fecha'], get_string('strftimedaydatetime', 'langconfig'));
+            $sesionesZoomList .= '<li data-timestamp="' . $sesion['fecha'] . '" style="margin-bottom: 6px;">' .
+                $OUTPUT->pix_icon('i/calendar', '', '', ['class' => 'activityicon']) .
+                ' <a href="' . $sesion['url'] . '" target="_blank">' . format_string($sesion['titulo']) . '</a> <span style="font-size:0.93em; color:#666;">(' . $fecha . ')</span></li>';
+        }
+        $sesionesZoomList = '<ul id="sesiones-list" style="margin: 12px 0 0 0; padding-left: 18px; list-style: none;">' . $sesionesZoomList . '</ul>';
+
+        // --- NUEVA estructura de la tarjeta de calendario de actividades ---
         $calendarioActividades = '
-        <div class="calendario-actividades-wrapper">
-            <!-- Selector de semana fuera del recuadro de actividades -->
-            <div class="week-selector" style="margin-bottom: 10px; text-align: center;">
-                <button id="prev-week" style="background: none; border: none; font-size: 1.2em; cursor: pointer;">&lt;</button>
-                <span id="week-label" style="font-weight: bold; margin: 0 10px;"></span>
-                <button id="next-week" style="background: none; border: none; font-size: 1.2em; cursor: pointer;">&gt;</button>
-            </div>
-            <!-- Contenedor para las actividades centrado SIEMPRE -->
-            <div class="calendario-actividades-container" style="padding: 15px; height: 100%; display: flex; flex-direction: column; justify-content: center; align-items: center; width: 100%;">
-                <div id="activities-week-content" style="width: 100%; display: flex; flex-direction: column; align-items: center; justify-content: center;">' . $calendarActivities . '</div>
-            </div>
+<div class="udima-maincard calendario-actividades-maincard">
+    <div class="calendario-actividades-header">
+        <h3>Calendario de actividades</h3>
+        <div class="week-selector">
+            <button id="prev-week">&lt;</button>
+            <span id="week-label"></span>
+            <button id="next-week">&gt;</button>
         </div>
-        <script>
-            (function(){
-                const courseStart = ' . $courseStart . ';
-                const totalWeeks = ' . $weeks . ';
-                const now = Math.floor(Date.now() / 1000);
-                let currentWeek = Math.floor((now - courseStart) / (7 * 24 * 60 * 60)) + 1;
-                if (currentWeek < 1) {
-                    currentWeek = 1;
-                } else if (currentWeek > totalWeeks) {
-                    currentWeek = totalWeeks;
+    </div>
+    <div class="calendario-actividades-container">
+        <div id="activities-week-content"></div>
+    </div>
+</div>
+<script>
+(function(){
+    const courseStart = ' . $courseStart . ';
+    const totalWeeks = ' . $weeks . ';
+    const now = Math.floor(Date.now() / 1000);
+    let currentWeek = Math.floor((now - courseStart) / (7 * 24 * 60 * 60)) + 1;
+    if (currentWeek < 1) {
+        currentWeek = 1;
+    } else if (currentWeek > totalWeeks) {
+        currentWeek = totalWeeks;
+    }
+    // El listado original de actividades
+    const originalListHTML = ' . json_encode($calendarActivities) . ';
+    const contentContainer = document.getElementById("activities-week-content");
+    const weekLabel = document.getElementById("week-label");
+    const prevBtn = document.getElementById("prev-week");
+    const nextBtn = document.getElementById("next-week");
+    function formatDate(ts) {
+        const d = new Date(ts * 1000);
+        const day = d.getDate();
+        const monthNames = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+        return day + " " + monthNames[d.getMonth()];
+    }
+    function filterActivities(week) {
+        const weekStart = courseStart + (week - 1) * 7 * 24 * 60 * 60;
+        const weekEnd = weekStart + 7 * 24 * 60 * 60;
+        // Parseamos el HTML original
+        const parser = new DOMParser();
+        const doc = parser.parseFromString(originalListHTML, "text/html");
+        const ul = doc.querySelector("ul");
+        let anyVisible = false;
+        if (ul) {
+            ul.querySelectorAll("li").forEach(function(li){
+                const ts = parseInt(li.getAttribute("data-timestamp"), 10);
+                if (!isNaN(ts) && ts >= weekStart && ts < weekEnd) {
+                    li.style.display = "list-item";
+                    anyVisible = true;
+                } else {
+                    li.style.display = "none";
                 }
-                const contentContainer = document.getElementById("activities-week-content");
-                const originalListElement = document.getElementById("activities-list");
-                const originalListHTML = originalListElement ? originalListElement.outerHTML : "";
-                const weekLabel = document.getElementById("week-label");
-                const prevBtn = document.getElementById("prev-week");
-                const nextBtn = document.getElementById("next-week");
-                function formatDate(ts) {
-                    const d = new Date(ts * 1000);
-                    const day = d.getDate();
-                    const monthNames = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
-                    return day + " " + monthNames[d.getMonth()];
+            });
+            if(anyVisible) {
+                contentContainer.innerHTML = "<ul>" + ul.innerHTML + "</ul>";
+            } else {
+                contentContainer.innerHTML = \'<div style="margin-top:12px; color:#888; font-size:0.95em; text-align:center;">No hay actividades para esta semana.</div>\';
+            }
+        } else {
+            // Si no hay actividades en absoluto
+            contentContainer.innerHTML = doc.body.innerHTML;
+        }
+        const startStr = formatDate(weekStart);
+        const endStr = formatDate(weekEnd - 1);
+        weekLabel.textContent = startStr + " - " + endStr;
+    }
+    prevBtn.addEventListener("click", function(){
+        if(currentWeek > 1) {
+            currentWeek--;
+            filterActivities(currentWeek);
+        }
+    });
+    nextBtn.addEventListener("click", function(){
+        if(currentWeek < totalWeeks) {
+            currentWeek++;
+            filterActivities(currentWeek);
+        }
+    });
+    filterActivities(currentWeek);
+})();
+</script>
+';
+
+        // --- SESIONES EN DIRECTO: genera el bloque con selector de semana ---
+        // Calcular semanas para las sesiones (según fechas simuladas)
+        $sesionesStart = $sesionesZoom[0]['fecha'];
+        $sesionesEnd = $sesionesZoom[count($sesionesZoom)-1]['fecha'];
+        $sesionesWeeks = ceil(($sesionesEnd - $courseStart) / (7 * 24 * 60 * 60));
+        if ($sesionesWeeks < 1) $sesionesWeeks = 1;
+        // Usar el mismo rango de semanas que el curso para coherencia
+        $sesionesDirecto = '
+<div class="udima-maincard sesiones-directo-maincard">
+    <div class="sesiones-directo-header">
+        <h3>Sesiones en directo</h3>
+        <div class="sesiones-directo-selector">
+            <button id="prev-sesion">&lt;</button>
+            <span id="sesion-label"></span>
+            <button id="next-sesion">&gt;</button>
+        </div>
+        <span class="sesiones-directo-calendaricon" title="Ver todas las sesiones">
+            <!-- Icono SVG calendario -->
+            <svg width="22" height="22" viewBox="0 0 24 24" style="vertical-align:middle;cursor:pointer;"><rect x="3" y="5" width="18" height="16" rx="3" fill="#B7C65C" /><rect x="7" y="9" width="2.5" height="2.5" rx="1" fill="#fff"/><rect x="11" y="9" width="2.5" height="2.5" rx="1" fill="#fff"/><rect x="15" y="9" width="2.5" height="2.5" rx="1" fill="#fff"/><rect x="7" y="13" width="2.5" height="2.5" rx="1" fill="#fff"/><rect x="11" y="13" width="2.5" height="2.5" rx="1" fill="#fff"/><rect x="15" y="13" width="2.5" height="2.5" rx="1" fill="#fff"/></svg>
+        </span>
+    </div>
+    <div class="sesiones-directo-container">
+        <div id="sesiones-list-content"></div>
+    </div>
+</div>
+<script>
+(function(){
+    const courseStart = ' . $courseStart . ';
+    const totalWeeks = ' . $weeks . ';
+    const now = Math.floor(Date.now() / 1000);
+    let currentWeek = Math.floor((now - courseStart) / (7 * 24 * 60 * 60)) + 1;
+    if (currentWeek < 1) {
+        currentWeek = 1;
+    } else if (currentWeek > totalWeeks) {
+        currentWeek = totalWeeks;
+    }
+    // El listado original de sesiones
+    const originalSesionesHTML = ' . json_encode($sesionesZoomList) . ';
+    const sesionesContainer = document.getElementById("sesiones-list-content");
+    const sesionLabel = document.getElementById("sesion-label");
+    const prevBtn = document.getElementById("prev-sesion");
+    const nextBtn = document.getElementById("next-sesion");
+    function formatDate(ts) {
+        const d = new Date(ts * 1000);
+        const day = d.getDate();
+        const monthNames = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+        return day + " " + monthNames[d.getMonth()];
+    }
+    function filterSesiones(week) {
+        const weekStart = courseStart + (week - 1) * 7 * 24 * 60 * 60;
+        const weekEnd = weekStart + 7 * 24 * 60 * 60;
+        // Parsear el HTML original
+        const parser = new DOMParser();
+        const doc = parser.parseFromString(originalSesionesHTML, "text/html");
+        const ul = doc.querySelector("ul");
+        let anyVisible = false;
+        if (ul) {
+            ul.querySelectorAll("li").forEach(function(li){
+                const ts = parseInt(li.getAttribute("data-timestamp"), 10);
+                if (!isNaN(ts) && ts >= weekStart && ts < weekEnd) {
+                    li.style.display = "list-item";
+                    anyVisible = true;
+                } else {
+                    li.style.display = "none";
                 }
-                function filterActivities(week) {
-                    const weekStart = courseStart + (week - 1) * 7 * 24 * 60 * 60;
-                    const weekEnd = weekStart + 7 * 24 * 60 * 60;
-                    const parser = new DOMParser();
-                    const doc = parser.parseFromString(originalListHTML, "text/html");
-                    const lis = doc.querySelectorAll("li");
-                    let anyVisible = false;
-                    lis.forEach(function(li){
-                        const ts = parseInt(li.getAttribute("data-timestamp"), 10);
-                        if (ts >= weekStart && ts < weekEnd) {
-                            li.style.display = "list-item";
-                            anyVisible = true;
-                        } else {
-                            li.style.display = "none";
-                        }
-                    });
-                    if(anyVisible) {
-                        contentContainer.innerHTML = "<ul style=\'margin: 12px 0 0 0; padding-left: 18px; list-style: none; display: flex; flex-direction: column; align-items: center; justify-content: center;\'>" + doc.querySelector("ul").innerHTML + "</ul>";
-                    } else {
-                        contentContainer.innerHTML = \'<div style="margin-top:12px; color:#888; font-size:0.95em; text-align:center;">No hay actividades para esta semana.</div>\';
-                    }
-                    const startStr = formatDate(weekStart);
-                    const endStr = formatDate(weekEnd - 1);
-                    weekLabel.textContent = startStr + " - " + endStr;
-                }
-                prevBtn.addEventListener("click", function(){
-                    if(currentWeek > 1) {
-                        currentWeek--;
-                        filterActivities(currentWeek);
-                    }
-                });
-                nextBtn.addEventListener("click", function(){
-                    if(currentWeek < totalWeeks) {
-                        currentWeek++;
-                        filterActivities(currentWeek);
-                    }
-                });
-                filterActivities(currentWeek);
-            })();
-        </script>';
+            });
+            if(anyVisible) {
+                sesionesContainer.innerHTML = "<ul>" + ul.innerHTML + "</ul>";
+            } else {
+                sesionesContainer.innerHTML = \'<div style="margin-top:12px; color:#888; font-size:0.95em; text-align:center;">No hay sesiones para esta semana.</div>\';
+            }
+        } else {
+            sesionesContainer.innerHTML = doc.body.innerHTML;
+        }
+        const startStr = formatDate(weekStart);
+        const endStr = formatDate(weekEnd - 1);
+        sesionLabel.textContent = startStr + " - " + endStr;
+    }
+    prevBtn.addEventListener("click", function(){
+        if(currentWeek > 1) {
+            currentWeek--;
+            filterSesiones(currentWeek);
+        }
+    });
+    nextBtn.addEventListener("click", function(){
+        if(currentWeek < totalWeeks) {
+            currentWeek++;
+            filterSesiones(currentWeek);
+        }
+    });
+    filterSesiones(currentWeek);
+})();
+</script>
+';
 
         // HTML principal del bloque (se añade debajo del carrusel el bloque para las actividades)
 
@@ -587,12 +706,10 @@ $carouselContainer . '
         ' . $activitiesBlockHtml . '
         <!-- Bloques divididos en dos columnas -->
 <div style="display: flex; gap: 20px; margin: 20px 40px;">
-    <div class="udima-maincard" style="width: 50%; box-sizing: border-box;">
-        <h3>Sesiones en directo</h3>
-        <p>Próximamente se mostrarán las sesiones en directo.</p>
+    <div style="width: 50%; box-sizing: border-box;">
+        ' . $sesionesDirecto . '
     </div>
-    <div class="udima-maincard" style="width: 50%; box-sizing: border-box;">
-        <h3>Calendario de actividades</h3>
+    <div style="width: 50%; box-sizing: border-box;">
         ' . $calendarioActividades . '
     </div>
 </div>
@@ -1157,6 +1274,92 @@ document.addEventListener(\'DOMContentLoaded\', function() {
 }
             </style>
             <style>
+            /* Sesiones en directo (igual que calendario, pero .sesiones-directo-*) */
+            .sesiones-directo-maincard {
+                min-height: 180px;
+                display: flex;
+                flex-direction: column;
+                padding: 28px 22px 22px 22px !important;
+                background: #fff;
+                border: 1.5px solid #E2EDE4;
+                border-radius: 3px;
+                box-shadow: 0 2px 14px rgba(89,157,74,0.05);
+            }
+            .sesiones-directo-header {
+                width: 100%;
+                display: flex;
+                align-items: center;
+                justify-content: space-between;
+                margin-bottom: 10px;
+            }
+            .sesiones-directo-header h3 {
+                margin: 0;
+                font-size: 1.19em;
+                font-weight: 600;
+                color: #0C3B2E;
+                letter-spacing: 0.01em;
+            }
+            .sesiones-directo-selector {
+                display: flex;
+                align-items: center;
+                gap: 10px;
+                font-size: 1em;
+                font-weight: 500;
+            }
+            .sesiones-directo-selector button {
+                background: none;
+                border: none;
+                font-size: 1.2em;
+                cursor: pointer;
+                color: #004D35;
+                padding: 2px 10px;
+                border-radius: 5px;
+                transition: background 0.18s, color 0.13s;
+            }
+            .sesiones-directo-selector button:hover {
+                background: #B7C65C;
+                color: #fff;
+            }
+            #sesion-label {
+                min-width: 90px;
+                text-align: center;
+                font-weight: 600;
+                color: #004D35;
+                font-size: 1em;
+                letter-spacing: 0.01em;
+            }
+            .sesiones-directo-container {
+                width: 100%;
+                padding: 0;
+                margin: 0;
+            }
+            #sesiones-list-content ul {
+                padding-left: 0;
+                margin: 0;
+                width: 100%;
+                list-style: none;
+            }
+            #sesiones-list-content li {
+                margin-bottom: 8px;
+                font-size: 1em;
+                display: flex;
+                align-items: center;
+                color: #222;
+            }
+            #sesiones-list-content li a {
+                color: #004D35;
+                text-decoration: none;
+                transition: color 0.14s;
+            }
+            #sesiones-list-content li:hover,
+            #sesiones-list-content li:hover a {
+                color: #B7C65C;
+            }
+            #sesiones-list-content li:hover a {
+                text-decoration: none !important;
+            }
+            </style>
+            <style>
             .bloquecero-header-responsive {
                 position: relative;
                 border-radius: 3px;
@@ -1278,6 +1481,16 @@ document.addEventListener(\'DOMContentLoaded\', function() {
         font-size: 1em;
         padding: 6px 10px;
     }
+}
+    .sesiones-directo-calendaricon {
+    margin-left: 14px;
+    display: inline-block;
+    vertical-align: middle;
+    cursor: pointer;
+    transition: filter 0.17s;
+}
+.sesiones-directo-calendaricon:hover {
+    filter: brightness(1.13) drop-shadow(0 1px 5px #B7C65C33);
 }
             </style>
             
@@ -1460,9 +1673,23 @@ document.addEventListener(\'DOMContentLoaded\', function() {
             <h2 style="margin-top:0;">Bibliography</h2>
         </div>
     </div>
+    <div id="modal-sesiones-todas" style="display:none; position:fixed; z-index:9999; left:0; top:0; width:100vw; height:100vh; background:rgba(0,0,0,0.32); align-items:center; justify-content:center;">
+        <div style="background:#fff; border-radius:10px; padding:28px 24px; min-width:300px; max-width:92vw; box-shadow:0 8px 32px rgba(0,0,0,0.16); position:relative; text-align:left;">
+            <button onclick="document.getElementById(\'modal-sesiones-todas\').style.display=\'none\'" style="position:absolute; top:10px; right:16px; background:none; border:none; font-size:1.3em; color:#999; cursor:pointer;">&times;</button>
+            <h2 style="margin-top:0; font-size:1.15em;">Todas las sesiones en directo</h2>
+            <div id="modal-sesiones-list" style="margin-top:20px; max-height:50vh; overflow-y:auto;"></div>
+        </div>
+    </div>
     ';
 
-    // Añade este script al final del bloque (antes del cierre del último </div>):
+    // PASAR PHP ARRAY DE SESIONES A JS GLOBAL (antes del cierre del div principal)
+    $this->content->text .= '
+    <script>
+    window.bloquecero_sesionesZoom = ' . json_encode($sesionesZoom) . ';
+    </script>
+    ';
+
+    // Añade el script JS para el modal de sesiones fuera de cualquier echo PHP (como HTML, después del modal y antes del cierre del div)
     $this->content->text .= '
     <script>
     document.addEventListener("DOMContentLoaded", function() {
@@ -1474,6 +1701,34 @@ document.addEventListener(\'DOMContentLoaded\', function() {
                 modal.style.display = "flex";
             });
             // Cierra el modal si se hace clic fuera del contenido
+            modal.addEventListener("click", function(e){
+                if(e.target === modal) modal.style.display = "none";
+            });
+        }
+    });
+    </script>
+    <script>
+    document.addEventListener("DOMContentLoaded", function() {
+        var icon = document.querySelector(".sesiones-directo-calendaricon");
+        if (icon) {
+            icon.addEventListener("click", function() {
+                var sesiones = window.bloquecero_sesionesZoom || [];
+                var todas = "";
+                for(var i=0; i<sesiones.length; i++) {
+                    var fecha = new Date(sesiones[i].fecha*1000);
+                    var dateString = fecha.toLocaleDateString() + " " + fecha.toLocaleTimeString().slice(0,5);
+                    todas += \'<div style="display:flex;align-items:center;gap:10px;margin-bottom:12px;">\' +
+                        \'<svg width="18" height="18" viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="16" rx="3" fill="#B7C65C"/><rect x="7" y="9" width="2.5" height="2.5" rx="1" fill="#fff"/><rect x="11" y="9" width="2.5" height="2.5" rx="1" fill="#fff"/><rect x="15" y="9" width="2.5" height="2.5" rx="1" fill="#fff"/><rect x="7" y="13" width="2.5" height="2.5" rx="1" fill="#fff"/><rect x="11" y="13" width="2.5" height="2.5" rx="1" fill="#fff"/><rect x="15" y="13" width="2.5" height="2.5" rx="1" fill="#fff"/></svg>\' +
+                        \'<a href="\' + sesiones[i].url + \'" target="_blank" style="color:#004D35;font-weight:600;">\' + sesiones[i].titulo + \'</a>\' +
+                        \'<span style="color:#666;font-size:0.96em;">(\' + dateString + \')</span></div>\';
+                }
+                document.getElementById("modal-sesiones-list").innerHTML = todas;
+                document.getElementById("modal-sesiones-todas").style.display = "flex";
+            });
+        }
+        // Cierra la modal si haces click fuera
+        var modal = document.getElementById("modal-sesiones-todas");
+        if (modal) {
             modal.addEventListener("click", function(e){
                 if(e.target === modal) modal.style.display = "none";
             });
@@ -1599,6 +1854,102 @@ function expandSectionCard(card) {
                     transform: translateY(0);
                 }
             }
+                /* Calendario de actividades */
+.calendario-actividades-maincard {
+    min-height: 180px;
+    display: flex;
+    flex-direction: column;
+    padding: 28px 22px 22px 22px !important;
+    background: #fff;
+    border: 1.5px solid #E2EDE4;
+    border-radius: 3px;
+    box-shadow: 0 2px 14px rgba(89,157,74,0.05);
+}
+.calendario-actividades-header {
+    width: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 10px;
+}
+.calendario-actividades-header h3 {
+    margin: 0;
+    font-size: 1.19em;
+    font-weight: 600;
+    color: #0C3B2E;
+    letter-spacing: 0.01em;
+}
+.week-selector {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-size: 1em;
+    font-weight: 500;
+}
+.week-selector button {
+    background: none;
+    border: none;
+    font-size: 1.2em;
+    cursor: pointer;
+    color: #004D35;
+    padding: 2px 10px;
+    border-radius: 5px;
+    transition: background 0.18s, color 0.13s;
+}
+.week-selector button:hover {
+    background: #B7C65C;
+    color: #fff;
+}
+#week-label {
+    min-width: 90px;
+    text-align: center;
+    font-weight: 600;
+    color: #004D35;
+    font-size: 1em;
+    letter-spacing: 0.01em;
+}
+.calendario-actividades-container {
+    width: 100%;
+    padding: 0;
+    margin: 0;
+}
+            #activities-week-content ul {
+    padding-left: 0;
+    margin: 0;
+    width: 100%;
+    list-style: none;
+}
+#activities-week-content li {
+    margin-bottom: 8px;
+    font-size: 1em;
+    display: flex;
+    align-items: center;
+    color: #222;
+}
+#activities-week-content li a {
+    color: #004D35;
+    text-decoration: none;
+    transition: color 0.14s;
+}
+#activities-week-content li:hover,
+#activities-week-content li:hover a {
+    color: #B7C65C;
+}
+
+
+.bloquecero-section-activities li a {
+    color: #004D35;
+    text-decoration: none;
+    transition: color 0.14s;
+}
+.bloquecero-section-activities li:hover,
+.bloquecero-section-activities li:hover a {
+    color: #B7C65C;
+}
+#activities-week-content li:hover a,
+.bloquecero-section-activities li:hover a {
+    text-decoration: none !important;
+}
             </style>
 ';
 }
@@ -1627,3 +1978,5 @@ function expandSectionCard(card) {
         return true;
     }
 }
+
+            
