@@ -571,28 +571,12 @@ class block_bloquecero extends block_base {
 
     <!-- Sección de foros y demás secciones -->
     <div style="padding: 0 40px;">
-            <div class="forum-card-group">
-                <!-- Tablón de anuncios -->
-                <a href="' . $forum_anuncios_url . '" style="text-decoration: none; color: inherit; flex: 1;">
-                    <div class="forum-card udima-forum-card">
-                        <h3>Tablón de anuncios</h3>
-                    </div>
-                </a>
-                <!-- Foro de Tutorías -->
-                <a href="' . $forum_tutorias_url . '" style="text-decoration: none; color: inherit; flex: 1;">
-                    <div class="forum-card udima-forum-card">
-                        <h3>Foro de Tutorías</h3>
-                    </div>
-                </a>
-                <!-- Foro de Estudiantes -->
-                <a href="' . $forum_estudiantes_url . '" style="text-decoration: none; color: inherit; flex: 1;">
-                    <div class="forum-card udima-forum-card">
-                        <h3>Foro de Estudiantes</h3>
-                    </div>
-                </a>
-            </div>
-            
+        <div class="bloquecero-tabs">
+            <a href="' . $forum_anuncios_url . '" class="bloquecero-tab">Tablón de anuncios</a>
+            <a href="' . $forum_tutorias_url . '" class="bloquecero-tab">Foro de Tutorías</a>
+            <a href="' . $forum_estudiantes_url . '" class="bloquecero-tab">Foro de Estudiantes</a>
         </div>
+    </div>
         
         <!-- Carrusel de tarjetas de secciones -->
         <div style="text-align: left; padding: 0 40px; margin-bottom: 10px;">
@@ -1039,8 +1023,8 @@ document.addEventListener(\'DOMContentLoaded\', function() {
                 }
                 .udima-menu-link:hover,
                 .udima-menu-link:focus {
-                    color: #1abc9c;
-                    border-bottom: 2.5px solid #1abc9c;
+                    color: #B7C65C;
+                    border-bottom: 2.5px solid #B7C65C;
                     outline: none;
                     background: none;
                 }
@@ -1251,34 +1235,41 @@ document.addEventListener(\'DOMContentLoaded\', function() {
             }
             </style>
             <style>
-            @media (max-width: 900px) {
-                .udima-forum-card {
-                    min-width: 0 !important;
-                    width: 100% !important;
-                    padding: 18px 8px 16px 8px !important;
-                    font-size: 0.97em !important;
-                    box-sizing: border-box;
-                }
-                .forum-card-group {
-                    flex-direction: column !important;
-                    gap: 16px !important;
-                    align-items: stretch !important;
-                }
-            }
-            .forum-card-group {
-                display: flex;
-                justify-content: center;
-                gap: 20px;
-                margin: 20px 0;
-                align-items: stretch;
-            }
-            .udima-forum-card {
-                min-height: 72px;
-                display: flex;
-                flex-direction: column;
-                justify-content: center;
-                align-items: center;
-            }
+.bloquecero-tabs {
+    display: flex;
+    gap: 18px;
+    justify-content: flex-end;
+    margin: 0 0 18px 0;
+}
+.bloquecero-tab {
+    display: flex;
+    align-items: center;
+    padding: 7px 18px;
+    border: none;
+    border-bottom: 2px solid #B7C65C;
+    color: #004D35;
+    font-size: 1.05em;
+    font-weight: 500;
+    border-radius: 4px 4px 0 0;
+    text-decoration: none !important;
+    transition: color 0.13s, border-bottom 0.15s;
+}
+.bloquecero-tab:hover,
+.bloquecero-tab:focus {
+    color: #B7C65C;
+    border-bottom: 2.5px solid #B7C65C;
+}
+@media (max-width: 600px) {
+    .bloquecero-tabs {
+        gap: 8px;
+        flex-wrap: wrap;
+        justify-content: flex-end;
+    }
+    .bloquecero-tab {
+        font-size: 1em;
+        padding: 6px 10px;
+    }
+}
             </style>
             
             <script>
