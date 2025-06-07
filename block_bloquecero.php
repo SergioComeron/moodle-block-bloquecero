@@ -259,7 +259,7 @@ class block_bloquecero extends block_base {
                     font-size: 0.9em;
                     color: #333;
                     border: 1px solid #ddd;
-                    border-radius: 6px;
+                    border-radius: 3px;
                     padding: 15px;
                     background-color: #f9f9f9;
                     box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
@@ -400,7 +400,7 @@ class block_bloquecero extends block_base {
         ';
 
         // Bloque vacío para mostrar las actividades de la sección seleccionada (oculto inicialmente)
-        $activitiesBlockHtml = '<div id="section-activities-container" style="margin: 20px 40px; text-align: left; font-size: 0.9em; color: #333; border: 1px solid #ddd; border-radius: 6px; padding: 15px; background-color: #f9f9f9; box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1); display: none;"></div>';
+        $activitiesBlockHtml = '<div id="section-activities-container" style="margin: 20px 40px; text-align: left; font-size: 0.9em; color: #333; border: 1px solid #ddd; border-radius: 3px; padding: 15px; background-color: #f9f9f9; box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1); display: none;"></div>';
 
         // Inyectar la definición del array de actividades en JavaScript
         $sectionsActivitiesJson = json_encode($sectionsActivitiesData);
@@ -713,7 +713,7 @@ document.addEventListener(\'DOMContentLoaded\', function() {
                     background: #fff;
                     color: #004D35;
                     border: 2px solid #004D35;
-                    border-radius: 6px;
+                    border-radius: 3px;
                     padding: 10px 20px;
                     font-weight: 600;
                     gap: 10px;
@@ -860,7 +860,7 @@ document.addEventListener(\'DOMContentLoaded\', function() {
                 .udima-card {
                     background: #fff !important;
                     border: 1.5px solid #E2EDE4 !important;
-                    border-radius: 6px !important;
+                    border-radius: 3px !important;
                     box-shadow: 0 2px 14px rgba(89,157,74,0.05);
                     color: #0C3B2E !important;
                     font-family: \'Inter\', Arial, sans-serif;
@@ -879,7 +879,7 @@ document.addEventListener(\'DOMContentLoaded\', function() {
                 .udima-forum-card {
                     background: #fff !important;
                     border: 1.5px solid #E2EDE4 !important;
-                    border-radius: 6px !important;
+                    border-radius: 3px !important;
                     box-shadow: 0 2px 14px rgba(89,157,74,0.05);
                     color: #0C3B2E !important;
                     font-family: \'Inter\', Arial, sans-serif;
@@ -955,7 +955,7 @@ document.addEventListener(\'DOMContentLoaded\', function() {
                 .udima-maincard {
                     background: #fff !important;
                     border: 1.5px solid #E2EDE4 !important;
-                    border-radius: 6px !important;
+                    border-radius: 3px !important;
                     box-shadow: 0 2px 14px rgba(89,157,74,0.05);
                     color: #0C3B2E !important;
                     font-family: \'Inter\', Arial, sans-serif;
@@ -1006,7 +1006,7 @@ document.addEventListener(\'DOMContentLoaded\', function() {
                 }
                 .udima-menu-bar::-webkit-scrollbar-thumb {
                     background: #B7C65C;
-                    border-radius: 6px;
+                    border-radius: 3px;
                 }
                 .udima-menu-bar::-webkit-scrollbar-track {
                     background: #f0f0f0;
@@ -1101,7 +1101,7 @@ document.addEventListener(\'DOMContentLoaded\', function() {
                     margin-top: 1px;
                 }
                     .bloquecero-section-card {
-    border-radius: 12px;
+    border-radius: 3px;
     box-shadow: 0 2px 12px rgba(185,200,160,0.10);
     padding: 18px 16px 16px 16px;
     margin: 0 8px 24px 0;
@@ -1165,7 +1165,7 @@ document.addEventListener(\'DOMContentLoaded\', function() {
             <style>
             .bloquecero-header-responsive {
                 position: relative;
-                border-radius: 12px;
+                border-radius: 3px;
                 overflow: hidden;
                 margin-bottom: 20px;
                 width: 100%;
