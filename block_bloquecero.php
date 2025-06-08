@@ -365,7 +365,7 @@ class block_bloquecero extends block_base {
             // Badge destacado si corresponde
             $badge = null;
             if ($format === 'weeks' && $section->section == $todaysection) {
-                $badge = 'Hoy';
+                $badge = 'Actual';
             } else if ($format === 'topics' && $section->section == $highlightedsection) {
                 $badge = 'Destacada';
             }
