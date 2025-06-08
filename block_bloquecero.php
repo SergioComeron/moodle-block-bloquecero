@@ -528,7 +528,7 @@ class block_bloquecero extends block_base {
         }
         const startStr = formatDate(weekStart);
         const endStr = formatDate(weekEnd - 1);
-        weekLabel.textContent = startStr + " - " + endStr;
+        weekLabel.innerHTML = startStr + "<br>" + endStr;
     }
     prevBtn.addEventListener("click", function(){
         if(currentWeek > 1) {
@@ -623,7 +623,7 @@ class block_bloquecero extends block_base {
         }
         const startStr = formatDate(weekStart);
         const endStr = formatDate(weekEnd - 1);
-        sesionLabel.textContent = startStr + " - " + endStr;
+        sesionLabel.innerHTML = startStr + "<br>" + endStr;
     }
     prevBtn.addEventListener("click", function(){
         if(currentWeek > 1) {
@@ -647,10 +647,21 @@ class block_bloquecero extends block_base {
         $this->content->text =
             '<link href="https://fonts.googleapis.com/css?family=Inter:700,600,400&display=swap" rel="stylesheet">
             <style>
-                /* Asegurar que el encabezado del bloque se alinee a la izquierda */
-                .block_bloquecero .header {
-                    text-align: left !important;
-                }
+            .week-selector,
+            .sesiones-directo-selector {
+                display: flex;
+                align-items: center;
+                gap: 10px;
+                font-size: 0.93em;
+                font-weight: 500;
+                flex-shrink: 1;
+                min-width: 40px;
+                max-width: 180px;
+            }
+            /* Asegurar que el encabezado del bloque se alinee a la izquierda */
+            .block_bloquecero .header {
+                text-align: left !important;
+            }
             </style>
             <div class="udima-menu-bar">
     <a href="' . new moodle_url('/grade/report/user/index.php', array('id' => $COURSE->id)) . '" class="udima-menu-link">
@@ -705,7 +716,7 @@ $carouselContainer . '
         <!-- Bloque para mostrar las actividades de la sección seleccionada -->
         ' . $activitiesBlockHtml . '
         <!-- Bloques divididos en dos columnas -->
-<div style="display: flex; gap: 20px; margin: 20px 40px;">
+<div class="bloquecero-maincards-row">
     <div style="width: 50%; box-sizing: border-box;">
         ' . $sesionesDirecto . '
     </div>
@@ -713,6 +724,88 @@ $carouselContainer . '
         ' . $calendarioActividades . '
     </div>
 </div>
+            <style>
+@media (max-width: 900px) {
+  .udima-maincard, .sesiones-directo-maincard {
+    padding: 18px 10px !important;
+    font-size: 0.97em;
+    min-width: 0;
+  }
+  .calendario-actividades-header,
+  .sesiones-directo-header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 2px;
+  }
+  .calendario-actividades-header h3,
+  .sesiones-directo-header h3 {
+    font-size: 1.07em;
+    margin-bottom: 2px;
+  }
+  .week-selector,
+  .sesiones-directo-selector {
+    margin-left: 0 !important;
+    font-size: 0.95em;
+    max-width: 100%;
+    white-space: nowrap;
+  }
+}
+@media (max-width: 660px) {
+  .bloquecero-maincards-row {
+    flex-direction: column !important;
+    gap: 10px !important;
+  }
+  .bloquecero-maincards-row > div {
+    width: 100% !important;
+    margin-bottom: 14px;
+  }
+  .udima-maincard,
+  .sesiones-directo-maincard {
+    font-size: 0.96em;
+    padding: 12px 4px !important;
+    min-width: 0;
+  }
+  .calendario-actividades-header,
+  .sesiones-directo-header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 2px;
+    width: 100%;
+  }
+  .calendario-actividades-header h3,
+  .sesiones-directo-header h3 {
+    font-size: 0.99em;
+    margin-bottom: 2px;
+  }
+  .week-selector,
+  .sesiones-directo-selector {
+    font-size: 0.94em;
+    margin-left: 0 !important;
+    max-width: 100%;
+    white-space: nowrap;
+  }
+}
+@media (max-width: 500px) {
+  .calendario-actividades-header h3,
+  .sesiones-directo-header h3 {
+    font-size: 0.92em;
+    margin-bottom: 0;
+    white-space: normal;
+  }
+  .week-selector,
+  .sesiones-directo-selector {
+    font-size: 0.92em;
+    margin-left: 0 !important;
+    max-width: 100%;
+    white-space: normal;
+  }
+}
+.bloquecero-maincards-row {
+  display: flex;
+  gap: 20px;
+  margin: 20px 40px;
+}
+            </style>
         ' . $togglebuttonhtml . '
 <script>
 window.bloquecero_toggle = function() {
@@ -1285,11 +1378,45 @@ document.addEventListener(\'DOMContentLoaded\', function() {
                 border-radius: 3px;
                 box-shadow: 0 2px 14px rgba(89,157,74,0.05);
             }
-            .sesiones-directo-header {
-                width: 100%;
+            .calendario-actividades-header {
                 display: flex;
                 align-items: center;
                 justify-content: space-between;
+                gap: 8px;
+                min-width: 0;
+                width: 100%;
+                margin-bottom: 10px;
+                flex-wrap: nowrap;
+            }
+            .calendario-actividades-header h3 {
+                margin: 0;
+                font-size: 1.19em;
+                font-weight: 600;
+                color: #0C3B2E;
+                letter-spacing: 0.01em;
+                white-space: nowrap;
+                min-width: 0;
+            }
+            /* .week-selector y .sesiones-directo-selector: regla conjunta arriba */
+            #week-label {
+                white-space: nowrap;
+                text-align: center;
+                line-height: 1.14;
+                font-size: 0.75em;
+                min-width: 58px;
+                max-width: 100px;
+                font-weight: 600;
+                color: #004D35;
+                letter-spacing: 0.01em;
+            }
+            .sesiones-directo-header {
+                display: flex;
+                align-items: center;
+                justify-content: space-between;
+                flex-wrap: nowrap;
+                gap: 8px;
+                min-width: 0;
+                width: 100%;
                 margin-bottom: 10px;
             }
             .sesiones-directo-header h3 {
@@ -1298,15 +1425,12 @@ document.addEventListener(\'DOMContentLoaded\', function() {
                 font-weight: 600;
                 color: #0C3B2E;
                 letter-spacing: 0.01em;
+                white-space: nowrap;
+                min-width: 0;
             }
-            .sesiones-directo-selector {
-                display: flex;
-                align-items: center;
-                gap: 10px;
-                font-size: 1em;
-                font-weight: 500;
-            }
-            .sesiones-directo-selector button {
+            /* .week-selector y .sesiones-directo-selector: regla conjunta arriba */
+            .sesiones-directo-selector button,
+            .week-selector button {
                 background: none;
                 border: none;
                 font-size: 1.2em;
@@ -1316,16 +1440,20 @@ document.addEventListener(\'DOMContentLoaded\', function() {
                 border-radius: 5px;
                 transition: background 0.18s, color 0.13s;
             }
-            .sesiones-directo-selector button:hover {
+            .sesiones-directo-selector button:hover,
+            .week-selector button:hover {
                 background: #B7C65C;
                 color: #fff;
             }
             #sesion-label {
-                min-width: 90px;
+                white-space: nowrap;
                 text-align: center;
+                line-height: 1.14;
+                font-size: 0.75em;
+                min-width: 58px;
+                max-width: 100px;
                 font-weight: 600;
                 color: #004D35;
-                font-size: 1em;
                 letter-spacing: 0.01em;
             }
             .sesiones-directo-container {
@@ -1358,9 +1486,31 @@ document.addEventListener(\'DOMContentLoaded\', function() {
             #sesiones-list-content li:hover a {
                 text-decoration: none !important;
             }
+            /* Forzar tamaño de fuente en spans y botones de week-selector y sesiones-directo-selector */
+            .week-selector span,
+            .sesiones-directo-selector span {
+                font-size: 0.93em !important;
+            }
+            .week-selector button,
+            .sesiones-directo-selector button {
+                font-size: 0.93em !important;
+            }
             </style>
             <style>
             .bloquecero-header-responsive {
+            .calendario-actividades-header .week-selector,
+            .sesiones-directo-header .sesiones-directo-selector {
+                font-size: 0.93em !important;
+            }
+            .calendario-actividades-maincard,
+            .sesiones-directo-maincard {
+                font-size: 1em !important;
+                background: rgba(255, 0, 0, 0.84);  // solo para depuración visual, puedes quitarlo después */
+            }
+            .calendario-actividades-header .week-selector,
+            .sesiones-directo-header .sesiones-directo-selector {
+                font-size: 1em !important;
+            }
                 position: relative;
                 border-radius: 3px;
                 overflow: hidden;
@@ -1950,6 +2100,11 @@ function expandSectionCard(card) {
 .bloquecero-section-activities li:hover a {
     text-decoration: none !important;
 }
+    #week-label, #sesion-label {
+                white-space: pre-line;
+                text-align: center;
+                line-height: 1.14;
+            }
             </style>
 ';
 }
@@ -1979,4 +2134,5 @@ function expandSectionCard(card) {
     }
 }
 
+            
             
