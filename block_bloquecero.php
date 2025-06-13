@@ -223,31 +223,8 @@ class block_bloquecero extends block_base {
         foreach ($teachersP as $teacher) {
             $uniqueId = 'contact-info-' . $teacher->id;
             $teachersList[] = '
-                <button style="
-                    background: none;
-                    border: none;
-                    color: #004D35;
-                    font-size: 1em;
-                    cursor: pointer;
-                    padding: 0;
-                    margin: 0;
-                    display: inline-flex;
-                    align-items: center;
-                    transition: color 0.3s ease;
-                " onmouseover="this.style.color=\'#1abc9c\'" onmouseout="this.style.color=\'#004D35\'" onclick="toggleContactInfo(\'' . $uniqueId . '\')">
+                <button class="bloquecero-teacher-btn" type="button" onclick="toggleContactInfo(\'' . $uniqueId . '\')">
                     <span>' . format_string($teacher->fullname) . '</span>
-                    <span style="
-                        display: inline-flex;
-                        align-items: center;
-                        justify-content: center;
-                        width: 22px;
-                        height: 22px;
-                        margin-left: 6px;
-                        background: #1abc9c;
-                        color: #fff;
-                        border-radius: 50%;
-                        font-size: 0.85em;
-                    ">i</span>
                 </button>';
 
             // Bloque de información de contacto para este profesor (oculto por defecto).
@@ -302,7 +279,7 @@ class block_bloquecero extends block_base {
         foreach ($modinfo->get_section_info_all() as $section) {
             if ($section->section == 0) continue;
             if (!$section->uservisible) continue;
-
+            $sectionurl = new moodle_url('/course/view.php', ['id' => $COURSE->id, 'section' => $section->section]);
             $course = $modinfo->get_course();
             if ($course->format == 'weeks' && empty($section->name)) {
                 $startdate = $course->startdate;
@@ -339,7 +316,10 @@ class block_bloquecero extends block_base {
             $activities_preview = array_slice($all_activities_array, 0, $maxactivities);
             $remaining = count($all_activities_array) - $maxactivities;
             if ($remaining > 0) {
-                $activities_preview[] = '<li class="bloquecero-vermas">+' . $remaining . ' más</li>';
+                // $activities_preview[] = '<li class="bloquecero-vermas">+' . $remaining . ' más</li>';
+                    $activities_preview[] = '<li class="bloquecero-vermas"><button type="button" class="bloquecero-vermas-btn" onclick="toggleSectionCard(this)">+' . $remaining . ' más</button></li>';
+                $all_activities_array[] = '<li class="bloquecero-vermas"><button type="button" class="bloquecero-vermas-btn" onclick="toggleSectionCard(this)">mostrar menos</button></li>';
+
             }
             $activitieslist = '<ul class="bloquecero-section-activities" data-preview="1" style="margin: 12px 0 0 0; padding-left: 0; list-style: none;">' . implode('', $activities_preview) . '</ul>';
             $activitieslist_full = '<ul class="bloquecero-section-activities" data-full="1" style="margin: 12px 0 0 0; padding-left: 0; list-style: none; display:none;">' . implode('', $all_activities_array) . '</ul>';
@@ -371,18 +351,19 @@ class block_bloquecero extends block_base {
             }
 
             // Construir la tarjeta como string (con badge si corresponde)
-            $card_html = '<div class="bloquecero-section-card" style="background: '.$bg_color.'" onclick="expandSectionCard(this)">';
-            if ($badge) {
-                $card_html .= '<span class="bloquecero-section-badge">' . $badge . '</span>';
-            }
+            $card_html = '<div class="bloquecero-section-card" style="background: '.$bg_color.'">';
             $card_html .= '
-    <div class="bloquecero-section-number" style="margin-bottom:8px;">'. $sectiontitle .'</div>
-    <div class="bloquecero-section-line" style="background: '.$line_color.'; margin-bottom:12px;"></div>
-    <div class="bloquecero-section-content">
-        '.$activitieslist.'
-        '.$activitieslist_full.'
-    </div>
-</div>';
+                <div class="bloquecero-section-header-flex" style="display:flex;align-items:center;justify-content:space-between;width:100%;gap:12px;margin-bottom:8px;">
+                    <div class="bloquecero-section-number" style="flex:1 1 auto;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">'. $sectiontitle .'</div>'
+                    . ($badge ? '<span class="bloquecero-section-badge">' . $badge . '</span>' : '') . '
+                </div>
+                <div class="bloquecero-section-line" style="background: '.$line_color.'; margin-bottom:12px;"></div>
+                <div class="bloquecero-section-content">
+                    '.$activitieslist.'
+                    '.$activitieslist_full.'
+                </div>
+            </div>';
+            
             // Añadir todas las tarjetas al mismo array, sin separar.
             $section_cards[] = $card_html;
             $sectioncount++;
@@ -664,7 +645,7 @@ class block_bloquecero extends block_base {
             }
             </style>
             <div class="udima-menu-bar">
-    <a href="' . new moodle_url('/grade/report/user/index.php', array('id' => $COURSE->id)) . '" class="udima-menu-link">
+    <a href="' . new moodle_url('/grade/report/grader/index.php', array('id' => $COURSE->id)) . '" class="udima-menu-link">
         ' . $OUTPUT->pix_icon('t/grades', '', 'moodle', ['class' => 'menu-icon']) . '
         <span>Calificaciones</span>
     </a>
@@ -890,10 +871,28 @@ document.addEventListener(\'DOMContentLoaded\', function() {
 });
 </script>
             <style>
+            .bloquecero-section-header-flex {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            width: 100%;
+            gap: 12px;
+            margin-bottom: 8px;
+        }
+        .bloquecero-section-number {
+            flex: 1 1 auto;
+            min-width: 0;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
             .bloquecero-section-badge {
-                position: absolute;
+                position: static !important;
+                margin-left: 10px;
+                flex-shrink: 0;
+                top: auto;
+                right: auto;
                 top: 10px;
-                right: 16px;
                 background: #B7C65C;
                 color: #fff;
                 font-weight: 600;
@@ -1595,6 +1594,26 @@ document.addEventListener(\'DOMContentLoaded\', function() {
                     min-height: 48px;
                 }
             }
+
+            .bloquecero-teacher-btn {
+                background: none;
+                border: none;
+                color: #004D35;
+                font-size: 1em;
+                cursor: pointer;
+                padding: 0 2px;
+                margin: 0 2px;
+                display: inline;
+                font-weight: 500;
+                transition: color 0.18s;
+                font-family: inherit;
+                outline: none;
+            }
+            .bloquecero-teacher-btn:hover,
+            .bloquecero-teacher-btn:focus {
+                color: #B7C65C;
+                text-decoration: underline;
+            }
             </style>
             <style>
 .bloquecero-tabs {
@@ -1810,6 +1829,27 @@ document.addEventListener(\'DOMContentLoaded\', function() {
                     }
                     updateCarouselArrows();
                 });
+function toggleSectionCard(btn) {
+    // Encuentra la tarjeta de sección correspondiente
+    var card = btn.closest(\'.bloquecero-section-card\');
+    var preview = card.querySelector(\'.bloquecero-section-activities[data-preview="1"]\');
+    var full = card.querySelector(\'.bloquecero-section-activities[data-full="1"]\');
+    // Si está expandida, colapsa
+    if (card.classList.contains(\'expanded\')) {
+        if (preview && full) {
+            preview.style.display = "block";
+            full.style.display = "none";
+        }
+        card.classList.remove("expanded");
+    } else {
+        // Si está colapsada, expande
+        if (preview && full) {
+            preview.style.display = "none";
+            full.style.display = "block";
+        }
+        card.classList.add("expanded");
+    }
+}
             </script>
         </div>
     ';
@@ -2105,6 +2145,19 @@ function expandSectionCard(card) {
                 text-align: center;
                 line-height: 1.14;
             }
+                .bloquecero-vermas-btn {
+    background: none;
+    border: none;
+    color: #6FA24A;
+    font-weight: 500;
+    cursor: pointer;
+    font-size: 1em;
+    padding: 0;
+}
+.bloquecero-vermas-btn:hover {
+    text-decoration: underline;
+    color: #004D35;
+}
             </style>
 ';
 }

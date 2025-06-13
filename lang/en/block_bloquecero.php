@@ -47,3 +47,5 @@ $string['userphone'] = 'Teacher phone number';
 $string['userphone_help'] = 'Enter your phone number to display it in the teacher profile.';
 $string['userschedule'] = 'Office hours';
 $string['userschedule_help'] = 'Enter your office hours to display them in the teacher profile.';
+$string['bloquecero:addinstance'] = 'Add a new Block zero block';
+$string['bloquecero:myaddinstance'] = 'Add a new Block zero block to the My Moodle page';
