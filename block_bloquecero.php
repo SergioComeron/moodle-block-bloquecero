@@ -688,15 +688,7 @@ class block_bloquecero extends block_base {
             <a href="' . $forum_estudiantes_url . '" class="bloquecero-tab">Foro de Estudiantes</a>
         </div>
     </div>
-        
-        <!-- Carrusel de tarjetas de secciones -->
-        <div style="text-align: left; padding: 0 40px; margin-bottom: 10px;">
-<h3 style="color: #004D35; margin-top: 0;">Secciones del curso</h3>
-</div>' .
-$carouselContainer . '
-        <!-- Bloque para mostrar las actividades de la sección seleccionada -->
-        ' . $activitiesBlockHtml . '
-        <!-- Bloques divididos en dos columnas -->
+                <!-- Bloques divididos en dos columnas -->
 <div class="bloquecero-maincards-row">
     <div style="width: 50%; box-sizing: border-box;">
         ' . $sesionesDirecto . '
@@ -705,6 +697,14 @@ $carouselContainer . '
         ' . $calendarioActividades . '
     </div>
 </div>
+        <!-- Carrusel de tarjetas de secciones -->
+        <div style="text-align: left; padding: 0 40px; margin-bottom: 10px;">
+<h3 style="color: #004D35; margin-top: 0;">Secciones del curso</h3>
+</div>' .
+$carouselContainer . '
+        <!-- Bloque para mostrar las actividades de la sección seleccionada -->
+        ' . $activitiesBlockHtml . '
+
             <style>
 @media (max-width: 900px) {
   .udima-maincard, .sesiones-directo-maincard {
