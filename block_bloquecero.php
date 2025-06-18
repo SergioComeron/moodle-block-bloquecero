@@ -787,7 +787,7 @@ $carouselContainer . '
   margin: 20px 40px;
 }
             </style>
-        ' . $togglebuttonhtml . '
+        ' . ((has_capability('block/bloquecero:viewcourse', $coursecontext)) ? $togglebuttonhtml : '') . '
 <script>
 window.bloquecero_toggle = function() {
     var btn = document.getElementById(\'bloquecero-mostrarcurso-btn\');
