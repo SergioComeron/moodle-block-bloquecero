@@ -22,6 +22,8 @@
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 require_once($CFG->dirroot.'/course/format/weeks/lib.php');
+require_once($CFG->dirroot . '/mod/forum/lib.php');
+
 
 // Función para obtener la fecha de inicio de un cm según su tipo
 function get_cm_start_date($cm) {
@@ -54,12 +56,18 @@ class block_bloquecero extends block_base {
 
     public function get_content() {
         global $COURSE, $DB, $USER, $CFG, $OUTPUT, $PAGE;
+        $section = optional_param('section', 0, PARAM_INT);
 
+        if ($section > 0) {
+            // Estamos en una sección, no mostrar el bloque
+            return;
+        }
         // Oculta el bloque si no estamos en la página principal del curso (ni en weeks ni en topics)
         $pagetype = $PAGE->pagetype;
         if ($pagetype !== 'course-view-weeks' && $pagetype !== 'course-view-topics' && $pagetype !== 'course-view') {
             return null;
         }
+
         
         $is_editing = $PAGE->user_is_editing();
 
@@ -147,13 +155,26 @@ class block_bloquecero extends block_base {
         // URLs de los foros y demás secciones
         $forum_anuncios_url = '#';
         if (!empty($this->config->forumid)) {
-            $forum_anuncios_url = new moodle_url('/mod/forum/view.php', array('id' => $this->config->forumid));
+            $id_forum_anuncios = $this->config->forumid;
+            $cm_forum_anuncios = get_coursemodule_from_instance('forum', $id_forum_anuncios);
+            $forum_anuncios_url = new moodle_url('/mod/forum/view.php', array('id' => $id_forum_anuncios));
+            $count_anuncios = forum_get_discussions_unread($cm_forum_anuncios);
         }
+
         $forum_tutorias_url = '#';
         if (!empty($this->config->forumtutoriasid)) {
-            $forum_tutorias_url = new moodle_url('/mod/forum/view.php', array('id' => $this->config->forumtutoriasid));
+            $id_forum_tutorias = $this->config->forumtutoriasid;
+            $cm_forum_tutorias = get_coursemodule_from_instance('forum', $id_forum_tutorias);
+            $forum_tutorias_url = new moodle_url('/mod/forum/view.php', array('id' => $id_forum_tutorias));
+            $count_tutorias = forum_get_discussions_unread($cm_forum_tutorias);
         }
-        $forum_estudiantes_url = new moodle_url('/mod/forum/view.php', array('id' => $this->config->forumestudiantesid));
+
+        if (!empty($this->config->forumestudiantesid)) {
+            $id_forum_estudiantes = $this->config->forumestudiantesid;
+            $cm_forum_estudiantes = get_coursemodule_from_instance('forum', $id_forum_estudiantes);
+            $forum_estudiantes_url = new moodle_url('/mod/forum/view.php', array('id' => $id_forum_estudiantes));
+            $count_estudiantes = forum_get_discussions_unread($cm_forum_estudiantes);
+        }
         $guide_url = !empty($this->config->guide_url) ? $this->config->guide_url : '#';
         // $bibliography_url = !empty($this->config->bibliography_url) ? $this->config->bibliography_url : '#';
 
@@ -301,16 +322,54 @@ class block_bloquecero extends block_base {
             $visibleactivities = 0;
             $totalactivities = 0;
             $all_activities_array = [];
-
+            // print_r($modinfo);
             if (!empty($modinfo->sections[$section->section])) {
-                foreach ($modinfo->sections[$section->section] as $cmid) {
-                    $cm = $modinfo->cms[$cmid];
-                    if (!$cm->uservisible) continue;
-                    $icon = $OUTPUT->pix_icon('icon', $cm->modfullname, $cm->modname, ['class' => 'activityicon']);
-                    $all_activities_array[] = '<li>' . $icon . ' <a href="' . $cm->url . '">' . format_string($cm->name) . '</a></li>';
-                    $visibleactivities++;
-                    $totalactivities++;
+                // Crear un mapa de secciones por ID usando get_section_info_all()
+$section_map = [];
+foreach ($modinfo->get_section_info_all() as $section_info) {
+    $section_map[$section_info->id] = $section_info;
+}
+
+foreach ($modinfo->sections[$section->section] as $cmid) {
+    $cm = $modinfo->cms[$cmid];
+
+    if (!$cm->uservisible) continue; // Saltar módulos no visibles para el usuario
+
+    if ($cm->modname !== 'subsection') {
+        // Actividad normal (no subsección)
+        $icon = $OUTPUT->pix_icon('icon', $cm->modfullname, $cm->modname, ['class' => 'activityicon']);
+        $all_activities_array[] = '<li>' . $icon . ' <a href="' . $cm->url . '">' . format_string($cm->name) . '</a></li>';
+        $visibleactivities++;
+        $totalactivities++;
+    } else {
+        // Subsección encontrada
+        if (!empty($cm->name)) {
+            // Añadir el nombre de la subsección con estilo
+            $all_activities_array[] = '<li class="bloquecero-subsection-name" style="font-weight:600; color:#004D35; margin:8px 0 4px 0;">' . format_string($cm->name) . '</li>';
+
+            // Obtener la sección vinculada a la subsección
+            $subsection_id = $cm->customdata['sectionid'] ?? null;
+            if ($subsection_id && isset($section_map[$subsection_id])) {
+                $subsection = $section_map[$subsection_id];
+
+                // Listar las actividades dentro de la subsección con sangría
+                if (!empty($modinfo->sections[$subsection->section])) {
+                    foreach ($modinfo->sections[$subsection->section] as $sub_cmid) {
+                        $sub_cm = $modinfo->cms[$sub_cmid];
+                        if (!$sub_cm->uservisible) continue; // Saltar actividades no visibles
+
+                        // Generar el icono y el enlace para la actividad de la subsección
+                        $sub_icon = $OUTPUT->pix_icon('icon', $sub_cm->modfullname, $sub_cm->modname, ['class' => 'activityicon']);
+                        // Añadir sangría con una clase CSS
+                        $all_activities_array[] = '<li class="bloquecero-subsection-activity" style="margin-left: 20px;">' . $sub_icon . ' <a href="' . $sub_cm->url . '">' . format_string($sub_cm->name) . '</a></li>';
+                        $visibleactivities++;
+                        $totalactivities++;
+                    }
                 }
+            }
+        }
+    }
+}
             }
             // Generar previews y full lists
             $activities_preview = array_slice($all_activities_array, 0, $maxactivities);
@@ -354,7 +413,7 @@ class block_bloquecero extends block_base {
             $card_html = '<div class="bloquecero-section-card" style="background: '.$bg_color.'">';
             $card_html .= '
                 <div class="bloquecero-section-header-flex" style="display:flex;align-items:center;justify-content:space-between;width:100%;gap:12px;margin-bottom:8px;">
-                    <div class="bloquecero-section-number" style="flex:1 1 auto;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">'. $sectiontitle .'</div>'
+                    <div class="bloquecero-section-number" style="flex:1 1 auto;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;"><a href="'. $sectionurl .'" class="bloquecero-section-number">'. $sectiontitle .'</a></div>'
                     . ($badge ? '<span class="bloquecero-section-badge">' . $badge . '</span>' : '') . '
                 </div>
                 <div class="bloquecero-section-line" style="background: '.$line_color.'; margin-bottom:12px;"></div>
@@ -381,7 +440,7 @@ class block_bloquecero extends block_base {
         ';
 
         // Bloque vacío para mostrar las actividades de la sección seleccionada (oculto inicialmente)
-        $activitiesBlockHtml = '<div id="section-activities-container" style="margin: 20px 40px; text-align: left; font-size: 0.9em; color: #333; border: 1px solid #ddd; border-radius: 3px; padding: 15px; background-color: #f9f9f9; box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1); display: none;"></div>';
+        // $activitiesBlockHtml = '<div id="section-activities-container" style="margin: 20px 40px; text-align: left; font-size: 0.9em; color: #333; border: 1px solid #ddd; border-radius: 3px; padding: 15px; background-color: #f9f9f9; box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1); display: none;"></div>';
 
         // Inyectar la definición del array de actividades en JavaScript
         $sectionsActivitiesJson = json_encode($sectionsActivitiesData);
@@ -683,9 +742,24 @@ class block_bloquecero extends block_base {
     <!-- Sección de foros y demás secciones -->
     <div style="padding: 0 40px;">
         <div class="bloquecero-tabs">
-            <a href="' . $forum_anuncios_url . '" class="bloquecero-tab">Tablón de anuncios</a>
-            <a href="' . $forum_tutorias_url . '" class="bloquecero-tab">Foro de Tutorías</a>
-            <a href="' . $forum_estudiantes_url . '" class="bloquecero-tab">Foro de Estudiantes</a>
+            <a href="' . $forum_anuncios_url . '" class="bloquecero-tab">
+                Tablón de anuncios'
+                    . (isset($count_anuncios) && is_array($count_anuncios) && array_sum($count_anuncios) > 0
+                        ? ' <span style="display:inline-block;min-width:22px;height:22px;line-height:22px;background:#B7C65C;color:#fff;font-weight:600;font-size:0.98em;border-radius:50%;text-align:center;margin-left:7px;vertical-align:middle;">' . array_sum($count_anuncios) . '</span>'
+                        : '') . '
+            </a>
+            <a href="' . $forum_tutorias_url . '" class="bloquecero-tab">
+                Foro de Tutorías'
+                . (isset($count_tutorias) && is_array($count_tutorias) && array_sum($count_tutorias) > 0
+                    ? ' <span style="display:inline-block;min-width:22px;height:22px;line-height:22px;background:#B7C65C;color:#fff;font-weight:600;font-size:0.98em;border-radius:50%;text-align:center;margin-left:7px;vertical-align:middle;">' . array_sum($count_tutorias) . '</span>'
+                    : '') . '
+            </a>
+            <a href="' . $forum_estudiantes_url . '" class="bloquecero-tab">
+                Foro de Estudiantes'
+                . (isset($count_estudiantes) && is_array($count_estudiantes) && array_sum($count_estudiantes) > 0
+                    ? ' <span style="display:inline-block;min-width:22px;height:22px;line-height:22px;background:#B7C65C;color:#fff;font-weight:600;font-size:0.98em;border-radius:50%;text-align:center;margin-left:7px;vertical-align:middle;">' . array_sum($count_estudiantes) . '</span>'
+                    : '') . '
+            </a>
         </div>
     </div>
                 <!-- Bloques divididos en dos columnas -->
@@ -702,8 +776,7 @@ class block_bloquecero extends block_base {
 <h3 style="color: #004D35; margin-top: 0;">Secciones del curso</h3>
 </div>' .
 $carouselContainer . '
-        <!-- Bloque para mostrar las actividades de la sección seleccionada -->
-        ' . $activitiesBlockHtml . '
+
 
             <style>
 @media (max-width: 900px) {
@@ -879,13 +952,13 @@ document.addEventListener(\'DOMContentLoaded\', function() {
             gap: 12px;
             margin-bottom: 8px;
         }
-        .bloquecero-section-number {
-            flex: 1 1 auto;
-            min-width: 0;
-            overflow: hidden;
-            text-overflow: ellipsis;
-            white-space: nowrap;
-        }
+        // .bloquecero-section-number {
+        //     flex: 1 1 auto;
+        //     min-width: 0;
+        //     overflow: hidden;
+        //     text-overflow: ellipsis;
+        //     white-space: nowrap;
+        // }
             .bloquecero-section-badge {
                 position: static !important;
                 margin-left: 10px;
@@ -1327,11 +1400,28 @@ document.addEventListener(\'DOMContentLoaded\', function() {
     margin-bottom: 28px;
 }
 .bloquecero-section-number {
-    font-size: 0.9em;
+    font-size: 1.0em;
     font-weight: 400;
     color: #B7C65C;
     flex: none;
     letter-spacing: 0.05em;
+}
+.bloquecero-section-number,
+.bloquecero-section-number:link,
+.bloquecero-section-number:visited {
+    font-size: 1.0em;
+    font-weight: 400;
+    color: #B7C65C;
+    flex: none;
+    letter-spacing: 0.05em;
+    text-decoration: none;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+.bloquecero-section-number:hover,
+.bloquecero-section-number:focus {
+    color: #A0B34F; /* Opcional: color al pasar el mouse */
 }
 .bloquecero-section-line {
     width: 100%;
