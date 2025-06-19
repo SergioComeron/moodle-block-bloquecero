@@ -477,7 +477,7 @@ foreach ($modinfo->sections[$section->section] as $cmid) {
 
         // --- Calcular el selector de semanas usando las fechas del curso ---
         $courseStart = $COURSE->startdate;
-        $courseEnd = (!empty($COURSE->enddate)) ? $COURSE->enddate : time();
+
         $weeks = ceil(($courseEnd - $courseStart) / (7 * 24 * 60 * 60));
         $options = '';
         for ($i = 1; $i <= $weeks; $i++) {
