@@ -57,10 +57,9 @@ class block_bloquecero extends block_base {
     public function get_content() {
         global $COURSE, $DB, $USER, $CFG, $OUTPUT, $PAGE;
         $section = optional_param('section', 0, PARAM_INT);
-
         if ($section > 0) {
             // Estamos en una sección, no mostrar el bloque
-            return;
+            return null;
         }
         // Oculta el bloque si no estamos en la página principal del curso (ni en weeks ni en topics)
         $pagetype = $PAGE->pagetype;
@@ -859,6 +858,7 @@ $carouselContainer . '
   gap: 20px;
   margin: 20px 40px;
 }
+
             </style>
         ' . ((has_capability('block/bloquecero:viewcourse', $coursecontext)) ? $togglebuttonhtml : '') . '
 <script>
@@ -944,6 +944,12 @@ document.addEventListener(\'DOMContentLoaded\', function() {
 });
 </script>
             <style>
+            .drawer-toggler.drawer-left-toggle.open-nav.d-print-none {
+                display: none !important;
+            }
+            .block_calendar_month.block.card.mb-3 {
+                display: block !important;
+            }
             .bloquecero-section-header-flex {
             display: flex;
             align-items: center;
@@ -952,13 +958,7 @@ document.addEventListener(\'DOMContentLoaded\', function() {
             gap: 12px;
             margin-bottom: 8px;
         }
-        // .bloquecero-section-number {
-        //     flex: 1 1 auto;
-        //     min-width: 0;
-        //     overflow: hidden;
-        //     text-overflow: ellipsis;
-        //     white-space: nowrap;
-        // }
+        
             .bloquecero-section-badge {
                 position: static !important;
                 margin-left: 10px;
@@ -1706,6 +1706,7 @@ document.addEventListener(\'DOMContentLoaded\', function() {
             }
             </style>
             <style>
+            
 .bloquecero-tabs {
     display: flex;
     gap: 18px;
@@ -1751,6 +1752,7 @@ document.addEventListener(\'DOMContentLoaded\', function() {
 .sesiones-directo-calendaricon:hover {
     filter: brightness(1.13) drop-shadow(0 1px 5px #B7C65C33);
 }
+    
             </style>
             
             <script>
