@@ -324,51 +324,51 @@ class block_bloquecero extends block_base {
             // print_r($modinfo);
             if (!empty($modinfo->sections[$section->section])) {
                 // Crear un mapa de secciones por ID usando get_section_info_all()
-$section_map = [];
-foreach ($modinfo->get_section_info_all() as $section_info) {
-    $section_map[$section_info->id] = $section_info;
-}
+                $section_map = [];
+                foreach ($modinfo->get_section_info_all() as $section_info) {
+                    $section_map[$section_info->id] = $section_info;
+                }
 
-foreach ($modinfo->sections[$section->section] as $cmid) {
-    $cm = $modinfo->cms[$cmid];
+                foreach ($modinfo->sections[$section->section] as $cmid) {
+                    $cm = $modinfo->cms[$cmid];
 
-    if (!$cm->uservisible) continue; // Saltar módulos no visibles para el usuario
+                    if (!$cm->uservisible) continue; // Saltar módulos no visibles para el usuario
 
-    if ($cm->modname !== 'subsection') {
-        // Actividad normal (no subsección)
-        $icon = $OUTPUT->pix_icon('icon', $cm->modfullname, $cm->modname, ['class' => 'activityicon']);
-        $all_activities_array[] = '<li>' . $icon . ' <a href="' . $cm->url . '">' . format_string($cm->name) . '</a></li>';
-        $visibleactivities++;
-        $totalactivities++;
-    } else {
-        // Subsección encontrada
-        if (!empty($cm->name)) {
-            // Añadir el nombre de la subsección con estilo
-            $all_activities_array[] = '<li class="bloquecero-subsection-name" style="font-weight:600; color:#004D35; margin:8px 0 4px 0;">' . format_string($cm->name) . '</li>';
-
-            // Obtener la sección vinculada a la subsección
-            $subsection_id = $cm->customdata['sectionid'] ?? null;
-            if ($subsection_id && isset($section_map[$subsection_id])) {
-                $subsection = $section_map[$subsection_id];
-
-                // Listar las actividades dentro de la subsección con sangría
-                if (!empty($modinfo->sections[$subsection->section])) {
-                    foreach ($modinfo->sections[$subsection->section] as $sub_cmid) {
-                        $sub_cm = $modinfo->cms[$sub_cmid];
-                        if (!$sub_cm->uservisible) continue; // Saltar actividades no visibles
-
-                        // Generar el icono y el enlace para la actividad de la subsección
-                        $sub_icon = $OUTPUT->pix_icon('icon', $sub_cm->modfullname, $sub_cm->modname, ['class' => 'activityicon']);
-                        // Añadir sangría con una clase CSS
-                        $all_activities_array[] = '<li class="bloquecero-subsection-activity" style="margin-left: 20px;">' . $sub_icon . ' <a href="' . $sub_cm->url . '">' . format_string($sub_cm->name) . '</a></li>';
+                    if ($cm->modname !== 'subsection') {
+                        // Actividad normal (no subsección)
+                        $icon = $OUTPUT->pix_icon('icon', $cm->modfullname, $cm->modname, ['class' => 'activityicon']);
+                        $all_activities_array[] = '<li>' . $icon . ' <a href="' . $cm->url . '">' . format_string($cm->name) . '</a></li>';
                         $visibleactivities++;
                         $totalactivities++;
+                    } else {
+                        // Subsección encontrada
+                        if (!empty($cm->name)) {
+                            // Añadir el nombre de la subsección con estilo
+                            $all_activities_array[] = '<li class="bloquecero-subsection-name" style="font-weight:600; color:#004D35; margin:8px 0 4px 0;">' . format_string($cm->name) . '</li>';
+
+                            // Obtener la sección vinculada a la subsección
+                            $subsection_id = $cm->customdata['sectionid'] ?? null;
+                            if ($subsection_id && isset($section_map[$subsection_id])) {
+                                $subsection = $section_map[$subsection_id];
+
+                                // Listar las actividades dentro de la subsección con sangría
+                                if (!empty($modinfo->sections[$subsection->section])) {
+                                    foreach ($modinfo->sections[$subsection->section] as $sub_cmid) {
+                                        $sub_cm = $modinfo->cms[$sub_cmid];
+                                        if (!$sub_cm->uservisible) continue; // Saltar actividades no visibles
+
+                                        // Generar el icono y el enlace para la actividad de la subsección
+                                        $sub_icon = $OUTPUT->pix_icon('icon', $sub_cm->modfullname, $sub_cm->modname, ['class' => 'activityicon']);
+                                        // Añadir sangría con una clase CSS
+                                        $all_activities_array[] = '<li class="bloquecero-subsection-activity" style="margin-left: 20px;">' . $sub_icon . ' <a href="' . $sub_cm->url . '">' . format_string($sub_cm->name) . '</a></li>';
+                                        $visibleactivities++;
+                                        $totalactivities++;
+                                    }
+                                }
+                            }
+                        }
                     }
                 }
-            }
-        }
-    }
-}
             }
             // Generar previews y full lists
             $activities_preview = array_slice($all_activities_array, 0, $maxactivities);
@@ -505,94 +505,94 @@ foreach ($modinfo->sections[$section->section] as $cmid) {
 
         // --- NUEVA estructura de la tarjeta de calendario de actividades ---
         $calendarioActividades = '
-<div class="udima-maincard calendario-actividades-maincard">
-    <div class="calendario-actividades-header">
-        <h3>Actividades</h3>
-        <div class="week-selector">
-            <button id="prev-week">&lt;</button>
-            <span id="week-label"></span>
-            <button id="next-week">&gt;</button>
-        </div>
-        <span class="calendario-actividades-calendaricon" title="Ver todas las actividades">
-            <!-- Icono SVG calendario -->
-            <svg width="22" height="22" viewBox="0 0 24 24" style="vertical-align:middle;cursor:pointer;"><rect x="3" y="5" width="18" height="16" rx="3" fill="#B7C65C" /><rect x="7" y="9" width="2.5" height="2.5" rx="1" fill="#fff"/><rect x="11" y="9" width="2.5" height="2.5" rx="1" fill="#fff"/><rect x="15" y="9" width="2.5" height="2.5" rx="1" fill="#fff"/><rect x="7" y="13" width="2.5" height="2.5" rx="1" fill="#fff"/><rect x="11" y="13" width="2.5" height="2.5" rx="1" fill="#fff"/><rect x="15" y="13" width="2.5" height="2.5" rx="1" fill="#fff"/></svg>
-        </span>
-    </div>
-    
-    <div class="calendario-actividades-container">
-        <div id="activities-week-content"></div>
-    </div>
-</div>
-<script>
-(function(){
-    const courseStart = ' . $courseStart . ';
-    const totalWeeks = ' . $weeks . ';
-    const now = Math.floor(Date.now() / 1000);
-    let currentWeek = Math.floor((now - courseStart) / (7 * 24 * 60 * 60)) + 1;
-    if (currentWeek < 1) {
-        currentWeek = 1;
-    } else if (currentWeek > totalWeeks) {
-        currentWeek = totalWeeks;
-    }
-    // El listado original de actividades
-    const originalListHTML = ' . json_encode($calendarActivities) . ';
-    const contentContainer = document.getElementById("activities-week-content");
-    const weekLabel = document.getElementById("week-label");
-    const prevBtn = document.getElementById("prev-week");
-    const nextBtn = document.getElementById("next-week");
-    function formatDate(ts) {
-        const d = new Date(ts * 1000);
-        const day = d.getDate();
-        const monthNames = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
-        return day + " " + monthNames[d.getMonth()];
-    }
-    function filterActivities(week) {
-        const weekStart = courseStart + (week - 1) * 7 * 24 * 60 * 60;
-        const weekEnd = weekStart + 7 * 24 * 60 * 60;
-        // Parseamos el HTML original
-        const parser = new DOMParser();
-        const doc = parser.parseFromString(originalListHTML, "text/html");
-        const ul = doc.querySelector("ul");
-        let anyVisible = false;
-        if (ul) {
-            ul.querySelectorAll("li").forEach(function(li){
-                const ts = parseInt(li.getAttribute("data-timestamp"), 10);
-                if (!isNaN(ts) && ts >= weekStart && ts < weekEnd) {
-                    li.style.display = "list-item";
-                    anyVisible = true;
-                } else {
-                    li.style.display = "none";
+            <div class="udima-maincard calendario-actividades-maincard">
+                <div class="calendario-actividades-header">
+                    <h3>Actividades</h3>
+                    <div class="week-selector">
+                        <button id="prev-week">&lt;</button>
+                        <span id="week-label"></span>
+                        <button id="next-week">&gt;</button>
+                    </div>
+                    <span class="calendario-actividades-calendaricon" title="Ver todas las actividades">
+                        <!-- Icono SVG calendario -->
+                        <svg width="22" height="22" viewBox="0 0 24 24" style="vertical-align:middle;cursor:pointer;"><rect x="3" y="5" width="18" height="16" rx="3" fill="#B7C65C" /><rect x="7" y="9" width="2.5" height="2.5" rx="1" fill="#fff"/><rect x="11" y="9" width="2.5" height="2.5" rx="1" fill="#fff"/><rect x="15" y="9" width="2.5" height="2.5" rx="1" fill="#fff"/><rect x="7" y="13" width="2.5" height="2.5" rx="1" fill="#fff"/><rect x="11" y="13" width="2.5" height="2.5" rx="1" fill="#fff"/><rect x="15" y="13" width="2.5" height="2.5" rx="1" fill="#fff"/></svg>
+                    </span>
+                </div>
+                
+                <div class="calendario-actividades-container">
+                    <div id="activities-week-content"></div>
+                </div>
+            </div>
+            <script>
+            (function(){
+                const courseStart = ' . $courseStart . ';
+                const totalWeeks = ' . $weeks . ';
+                const now = Math.floor(Date.now() / 1000);
+                let currentWeek = Math.floor((now - courseStart) / (7 * 24 * 60 * 60)) + 1;
+                if (currentWeek < 1) {
+                    currentWeek = 1;
+                } else if (currentWeek > totalWeeks) {
+                    currentWeek = totalWeeks;
                 }
-            });
-            if(anyVisible) {
-                contentContainer.innerHTML = "<ul>" + ul.innerHTML + "</ul>";
-            } else {
-                contentContainer.innerHTML = \'<div style="margin-top:12px; color:#888; font-size:0.95em; text-align:center;">No hay actividades para esta semana.</div>\';
-            }
-        } else {
-            // Si no hay actividades en absoluto
-            contentContainer.innerHTML = doc.body.innerHTML;
-        }
-        const startStr = formatDate(weekStart);
-        const endStr = formatDate(weekEnd - 1);
-        weekLabel.innerHTML = startStr + "<br>" + endStr;
-    }
-    prevBtn.addEventListener("click", function(){
-        if(currentWeek > 1) {
-            currentWeek--;
-            filterActivities(currentWeek);
-        }
-    });
-    nextBtn.addEventListener("click", function(){
-        if(currentWeek < totalWeeks) {
-            currentWeek++;
-            filterActivities(currentWeek);
-        }
-    });
-    filterActivities(currentWeek);
-})();
-</script>
-';
+                // El listado original de actividades
+                const originalListHTML = ' . json_encode($calendarActivities) . ';
+                const contentContainer = document.getElementById("activities-week-content");
+                const weekLabel = document.getElementById("week-label");
+                const prevBtn = document.getElementById("prev-week");
+                const nextBtn = document.getElementById("next-week");
+                function formatDate(ts) {
+                    const d = new Date(ts * 1000);
+                    const day = d.getDate();
+                    const monthNames = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+                    return day + " " + monthNames[d.getMonth()];
+                }
+                function filterActivities(week) {
+                    const weekStart = courseStart + (week - 1) * 7 * 24 * 60 * 60;
+                    const weekEnd = weekStart + 7 * 24 * 60 * 60;
+                    // Parseamos el HTML original
+                    const parser = new DOMParser();
+                    const doc = parser.parseFromString(originalListHTML, "text/html");
+                    const ul = doc.querySelector("ul");
+                    let anyVisible = false;
+                    if (ul) {
+                        ul.querySelectorAll("li").forEach(function(li){
+                            const ts = parseInt(li.getAttribute("data-timestamp"), 10);
+                            if (!isNaN(ts) && ts >= weekStart && ts < weekEnd) {
+                                li.style.display = "list-item";
+                                anyVisible = true;
+                            } else {
+                                li.style.display = "none";
+                            }
+                        });
+                        if(anyVisible) {
+                            contentContainer.innerHTML = "<ul>" + ul.innerHTML + "</ul>";
+                        } else {
+                            contentContainer.innerHTML = \'<div style="margin-top:12px; color:#888; font-size:0.95em; text-align:center;">No hay actividades para esta semana.</div>\';
+                        }
+                    } else {
+                        // Si no hay actividades en absoluto
+                        contentContainer.innerHTML = doc.body.innerHTML;
+                    }
+                    const startStr = formatDate(weekStart);
+                    const endStr = formatDate(weekEnd - 1);
+                    weekLabel.innerHTML = startStr + "<br>" + endStr;
+                }
+                prevBtn.addEventListener("click", function(){
+                    if(currentWeek > 1) {
+                        currentWeek--;
+                        filterActivities(currentWeek);
+                    }
+                });
+                nextBtn.addEventListener("click", function(){
+                    if(currentWeek < totalWeeks) {
+                        currentWeek++;
+                        filterActivities(currentWeek);
+                    }
+                });
+                filterActivities(currentWeek);
+            })();
+            </script>
+            ';
 
         // --- SESIONES EN DIRECTO: genera el bloque con selector de semana ---
         // Calcular semanas para las sesiones (según fechas simuladas)
@@ -602,92 +602,92 @@ foreach ($modinfo->sections[$section->section] as $cmid) {
         if ($sesionesWeeks < 1) $sesionesWeeks = 1;
         // Usar el mismo rango de semanas que el curso para coherencia
         $sesionesDirecto = '
-<div class="udima-maincard sesiones-directo-maincard">
-    <div class="sesiones-directo-header">
-        <h3>Sesiones en directo</h3>
-        <div class="sesiones-directo-selector">
-            <button id="prev-sesion">&lt;</button>
-            <span id="sesion-label"></span>
-            <button id="next-sesion">&gt;</button>
+        <div class="udima-maincard sesiones-directo-maincard">
+            <div class="sesiones-directo-header">
+                <h3>Sesiones en directo</h3>
+                <div class="sesiones-directo-selector">
+                    <button id="prev-sesion">&lt;</button>
+                    <span id="sesion-label"></span>
+                    <button id="next-sesion">&gt;</button>
+                </div>
+                <span class="sesiones-directo-calendaricon" title="Ver todas las sesiones">
+                    <!-- Icono SVG calendario -->
+                    <svg width="22" height="22" viewBox="0 0 24 24" style="vertical-align:middle;cursor:pointer;"><rect x="3" y="5" width="18" height="16" rx="3" fill="#B7C65C" /><rect x="7" y="9" width="2.5" height="2.5" rx="1" fill="#fff"/><rect x="11" y="9" width="2.5" height="2.5" rx="1" fill="#fff"/><rect x="15" y="9" width="2.5" height="2.5" rx="1" fill="#fff"/><rect x="7" y="13" width="2.5" height="2.5" rx="1" fill="#fff"/><rect x="11" y="13" width="2.5" height="2.5" rx="1" fill="#fff"/><rect x="15" y="13" width="2.5" height="2.5" rx="1" fill="#fff"/></svg>
+                </span>
+            </div>
+            <div class="sesiones-directo-container">
+                <div id="sesiones-list-content"></div>
+            </div>
         </div>
-        <span class="sesiones-directo-calendaricon" title="Ver todas las sesiones">
-            <!-- Icono SVG calendario -->
-            <svg width="22" height="22" viewBox="0 0 24 24" style="vertical-align:middle;cursor:pointer;"><rect x="3" y="5" width="18" height="16" rx="3" fill="#B7C65C" /><rect x="7" y="9" width="2.5" height="2.5" rx="1" fill="#fff"/><rect x="11" y="9" width="2.5" height="2.5" rx="1" fill="#fff"/><rect x="15" y="9" width="2.5" height="2.5" rx="1" fill="#fff"/><rect x="7" y="13" width="2.5" height="2.5" rx="1" fill="#fff"/><rect x="11" y="13" width="2.5" height="2.5" rx="1" fill="#fff"/><rect x="15" y="13" width="2.5" height="2.5" rx="1" fill="#fff"/></svg>
-        </span>
-    </div>
-    <div class="sesiones-directo-container">
-        <div id="sesiones-list-content"></div>
-    </div>
-</div>
-<script>
-(function(){
-    const courseStart = ' . $courseStart . ';
-    const totalWeeks = ' . $weeks . ';
-    const now = Math.floor(Date.now() / 1000);
-    let currentWeek = Math.floor((now - courseStart) / (7 * 24 * 60 * 60)) + 1;
-    if (currentWeek < 1) {
-        currentWeek = 1;
-    } else if (currentWeek > totalWeeks) {
-        currentWeek = totalWeeks;
-    }
-    // El listado original de sesiones
-    const originalSesionesHTML = ' . json_encode($sesionesZoomList) . ';
-    const sesionesContainer = document.getElementById("sesiones-list-content");
-    const sesionLabel = document.getElementById("sesion-label");
-    const prevBtn = document.getElementById("prev-sesion");
-    const nextBtn = document.getElementById("next-sesion");
-    function formatDate(ts) {
-        const d = new Date(ts * 1000);
-        const day = d.getDate();
-        const monthNames = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
-        return day + " " + monthNames[d.getMonth()];
-    }
-    function filterSesiones(week) {
-        const weekStart = courseStart + (week - 1) * 7 * 24 * 60 * 60;
-        const weekEnd = weekStart + 7 * 24 * 60 * 60;
-        // Parsear el HTML original
-        const parser = new DOMParser();
-        const doc = parser.parseFromString(originalSesionesHTML, "text/html");
-        const ul = doc.querySelector("ul");
-        let anyVisible = false;
-        if (ul) {
-            ul.querySelectorAll("li").forEach(function(li){
-                const ts = parseInt(li.getAttribute("data-timestamp"), 10);
-                if (!isNaN(ts) && ts >= weekStart && ts < weekEnd) {
-                    li.style.display = "list-item";
-                    anyVisible = true;
+        <script>
+        (function(){
+            const courseStart = ' . $courseStart . ';
+            const totalWeeks = ' . $weeks . ';
+            const now = Math.floor(Date.now() / 1000);
+            let currentWeek = Math.floor((now - courseStart) / (7 * 24 * 60 * 60)) + 1;
+            if (currentWeek < 1) {
+                currentWeek = 1;
+            } else if (currentWeek > totalWeeks) {
+                currentWeek = totalWeeks;
+            }
+            // El listado original de sesiones
+            const originalSesionesHTML = ' . json_encode($sesionesZoomList) . ';
+            const sesionesContainer = document.getElementById("sesiones-list-content");
+            const sesionLabel = document.getElementById("sesion-label");
+            const prevBtn = document.getElementById("prev-sesion");
+            const nextBtn = document.getElementById("next-sesion");
+            function formatDate(ts) {
+                const d = new Date(ts * 1000);
+                const day = d.getDate();
+                const monthNames = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+                return day + " " + monthNames[d.getMonth()];
+            }
+            function filterSesiones(week) {
+                const weekStart = courseStart + (week - 1) * 7 * 24 * 60 * 60;
+                const weekEnd = weekStart + 7 * 24 * 60 * 60;
+                // Parsear el HTML original
+                const parser = new DOMParser();
+                const doc = parser.parseFromString(originalSesionesHTML, "text/html");
+                const ul = doc.querySelector("ul");
+                let anyVisible = false;
+                if (ul) {
+                    ul.querySelectorAll("li").forEach(function(li){
+                        const ts = parseInt(li.getAttribute("data-timestamp"), 10);
+                        if (!isNaN(ts) && ts >= weekStart && ts < weekEnd) {
+                            li.style.display = "list-item";
+                            anyVisible = true;
+                        } else {
+                            li.style.display = "none";
+                        }
+                    });
+                    if(anyVisible) {
+                        sesionesContainer.innerHTML = "<ul>" + ul.innerHTML + "</ul>";
+                    } else {
+                        sesionesContainer.innerHTML = \'<div style="margin-top:12px; color:#888; font-size:0.95em; text-align:center;">No hay sesiones para esta semana.</div>\';
+                    }
                 } else {
-                    li.style.display = "none";
+                    sesionesContainer.innerHTML = doc.body.innerHTML;
+                }
+                const startStr = formatDate(weekStart);
+                const endStr = formatDate(weekEnd - 1);
+                sesionLabel.innerHTML = startStr + "<br>" + endStr;
+            }
+            prevBtn.addEventListener("click", function(){
+                if(currentWeek > 1) {
+                    currentWeek--;
+                    filterSesiones(currentWeek);
                 }
             });
-            if(anyVisible) {
-                sesionesContainer.innerHTML = "<ul>" + ul.innerHTML + "</ul>";
-            } else {
-                sesionesContainer.innerHTML = \'<div style="margin-top:12px; color:#888; font-size:0.95em; text-align:center;">No hay sesiones para esta semana.</div>\';
-            }
-        } else {
-            sesionesContainer.innerHTML = doc.body.innerHTML;
-        }
-        const startStr = formatDate(weekStart);
-        const endStr = formatDate(weekEnd - 1);
-        sesionLabel.innerHTML = startStr + "<br>" + endStr;
-    }
-    prevBtn.addEventListener("click", function(){
-        if(currentWeek > 1) {
-            currentWeek--;
+            nextBtn.addEventListener("click", function(){
+                if(currentWeek < totalWeeks) {
+                    currentWeek++;
+                    filterSesiones(currentWeek);
+                }
+            });
             filterSesiones(currentWeek);
-        }
-    });
-    nextBtn.addEventListener("click", function(){
-        if(currentWeek < totalWeeks) {
-            currentWeek++;
-            filterSesiones(currentWeek);
-        }
-    });
-    filterSesiones(currentWeek);
-})();
-</script>
-';
+        })();
+        </script>
+        ';
 
         // HTML principal del bloque (se añade debajo del carrusel el bloque para las actividades)
 
@@ -711,246 +711,246 @@ foreach ($modinfo->sections[$section->section] as $cmid) {
             }
             </style>
             <div class="udima-menu-bar">
-    <a href="' . new moodle_url('/grade/report/grader/index.php', array('id' => $COURSE->id)) . '" class="udima-menu-link">
-        ' . $OUTPUT->pix_icon('t/grades', '', 'moodle', ['class' => 'menu-icon']) . '
-        <span>Calificaciones</span>
-    </a>
-    <a href="' . new moodle_url('/user/index.php', array('id' => $COURSE->id)) . '" class="udima-menu-link">
-        ' . $OUTPUT->pix_icon('i/users', '', 'moodle', ['class' => 'menu-icon']) . '
-        <span>Participantes</span>
-    </a>
-    <a href="#" id="bloquecero-bibliografia-btn" class="udima-menu-link">
-        ' . $OUTPUT->pix_icon('book', '', 'moodle', ['class' => 'menu-icon']) . '
-        <span>Bibliografía</span>
-    </a>
-    <a href="' . $guide_url . '" class="udima-menu-link" target="_blank">
-        ' . $OUTPUT->pix_icon('i/info', '', 'moodle', ['class' => 'menu-icon']) . '
-        <span>Guía docente</span>
-    </a>' . ((has_capability('moodle/course:update', $coursecontext)) ? '
-    <a href="' . (new moodle_url('/course/edit.php', array('id' => $COURSE->id))) . '" class="udima-menu-link">
-        ' . $OUTPUT->pix_icon('i/settings', '', 'moodle', ['class' => 'menu-icon']) . '
-        <span>Configuración</span>
-    </a>' : '') .
-'</div>
+            <a href="' . new moodle_url('/grade/report/grader/index.php', array('id' => $COURSE->id)) . '" class="udima-menu-link">
+                ' . $OUTPUT->pix_icon('t/grades', '', 'moodle', ['class' => 'menu-icon']) . '
+                <span>Calificaciones</span>
+            </a>
+            <a href="' . new moodle_url('/user/index.php', array('id' => $COURSE->id)) . '" class="udima-menu-link">
+                ' . $OUTPUT->pix_icon('i/users', '', 'moodle', ['class' => 'menu-icon']) . '
+                <span>Participantes</span>
+            </a>
+            <a href="#" id="bloquecero-bibliografia-btn" class="udima-menu-link">
+                ' . $OUTPUT->pix_icon('book', '', 'moodle', ['class' => 'menu-icon']) . '
+                <span>Bibliografía</span>
+            </a>
+            <a href="' . $guide_url . '" class="udima-menu-link" target="_blank">
+                ' . $OUTPUT->pix_icon('i/info', '', 'moodle', ['class' => 'menu-icon']) . '
+                <span>Guía docente</span>
+            </a>' . ((has_capability('moodle/course:update', $coursecontext)) ? '
+            <a href="' . (new moodle_url('/course/edit.php', array('id' => $COURSE->id))) . '" class="udima-menu-link">
+                ' . $OUTPUT->pix_icon('i/settings', '', 'moodle', ['class' => 'menu-icon']) . '
+                <span>Configuración</span>
+            </a>' : '') .
+            '</div>
             <div style="padding: 0 20px; font-family: Arial, sans-serif;">
-    <!-- Resto del contenido del bloque -->
-    <div class="bloquecero-header-responsive">
-        <img src="' . $fondo_cabecera_img . '" alt="Fondo" class="bloquecero-header-bg-img">
-        <div class="bloquecero-header-content">
-            <h1 class="bloquecero-header-title">' . format_string($COURSE->fullname) . '</h1>
-            ' . ($courseDates ? '<p class="bloquecero-header-dates">' . $courseDates . '</p>' : '') . '
-            <p class="bloquecero-header-teachers">Equipo docente: ' . $contactButtonsHtml . '</p>
-        </div>
-    </div>
-    <!-- Bloques de información de contacto de cada profesor -->
-    ' . $contactBlocksHtml . '
-    
+            <!-- Resto del contenido del bloque -->
+            <div class="bloquecero-header-responsive">
+                <img src="' . $fondo_cabecera_img . '" alt="Fondo" class="bloquecero-header-bg-img">
+                <div class="bloquecero-header-content">
+                    <h1 class="bloquecero-header-title">' . format_string($COURSE->fullname) . '</h1>
+                    ' . ($courseDates ? '<p class="bloquecero-header-dates">' . $courseDates . '</p>' : '') . '
+                    <p class="bloquecero-header-teachers">Equipo docente: ' . $contactButtonsHtml . '</p>
+                </div>
+            </div>
+            <!-- Bloques de información de contacto de cada profesor -->
+            ' . $contactBlocksHtml . '
+            
 
-    <!-- Sección de foros y demás secciones -->
-    <div style="padding: 0 40px;">
-        <div class="bloquecero-tabs">
-            <a href="' . $forum_anuncios_url . '" class="bloquecero-tab">
-                Tablón de anuncios'
-                    . (isset($count_anuncios) && is_array($count_anuncios) && array_sum($count_anuncios) > 0
-                        ? ' <span style="display:inline-block;min-width:22px;height:22px;line-height:22px;background:#B7C65C;color:#fff;font-weight:600;font-size:0.98em;border-radius:50%;text-align:center;margin-left:7px;vertical-align:middle;">' . array_sum($count_anuncios) . '</span>'
-                        : '') . '
-            </a>
-            <a href="' . $forum_tutorias_url . '" class="bloquecero-tab">
-                Foro de Tutorías'
-                . (isset($count_tutorias) && is_array($count_tutorias) && array_sum($count_tutorias) > 0
-                    ? ' <span style="display:inline-block;min-width:22px;height:22px;line-height:22px;background:#B7C65C;color:#fff;font-weight:600;font-size:0.98em;border-radius:50%;text-align:center;margin-left:7px;vertical-align:middle;">' . array_sum($count_tutorias) . '</span>'
-                    : '') . '
-            </a>
-            <a href="' . $forum_estudiantes_url . '" class="bloquecero-tab">
-                Foro de Estudiantes'
-                . (isset($count_estudiantes) && is_array($count_estudiantes) && array_sum($count_estudiantes) > 0
-                    ? ' <span style="display:inline-block;min-width:22px;height:22px;line-height:22px;background:#B7C65C;color:#fff;font-weight:600;font-size:0.98em;border-radius:50%;text-align:center;margin-left:7px;vertical-align:middle;">' . array_sum($count_estudiantes) . '</span>'
-                    : '') . '
-            </a>
-        </div>
-    </div>
-                <!-- Bloques divididos en dos columnas -->
-<div class="bloquecero-maincards-row">
-    <div style="width: 50%; box-sizing: border-box;">
-        ' . $sesionesDirecto . '
-    </div>
-    <div style="width: 50%; box-sizing: border-box;">
-        ' . $calendarioActividades . '
-    </div>
-</div>
-        <!-- Carrusel de tarjetas de secciones -->
-        <div style="text-align: left; padding: 0 40px; margin-bottom: 10px;">
-<h3 style="color: #004D35; margin-top: 0;">Secciones del curso</h3>
-</div>' .
-$carouselContainer . '
+            <!-- Sección de foros y demás secciones -->
+            <div style="padding: 0 40px;">
+                <div class="bloquecero-tabs">
+                    <a href="' . $forum_anuncios_url . '" class="bloquecero-tab">
+                        Tablón de anuncios'
+                            . (isset($count_anuncios) && is_array($count_anuncios) && array_sum($count_anuncios) > 0
+                                ? ' <span style="display:inline-block;min-width:22px;height:22px;line-height:22px;background:#B7C65C;color:#fff;font-weight:600;font-size:0.98em;border-radius:50%;text-align:center;margin-left:7px;vertical-align:middle;">' . array_sum($count_anuncios) . '</span>'
+                                : '') . '
+                    </a>
+                    <a href="' . $forum_tutorias_url . '" class="bloquecero-tab">
+                        Foro de Tutorías'
+                        . (isset($count_tutorias) && is_array($count_tutorias) && array_sum($count_tutorias) > 0
+                            ? ' <span style="display:inline-block;min-width:22px;height:22px;line-height:22px;background:#B7C65C;color:#fff;font-weight:600;font-size:0.98em;border-radius:50%;text-align:center;margin-left:7px;vertical-align:middle;">' . array_sum($count_tutorias) . '</span>'
+                            : '') . '
+                    </a>
+                    <a href="' . $forum_estudiantes_url . '" class="bloquecero-tab">
+                        Foro de Estudiantes'
+                        . (isset($count_estudiantes) && is_array($count_estudiantes) && array_sum($count_estudiantes) > 0
+                            ? ' <span style="display:inline-block;min-width:22px;height:22px;line-height:22px;background:#B7C65C;color:#fff;font-weight:600;font-size:0.98em;border-radius:50%;text-align:center;margin-left:7px;vertical-align:middle;">' . array_sum($count_estudiantes) . '</span>'
+                            : '') . '
+                    </a>
+                </div>
+            </div>
+            <!-- Bloques divididos en dos columnas -->
+            <div class="bloquecero-maincards-row">
+                <div style="width: 50%; box-sizing: border-box;">
+                    ' . $sesionesDirecto . '
+                </div>
+                <div style="width: 50%; box-sizing: border-box;">
+                    ' . $calendarioActividades . '
+                </div>
+            </div>
+                    <!-- Carrusel de tarjetas de secciones -->
+                    <div style="text-align: left; padding: 0 40px; margin-bottom: 10px;">
+            <h3 style="color: #004D35; margin-top: 0;">Secciones del curso</h3>
+            </div>' .
+            $carouselContainer . '
 
 
-            <style>
-@media (max-width: 900px) {
-  .udima-maincard, .sesiones-directo-maincard {
-    padding: 18px 10px !important;
-    font-size: 0.97em;
-    min-width: 0;
-  }
-  .calendario-actividades-header,
-  .sesiones-directo-header {
-    flex-direction: column;
-    align-items: flex-start;
-    gap: 2px;
-  }
-  .calendario-actividades-header h3,
-  .sesiones-directo-header h3 {
-    font-size: 1.07em;
-    margin-bottom: 2px;
-  }
-  .week-selector,
-  .sesiones-directo-selector {
-    margin-left: 0 !important;
-    font-size: 0.95em;
-    max-width: 100%;
-    white-space: nowrap;
-  }
-}
-@media (max-width: 660px) {
-  .bloquecero-maincards-row {
-    flex-direction: column !important;
-    gap: 10px !important;
-  }
-  .bloquecero-maincards-row > div {
-    width: 100% !important;
-    margin-bottom: 14px;
-  }
-  .udima-maincard,
-  .sesiones-directo-maincard {
-    font-size: 0.96em;
-    padding: 12px 4px !important;
-    min-width: 0;
-  }
-  .calendario-actividades-header,
-  .sesiones-directo-header {
-    flex-direction: column;
-    align-items: flex-start;
-    gap: 2px;
-    width: 100%;
-  }
-  .calendario-actividades-header h3,
-  .sesiones-directo-header h3 {
-    font-size: 0.99em;
-    margin-bottom: 2px;
-  }
-  .week-selector,
-  .sesiones-directo-selector {
-    font-size: 0.94em;
-    margin-left: 0 !important;
-    max-width: 100%;
-    white-space: nowrap;
-  }
-}
-@media (max-width: 500px) {
-  .calendario-actividades-header h3,
-  .sesiones-directo-header h3 {
-    font-size: 0.92em;
-    margin-bottom: 0;
-    white-space: normal;
-  }
-  .week-selector,
-  .sesiones-directo-selector {
-    font-size: 0.92em;
-    margin-left: 0 !important;
-    max-width: 100%;
-    white-space: normal;
-  }
-}
-.bloquecero-maincards-row {
-  display: flex;
-  gap: 20px;
-  margin: 20px 40px;
-}
+                        <style>
+            @media (max-width: 900px) {
+            .udima-maincard, .sesiones-directo-maincard {
+                padding: 18px 10px !important;
+                font-size: 0.97em;
+                min-width: 0;
+            }
+            .calendario-actividades-header,
+            .sesiones-directo-header {
+                flex-direction: column;
+                align-items: flex-start;
+                gap: 2px;
+            }
+            .calendario-actividades-header h3,
+            .sesiones-directo-header h3 {
+                font-size: 1.07em;
+                margin-bottom: 2px;
+            }
+            .week-selector,
+            .sesiones-directo-selector {
+                margin-left: 0 !important;
+                font-size: 0.95em;
+                max-width: 100%;
+                white-space: nowrap;
+            }
+            }
+            @media (max-width: 660px) {
+            .bloquecero-maincards-row {
+                flex-direction: column !important;
+                gap: 10px !important;
+            }
+            .bloquecero-maincards-row > div {
+                width: 100% !important;
+                margin-bottom: 14px;
+            }
+            .udima-maincard,
+            .sesiones-directo-maincard {
+                font-size: 0.96em;
+                padding: 12px 4px !important;
+                min-width: 0;
+            }
+            .calendario-actividades-header,
+            .sesiones-directo-header {
+                flex-direction: column;
+                align-items: flex-start;
+                gap: 2px;
+                width: 100%;
+            }
+            .calendario-actividades-header h3,
+            .sesiones-directo-header h3 {
+                font-size: 0.99em;
+                margin-bottom: 2px;
+            }
+            .week-selector,
+            .sesiones-directo-selector {
+                font-size: 0.94em;
+                margin-left: 0 !important;
+                max-width: 100%;
+                white-space: nowrap;
+            }
+            }
+            @media (max-width: 500px) {
+            .calendario-actividades-header h3,
+            .sesiones-directo-header h3 {
+                font-size: 0.92em;
+                margin-bottom: 0;
+                white-space: normal;
+            }
+            .week-selector,
+            .sesiones-directo-selector {
+                font-size: 0.92em;
+                margin-left: 0 !important;
+                max-width: 100%;
+                white-space: normal;
+            }
+            }
+            .bloquecero-maincards-row {
+            display: flex;
+            gap: 20px;
+            margin: 20px 40px;
+            }
 
             </style>
-        ' . ((has_capability('block/bloquecero:viewcourse', $coursecontext)) ? $togglebuttonhtml : '') . '
-<script>
-window.bloquecero_toggle = function() {
-    var btn = document.getElementById(\'bloquecero-mostrarcurso-btn\');
-    var region = document.getElementById(\'region-main\');
-    var btntext = document.getElementById(\'bloquecero-mostrarcurso-text\');
-    var isHidden = region && region.style.display === \'none\';
+            ' . ((has_capability('block/bloquecero:viewcourse', $coursecontext)) ? $togglebuttonhtml : '') . '
+            <script>
+            window.bloquecero_toggle = function() {
+                var btn = document.getElementById(\'bloquecero-mostrarcurso-btn\');
+                var region = document.getElementById(\'region-main\');
+                var btntext = document.getElementById(\'bloquecero-mostrarcurso-text\');
+                var isHidden = region && region.style.display === \'none\';
 
-    if (isHidden) {
-        if(btn) btn.classList.add(\'open\');
-        if(btntext) btntext.innerHTML = \'ocultar curso\';
-        if (region) {
-            region.style.display = \'\';
-            region.classList.remove(\'bloquecero-fadein\');
-            setTimeout(function() {
-                region.classList.add(\'bloquecero-fadein\');
-            }, 10);
-        }
-        document.querySelectorAll(\'.block\').forEach(function(b){
-            b.style.display = \'\';
-        });
-        [
-            \'.page-header\',\'.page-context-header\',\'.course-header\',\'.page-header-headings\',\'.page-title\',\'.course-title\'
-        ].forEach(function(selector){
-            document.querySelectorAll(selector).forEach(function(e){ e.style.display = \'\'; });
-        });
-        [
-            \'.nav-tabs\',\'.nav-tabs-line\',\'.secondary-navigation\',\'.secondary-nav\'
-        ].forEach(function(selector){
-            document.querySelectorAll(selector).forEach(function(e){ e.style.display = \'\'; });
-        });
-        // Cambia texto a "ocultar curso"
-        var btn = document.getElementById(\'bloquecero-mostrarcurso-btn\');
-        if(btn) {
-            btn.classList.toggle(\'cerrado\', !isHidden);
-        }
-        if(btntext) btntext.innerHTML = \'ocultar curso\';
-    } else {
-        if(btn) btn.classList.remove(\'open\');
-        if(btntext) btntext.innerHTML = \'mostrar curso\';
-        if (region) {
-            region.style.display = \'none\';
-            region.classList.remove(\'bloquecero-fadein\');
-        }
-        document.querySelectorAll(\'.block\').forEach(function(b){
-            if (!b.classList.contains(\'block_bloquecero\')) b.style.display = \'none\';
-        });
-        [
-            \'.page-header\',\'.page-context-header\',\'.course-header\',\'.page-header-headings\',\'.page-title\',\'.course-title\'
-        ].forEach(function(selector){
-            document.querySelectorAll(selector).forEach(function(e){ e.style.display = \'none\'; });
-        });
-        [
-            \'.nav-tabs\',\'.nav-tabs-line\',\'.secondary-navigation\',\'.secondary-nav\'
-        ].forEach(function(selector){
-            document.querySelectorAll(selector).forEach(function(e){ e.style.display = \'none\'; });
-        });
-        // Cambia texto a "mostrar curso"
-        if(btntext) btntext.innerHTML = \'mostrar curso\';
-    }
-};
-// Al cargar, oculta el curso y ajusta el botón
-document.addEventListener(\'DOMContentLoaded\', function() {
-    var region = document.getElementById(\'region-main\');
-    var btnicon = document.getElementById(\'bloquecero-mostrarcurso-icon\');
-    var btntext = document.getElementById(\'bloquecero-mostrarcurso-text\');
-    if (region) region.style.display = \'none\';
-    document.querySelectorAll(\'.block\').forEach(function(b){
-        if (!b.classList.contains(\'block_bloquecero\')) b.style.display = \'none\';
-    });
-    [
-        \'.page-header\',\'.page-context-header\',\'.course-header\',\'.page-header-headings\',\'.page-title\',\'.course-title\'
-    ].forEach(function(selector){
-        document.querySelectorAll(selector).forEach(function(e){ e.style.display = \'none\'; });
-    });
-    [
-        \'.nav-tabs\',\'.nav-tabs-line\',\'.secondary-navigation\',\'.secondary-nav\'
-    ].forEach(function(selector){
-        document.querySelectorAll(selector).forEach(function(e){ e.style.display = \'none\'; });
-    });
-    if(btntext) btntext.innerHTML = \'Mostrar curso\';
-});
-</script>
+                if (isHidden) {
+                    if(btn) btn.classList.add(\'open\');
+                    if(btntext) btntext.innerHTML = \'ocultar curso\';
+                    if (region) {
+                        region.style.display = \'\';
+                        region.classList.remove(\'bloquecero-fadein\');
+                        setTimeout(function() {
+                            region.classList.add(\'bloquecero-fadein\');
+                        }, 10);
+                    }
+                    document.querySelectorAll(\'.block\').forEach(function(b){
+                        b.style.display = \'\';
+                    });
+                    [
+                        \'.page-header\',\'.page-context-header\',\'.course-header\',\'.page-header-headings\',\'.page-title\',\'.course-title\'
+                    ].forEach(function(selector){
+                        document.querySelectorAll(selector).forEach(function(e){ e.style.display = \'\'; });
+                    });
+                    [
+                        \'.nav-tabs\',\'.nav-tabs-line\',\'.secondary-navigation\',\'.secondary-nav\'
+                    ].forEach(function(selector){
+                        document.querySelectorAll(selector).forEach(function(e){ e.style.display = \'\'; });
+                    });
+                    // Cambia texto a "ocultar curso"
+                    var btn = document.getElementById(\'bloquecero-mostrarcurso-btn\');
+                    if(btn) {
+                        btn.classList.toggle(\'cerrado\', !isHidden);
+                    }
+                    if(btntext) btntext.innerHTML = \'ocultar curso\';
+                } else {
+                    if(btn) btn.classList.remove(\'open\');
+                    if(btntext) btntext.innerHTML = \'mostrar curso\';
+                    if (region) {
+                        region.style.display = \'none\';
+                        region.classList.remove(\'bloquecero-fadein\');
+                    }
+                    document.querySelectorAll(\'.block\').forEach(function(b){
+                        if (!b.classList.contains(\'block_bloquecero\')) b.style.display = \'none\';
+                    });
+                    [
+                        \'.page-header\',\'.page-context-header\',\'.course-header\',\'.page-header-headings\',\'.page-title\',\'.course-title\'
+                    ].forEach(function(selector){
+                        document.querySelectorAll(selector).forEach(function(e){ e.style.display = \'none\'; });
+                    });
+                    [
+                        \'.nav-tabs\',\'.nav-tabs-line\',\'.secondary-navigation\',\'.secondary-nav\'
+                    ].forEach(function(selector){
+                        document.querySelectorAll(selector).forEach(function(e){ e.style.display = \'none\'; });
+                    });
+                    // Cambia texto a "mostrar curso"
+                    if(btntext) btntext.innerHTML = \'mostrar curso\';
+                }
+            };
+            // Al cargar, oculta el curso y ajusta el botón
+            document.addEventListener(\'DOMContentLoaded\', function() {
+                var region = document.getElementById(\'region-main\');
+                var btnicon = document.getElementById(\'bloquecero-mostrarcurso-icon\');
+                var btntext = document.getElementById(\'bloquecero-mostrarcurso-text\');
+                if (region) region.style.display = \'none\';
+                document.querySelectorAll(\'.block\').forEach(function(b){
+                    if (!b.classList.contains(\'block_bloquecero\')) b.style.display = \'none\';
+                });
+                [
+                    \'.page-header\',\'.page-context-header\',\'.course-header\',\'.page-header-headings\',\'.page-title\',\'.course-title\'
+                ].forEach(function(selector){
+                    document.querySelectorAll(selector).forEach(function(e){ e.style.display = \'none\'; });
+                });
+                [
+                    \'.nav-tabs\',\'.nav-tabs-line\',\'.secondary-navigation\',\'.secondary-nav\'
+                ].forEach(function(selector){
+                    document.querySelectorAll(selector).forEach(function(e){ e.style.display = \'none\'; });
+                });
+                if(btntext) btntext.innerHTML = \'Mostrar curso\';
+            });
+            </script>
             <style>
             .drawer-toggler.drawer-left-toggle.open-nav.d-print-none {
                 display: none !important;
@@ -959,13 +959,13 @@ document.addEventListener(\'DOMContentLoaded\', function() {
                 display: block !important;
             }
             .bloquecero-section-header-flex {
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            width: 100%;
-            gap: 12px;
-            margin-bottom: 8px;
-        }
+                display: flex;
+                align-items: center;
+                justify-content: space-between;
+                width: 100%;
+                gap: 12px;
+                margin-bottom: 8px;
+            }
         
             .bloquecero-section-badge {
                 position: static !important;
@@ -987,29 +987,29 @@ document.addEventListener(\'DOMContentLoaded\', function() {
             .bloquecero-section-card {
                 position: relative;
             }
-                .forum-card:hover {
-                    transform: scale(1.05);
-                    box-shadow: 0 6px 10px rgba(0, 0, 0, 0.15);
-                }
-                .ghost-button {
-                    display: flex;
-                    align-items: center;
-                    background: #fff;
-                    color: #004D35;
-                    border: 2px solid #004D35;
-                    border-radius: 3px;
-                    padding: 10px 20px;
-                    font-weight: 600;
-                    gap: 10px;
-                    min-width: 160px;
-                    transition: background 0.2s, box-shadow 0.2s;
-                    box-shadow: none;
-                    cursor: pointer;
-                    font-size: 1em;
-                    text-decoration: none !important;
-                    width: 220px;
-                    justify-content: center;
-                }
+            .forum-card:hover {
+                transform: scale(1.05);
+                box-shadow: 0 6px 10px rgba(0, 0, 0, 0.15);
+            }
+            .ghost-button {
+                display: flex;
+                align-items: center;
+                background: #fff;
+                color: #004D35;
+                border: 2px solid #004D35;
+                border-radius: 3px;
+                padding: 10px 20px;
+                font-weight: 600;
+                gap: 10px;
+                min-width: 160px;
+                transition: background 0.2s, box-shadow 0.2s;
+                box-shadow: none;
+                cursor: pointer;
+                font-size: 1em;
+                text-decoration: none !important;
+                width: 220px;
+                justify-content: center;
+            }
                 .ghost-button:visited,
                 .ghost-button:focus,
                 .ghost-button:hover,
@@ -1384,84 +1384,84 @@ document.addEventListener(\'DOMContentLoaded\', function() {
                     line-height: 1.18;
                     margin-top: 1px;
                 }
-                    .bloquecero-section-card {
-    border-radius: 3px;
-    box-shadow: 0 2px 12px rgba(185,200,160,0.10);
-    padding: 18px 16px 16px 16px;
-    margin: 0 8px 24px 0;
-    width: 370px;
-    min-width: 320px;
-    display: flex;
-    flex-direction: column;
-    justify-content: flex-start;
-    align-items: flex-start;
-    transition: box-shadow 0.19s;
-}
-.bloquecero-section-card:hover {
-    box-shadow: 0 6px 22px rgba(183,198,92,0.12);
-}
-.bloquecero-section-header {
-    width: 100%;
-    display: flex;
-    align-items: center;
-    gap: 20px;
-    margin-bottom: 28px;
-}
-.bloquecero-section-number {
-    font-size: 1.0em;
-    font-weight: 400;
-    color: #B7C65C;
-    flex: none;
-    letter-spacing: 0.05em;
-}
-.bloquecero-section-number,
-.bloquecero-section-number:link,
-.bloquecero-section-number:visited {
-    font-size: 1.0em;
-    font-weight: 400;
-    color: #B7C65C;
-    flex: none;
-    letter-spacing: 0.05em;
-    text-decoration: none;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-}
-.bloquecero-section-number:hover,
-.bloquecero-section-number:focus {
-    color: #A0B34F; /* Opcional: color al pasar el mouse */
-}
-.bloquecero-section-line {
-    width: 100%;
-    height: 2px;
-    background: #B7C65C;
-    border-radius: 2px;
-    margin: 0 0 12px 0;
-}
-.bloquecero-section-title {
-    font-size: 1.11em;
-    font-weight: 500;
-    color: #222;
-    flex: none;
-    white-space: nowrap;
-    margin-left: 0;
-}
-.bloquecero-section-content {
-    flex: 1;
-    font-size: 1.09em;
-    color: #333;
-    margin-top: 0;
-    display: block;
-    height: auto;
-}
-.bloquecero-section-content ul {
-    padding-left: 0;
-    margin: 0;
-    list-style: none;
-}
-.bloquecero-section-content li {
-    margin-bottom: 12px;
-}
+                .bloquecero-section-card {
+                    border-radius: 3px;
+                    box-shadow: 0 2px 12px rgba(185,200,160,0.10);
+                    padding: 18px 16px 16px 16px;
+                    margin: 0 8px 24px 0;
+                    width: 370px;
+                    min-width: 320px;
+                    display: flex;
+                    flex-direction: column;
+                    justify-content: flex-start;
+                    align-items: flex-start;
+                    transition: box-shadow 0.19s;
+                }
+                .bloquecero-section-card:hover {
+                    box-shadow: 0 6px 22px rgba(183,198,92,0.12);
+                }
+                .bloquecero-section-header {
+                    width: 100%;
+                    display: flex;
+                    align-items: center;
+                    gap: 20px;
+                    margin-bottom: 28px;
+                }
+                .bloquecero-section-number {
+                    font-size: 1.0em;
+                    font-weight: 400;
+                    color: #B7C65C;
+                    flex: none;
+                    letter-spacing: 0.05em;
+                }
+                .bloquecero-section-number,
+                .bloquecero-section-number:link,
+                .bloquecero-section-number:visited {
+                    font-size: 1.0em;
+                    font-weight: 400;
+                    color: #B7C65C;
+                    flex: none;
+                    letter-spacing: 0.05em;
+                    text-decoration: none;
+                    overflow: hidden;
+                    text-overflow: ellipsis;
+                    white-space: nowrap;
+                }
+                .bloquecero-section-number:hover,
+                .bloquecero-section-number:focus {
+                    color: #A0B34F; /* Opcional: color al pasar el mouse */
+                }
+                .bloquecero-section-line {
+                    width: 100%;
+                    height: 2px;
+                    background: #B7C65C;
+                    border-radius: 2px;
+                    margin: 0 0 12px 0;
+                }
+                .bloquecero-section-title {
+                    font-size: 1.11em;
+                    font-weight: 500;
+                    color: #222;
+                    flex: none;
+                    white-space: nowrap;
+                    margin-left: 0;
+                }
+                .bloquecero-section-content {
+                    flex: 1;
+                    font-size: 1.09em;
+                    color: #333;
+                    margin-top: 0;
+                    display: block;
+                    height: auto;
+                }
+                .bloquecero-section-content ul {
+                    padding-left: 0;
+                    margin: 0;
+                    list-style: none;
+                }
+                .bloquecero-section-content li {
+                    margin-bottom: 12px;
+                }
             </style>
             <style>
             /* Sesiones en directo (igual que calendario, pero .sesiones-directo-*) */
@@ -1714,53 +1714,51 @@ document.addEventListener(\'DOMContentLoaded\', function() {
             }
             </style>
             <style>
-            
-.bloquecero-tabs {
-    display: flex;
-    gap: 18px;
-    justify-content: flex-end;
-    margin: 0 0 18px 0;
-}
-.bloquecero-tab {
-    display: flex;
-    align-items: center;
-    padding: 7px 18px;
-    border: none;
-    border-bottom: 2px solid #B7C65C;
-    color: #004D35;
-    font-size: 1.05em;
-    font-weight: 500;
-    border-radius: 4px 4px 0 0;
-    text-decoration: none !important;
-    transition: color 0.13s, border-bottom 0.15s;
-}
-.bloquecero-tab:hover,
-.bloquecero-tab:focus {
-    color: #B7C65C;
-    border-bottom: 2.5px solid #B7C65C;
-}
-@media (max-width: 600px) {
-    .bloquecero-tabs {
-        gap: 8px;
-        flex-wrap: wrap;
-        justify-content: flex-end;
-    }
-    .bloquecero-tab {
-        font-size: 1em;
-        padding: 6px 10px;
-    }
-}
-    .sesiones-directo-calendaricon {
-    margin-left: 14px;
-    display: inline-block;
-    vertical-align: middle;
-    cursor: pointer;
-    transition: filter 0.17s;
-}
-.sesiones-directo-calendaricon:hover {
-    filter: brightness(1.13) drop-shadow(0 1px 5px #B7C65C33);
-}
-    
+                .bloquecero-tabs {
+                    display: flex;
+                    gap: 18px;
+                    justify-content: flex-end;
+                    margin: 0 0 18px 0;
+                }
+                .bloquecero-tab {
+                    display: flex;
+                    align-items: center;
+                    padding: 7px 18px;
+                    border: none;
+                    border-bottom: 2px solid #B7C65C;
+                    color: #004D35;
+                    font-size: 1.05em;
+                    font-weight: 500;
+                    border-radius: 4px 4px 0 0;
+                    text-decoration: none !important;
+                    transition: color 0.13s, border-bottom 0.15s;
+                }
+                .bloquecero-tab:hover,
+                .bloquecero-tab:focus {
+                    color: #B7C65C;
+                    border-bottom: 2.5px solid #B7C65C;
+                }
+                @media (max-width: 600px) {
+                    .bloquecero-tabs {
+                        gap: 8px;
+                        flex-wrap: wrap;
+                        justify-content: flex-end;
+                    }
+                    .bloquecero-tab {
+                        font-size: 1em;
+                        padding: 6px 10px;
+                    }
+                }
+                    .sesiones-directo-calendaricon {
+                    margin-left: 14px;
+                    display: inline-block;
+                    vertical-align: middle;
+                    cursor: pointer;
+                    transition: filter 0.17s;
+                }
+                .sesiones-directo-calendaricon:hover {
+                    filter: brightness(1.13) drop-shadow(0 1px 5px #B7C65C33);
+                }
             </style>
             
             <script>
@@ -1847,33 +1845,33 @@ document.addEventListener(\'DOMContentLoaded\', function() {
                     setTimeout(updateCarouselArrows, 500);
                 }
                 function toggleContactInfo(id) {
-    // Oculta todas las fichas de profesor
-    document.querySelectorAll(\'div[id^="contact-info-"]\').forEach(function(block) {
-        if (block.id !== id) {
-            block.style.opacity = "0";
-            block.style.transform = "scaleY(0)";
-            setTimeout(function() {
-                block.style.display = "none";
-            }, 300);
+            // Oculta todas las fichas de profesor
+            document.querySelectorAll(\'div[id^="contact-info-"]\').forEach(function(block) {
+                if (block.id !== id) {
+                    block.style.opacity = "0";
+                    block.style.transform = "scaleY(0)";
+                    setTimeout(function() {
+                        block.style.display = "none";
+                    }, 300);
+                }
+            });
+            // Activa/desactiva solo la ficha pulsada
+            const contactInfo = document.getElementById(id);
+            const isHidden = contactInfo.style.display === "none" || contactInfo.style.opacity === "0";
+            if (isHidden) {
+                contactInfo.style.display = "block";
+                setTimeout(() => {
+                    contactInfo.style.opacity = "1";
+                    contactInfo.style.transform = "scaleY(1)";
+                }, 10);
+            } else {
+                contactInfo.style.opacity = "0";
+                contactInfo.style.transform = "scaleY(0)";
+                setTimeout(() => {
+                    contactInfo.style.display = "none";
+                }, 300);
+            }
         }
-    });
-    // Activa/desactiva solo la ficha pulsada
-    const contactInfo = document.getElementById(id);
-    const isHidden = contactInfo.style.display === "none" || contactInfo.style.opacity === "0";
-    if (isHidden) {
-        contactInfo.style.display = "block";
-        setTimeout(() => {
-            contactInfo.style.opacity = "1";
-            contactInfo.style.transform = "scaleY(1)";
-        }, 10);
-    } else {
-        contactInfo.style.opacity = "0";
-        contactInfo.style.transform = "scaleY(0)";
-        setTimeout(() => {
-            contactInfo.style.display = "none";
-        }, 300);
-    }
-}
                 function toggleSectionActivities(id, btn) {
                     var content = document.getElementById(id);
                     var isCollapsed = content.style.display === "none" || content.classList.contains(\'collapsed\');
@@ -1929,54 +1927,54 @@ document.addEventListener(\'DOMContentLoaded\', function() {
                     }
                     updateCarouselArrows();
                 });
-function toggleSectionCard(btn) {
-    // Encuentra la tarjeta de sección correspondiente
-    var card = btn.closest(\'.bloquecero-section-card\');
-    var preview = card.querySelector(\'.bloquecero-section-activities[data-preview="1"]\');
-    var full = card.querySelector(\'.bloquecero-section-activities[data-full="1"]\');
-    // Si está expandida, colapsa
-    if (card.classList.contains(\'expanded\')) {
-        if (preview && full) {
-            preview.style.display = "block";
-            full.style.display = "none";
-        }
-        card.classList.remove("expanded");
-    } else {
-        // Si está colapsada, expande
-        if (preview && full) {
-            preview.style.display = "none";
-            full.style.display = "block";
-        }
-        card.classList.add("expanded");
-    }
-}
+            function toggleSectionCard(btn) {
+                // Encuentra la tarjeta de sección correspondiente
+                var card = btn.closest(\'.bloquecero-section-card\');
+                var preview = card.querySelector(\'.bloquecero-section-activities[data-preview="1"]\');
+                var full = card.querySelector(\'.bloquecero-section-activities[data-full="1"]\');
+                // Si está expandida, colapsa
+                if (card.classList.contains(\'expanded\')) {
+                    if (preview && full) {
+                        preview.style.display = "block";
+                        full.style.display = "none";
+                    }
+                    card.classList.remove("expanded");
+                } else {
+                    // Si está colapsada, expande
+                    if (preview && full) {
+                        preview.style.display = "none";
+                        full.style.display = "block";
+                    }
+                    card.classList.add("expanded");
+                }
+            }
             </script>
         </div>
     ';
 
     // Justo antes de cerrar el div principal del bloque, añade el HTML del modal:
     $this->content->text .= '
-    <!-- Modal de Bibliografía -->
-    <div id="bloquecero-bibliografia-modal" style="display:none; position:fixed; z-index:9999; left:0; top:0; width:100vw; height:100vh; background:rgba(0,0,0,0.35); align-items:center; justify-content:center;">
-        <div style="background:#fff; border-radius:10px; padding:32px 28px; min-width:260px; max-width:90vw; box-shadow:0 8px 32px rgba(0,0,0,0.18); position:relative; text-align:center;">
-            <button onclick="document.getElementById(\'bloquecero-bibliografia-modal\').style.display=\'none\'" style="position:absolute; top:10px; right:14px; background:none; border:none; font-size:1.5em; color:#888; cursor:pointer;">&times;</button>
-            <h2 style="margin-top:0;">Bibliography</h2>
+        <!-- Modal de Bibliografía -->
+        <div id="bloquecero-bibliografia-modal" style="display:none; position:fixed; z-index:9999; left:0; top:0; width:100vw; height:100vh; background:rgba(0,0,0,0.35); align-items:center; justify-content:center;">
+            <div style="background:#fff; border-radius:10px; padding:32px 28px; min-width:260px; max-width:90vw; box-shadow:0 8px 32px rgba(0,0,0,0.18); position:relative; text-align:center;">
+                <button onclick="document.getElementById(\'bloquecero-bibliografia-modal\').style.display=\'none\'" style="position:absolute; top:10px; right:14px; background:none; border:none; font-size:1.5em; color:#888; cursor:pointer;">&times;</button>
+                <h2 style="margin-top:0;">Bibliography</h2>
+            </div>
         </div>
-    </div>
-    <div id="modal-sesiones-todas" style="display:none; position:fixed; z-index:9999; left:0; top:0; width:100vw; height:100vh; background:rgba(0,0,0,0.32); align-items:center; justify-content:center;">
+        <div id="modal-sesiones-todas" style="display:none; position:fixed; z-index:9999; left:0; top:0; width:100vw; height:100vh; background:rgba(0,0,0,0.32); align-items:center; justify-content:center;">
+            <div style="background:#fff; border-radius:10px; padding:28px 24px; min-width:300px; max-width:92vw; box-shadow:0 8px 32px rgba(0,0,0,0.16); position:relative; text-align:left;">
+                <button onclick="document.getElementById(\'modal-sesiones-todas\').style.display=\'none\'" style="position:absolute; top:10px; right:16px; background:none; border:none; font-size:1.3em; color:#999; cursor:pointer;">&times;</button>
+                <h2 style="margin-top:0; font-size:1.15em;">Todas las sesiones en directo</h2>
+                <div id="modal-sesiones-list" style="margin-top:20px; max-height:50vh; overflow-y:auto;"></div>
+            </div>
+        </div>
+        <div id="modal-actividades-todas" style="display:none; position:fixed; z-index:9999; left:0; top:0; width:100vw; height:100vh; background:rgba(0,0,0,0.32); align-items:center; justify-content:center;">
         <div style="background:#fff; border-radius:10px; padding:28px 24px; min-width:300px; max-width:92vw; box-shadow:0 8px 32px rgba(0,0,0,0.16); position:relative; text-align:left;">
-            <button onclick="document.getElementById(\'modal-sesiones-todas\').style.display=\'none\'" style="position:absolute; top:10px; right:16px; background:none; border:none; font-size:1.3em; color:#999; cursor:pointer;">&times;</button>
-            <h2 style="margin-top:0; font-size:1.15em;">Todas las sesiones en directo</h2>
-            <div id="modal-sesiones-list" style="margin-top:20px; max-height:50vh; overflow-y:auto;"></div>
+            <button onclick="document.getElementById(\'modal-actividades-todas\').style.display=\'none\'" style="position:absolute; top:10px; right:16px; background:none; border:none; font-size:1.3em; color:#999; cursor:pointer;">&times;</button>
+            <h2 style="margin-top:0; font-size:1.15em;">Todas las actividades</h2>
+            <div id="modal-actividades-list" style="margin-top:20px; max-height:50vh; overflow-y:auto;"></div>
         </div>
     </div>
-    <div id="modal-actividades-todas" style="display:none; position:fixed; z-index:9999; left:0; top:0; width:100vw; height:100vh; background:rgba(0,0,0,0.32); align-items:center; justify-content:center;">
-    <div style="background:#fff; border-radius:10px; padding:28px 24px; min-width:300px; max-width:92vw; box-shadow:0 8px 32px rgba(0,0,0,0.16); position:relative; text-align:left;">
-        <button onclick="document.getElementById(\'modal-actividades-todas\').style.display=\'none\'" style="position:absolute; top:10px; right:16px; background:none; border:none; font-size:1.3em; color:#999; cursor:pointer;">&times;</button>
-        <h2 style="margin-top:0; font-size:1.15em;">Todas las actividades</h2>
-        <div id="modal-actividades-list" style="margin-top:20px; max-height:50vh; overflow-y:auto;"></div>
-    </div>
-</div>
     ';
 
     // PASAR PHP ARRAY DE SESIONES A JS GLOBAL (antes del cierre del div principal)
@@ -1989,38 +1987,40 @@ function toggleSectionCard(btn) {
     // Añade el script JS para el modal de sesiones fuera de cualquier echo PHP (como HTML, después del modal y antes del cierre del div)
     $this->content->text .= '
     <script>
-    document.addEventListener("DOMContentLoaded", function() {
-    var icon = document.querySelector(".calendario-actividades-calendaricon");
-    if (icon) {
-        icon.addEventListener("click", function() {
-            // Aquí puedes usar el mismo HTML que tienes en calendarActivities
-            var actividades = <?php echo json_encode($calendarActivities); ?>;
-            document.getElementById("modal-actividades-list").innerHTML = actividades;
-            document.getElementById("modal-actividades-todas").style.display = "flex";
-        });
-    }
-    // Cierra la modal si haces click fuera
-    var modal = document.getElementById("modal-actividades-todas");
-    if (modal) {
-        modal.addEventListener("click", function(e){
-            if(e.target === modal) modal.style.display = "none";
-        });
-    }
-});
-    document.addEventListener("DOMContentLoaded", function() {
-        var btn = document.getElementById("bloquecero-bibliografia-btn");
-        var modal = document.getElementById("bloquecero-bibliografia-modal");
-        if(btn && modal) {
-            btn.addEventListener("click", function(e){
-                e.preventDefault();
-                modal.style.display = "flex";
+        document.addEventListener("DOMContentLoaded", function() {
+            var icon = document.querySelector(".calendario-actividades-calendaricon");
+            if (icon) {
+            icon.addEventListener("click", function() {
+                var actividades = '. json_encode($calendarActivities).';
+                // Agregar estilos inline a los enlaces y spans para que sean iguales a los de sesiones-directo
+                actividades = actividades.replace(/<a\s+/g, \'<a style="color:#004D35;font-weight:600;" \');
+                actividades = actividades.replace(/<span\s+/g, \'<span style="color:#666;font-size:0.96em;" \');
+                document.getElementById("modal-actividades-list").innerHTML = actividades;
+                document.getElementById("modal-actividades-todas").style.display = "flex";
             });
-            // Cierra el modal si se hace clic fuera del contenido
-            modal.addEventListener("click", function(e){
+            }
+            // Cierra la modal si haces click fuera
+            var modal = document.getElementById("modal-actividades-todas");
+            if (modal) {
+            modal.addEventListener("click", function(e) {
                 if(e.target === modal) modal.style.display = "none";
             });
-        }
-    });
+            }
+        });
+        document.addEventListener("DOMContentLoaded", function() {
+            var btn = document.getElementById("bloquecero-bibliografia-btn");
+            var modal = document.getElementById("bloquecero-bibliografia-modal");
+            if(btn && modal) {
+                btn.addEventListener("click", function(e){
+                    e.preventDefault();
+                    modal.style.display = "flex";
+                });
+                // Cierra el modal si se hace clic fuera del contenido
+                modal.addEventListener("click", function(e){
+                    if(e.target === modal) modal.style.display = "none";
+                });
+            }
+        });
     </script>
     <script>
     document.addEventListener("DOMContentLoaded", function() {
@@ -2052,243 +2052,232 @@ function toggleSectionCard(btn) {
     </script>
     ';
 
-if (!$is_editing) {
-    // Inyecta JS para ocultar todo menos este bloque al cargar la página
-    $PAGE->requires->js_init_code("
-        document.addEventListener('DOMContentLoaded', function() {
-            var region = document.getElementById('region-main');
-            if (region) region.style.display = 'none';
+    if (!$is_editing) {
+            // Inyecta JS para ocultar todo menos este bloque al cargar la página
+            $PAGE->requires->js_init_code("
+                document.addEventListener('DOMContentLoaded', function() {
+                    var region = document.getElementById('region-main');
+                    if (region) region.style.display = 'none';
 
-            // Oculta todos los bloques menos el tuyo
-            document.querySelectorAll(\'.block\').forEach(function(b){
-                if (!b.classList.contains(\'block_bloquecero\')) b.style.display = \'none\';
-            });
+                    // Oculta todos los bloques menos el tuyo
+                    document.querySelectorAll('.block').forEach(function(b){
+                        if (!b.classList.contains('block_bloquecero')) b.style.display = 'none';
+                    });
 
-            // Oculta la cabecera general (título del curso, cabecera, etc.)
-            var headerClasses = [
-                \'.page-header\',
-                \'.page-context-header\',
-                \'.course-header\',
-                \'.page-header-headings\',
-                \'.page-title\',
-                \'.course-title\'
-            ];
-            headerClasses.forEach(function(selector){
-                document.querySelectorAll(selector).forEach(function(e){
-                    e.style.display = \'none\';
+                    // Oculta la cabecera general (título del curso, cabecera, etc.)
+                    var headerClasses = [
+                        '.page-header',
+                        '.page-context-header',
+                        '.course-header',
+                        '.page-header-headings',
+                        '.page-title',
+                        '.course-title'
+                    ];
+                    headerClasses.forEach(function(selector){
+                        document.querySelectorAll(selector).forEach(function(e){
+                            e.style.display = 'none';
+                        });
+                    });
+
+                    // Oculta las tabs de navegación (Course / Settings / Participants...)
+                    var tabClasses = [
+                        '.nav-tabs',
+                        '.nav-tabs-line',
+                        '.secondary-navigation',
+                        '.secondary-nav'
+                    ];
+                    tabClasses.forEach(function(selector){
+                        document.querySelectorAll(selector).forEach(function(e){
+                            e.style.display = 'none';
+                        });
+                    });
                 });
-            });
 
-            // Oculta las tabs de navegación (Course / Settings / Participants...)
-            var tabClasses = [
-                \'.nav-tabs\',
-                \'.nav-tabs-line\',
-                \'.secondary-navigation\',
-                \'.secondary-nav\'
-            ];
-            tabClasses.forEach(function(selector){
-                document.querySelectorAll(selector).forEach(function(e){
-                    e.style.display = \'none\';
-                });
-            });
-        });
+                window.bloquecero_restore = function() {
+                    var region = document.getElementById('region-main');
+                    if (region) region.style.display = '';
+                    document.querySelectorAll('.block').forEach(function(b){
+                        b.style.display = '';
+                    });
 
-        window.bloquecero_restore = function() {
-            var region = document.getElementById(\'region-main\');
-            if (region) region.style.display = \'\';
-            document.querySelectorAll(\'.block\').forEach(function(b){
-                b.style.display = \'\';
-            });
+                    // Restaurar cabecera general y título del curso
+                    var headerClasses = [
+                        '.page-header',
+                        '.page-context-header',
+                        '.course-header',
+                        '.page-header-headings',
+                        '.page-title',
+                        '.course-title'
+                    ];
+                    headerClasses.forEach(function(selector){
+                        document.querySelectorAll(selector).forEach(function(e){
+                            e.style.display = '';
+                        });
+                    });
 
-            // Restaurar cabecera general y título del curso
-            var headerClasses = [
-                \'.page-header\',
-                \'.page-context-header\',
-                \'.course-header\',
-                \'.page-header-headings\',
-                \'.page-title\',
-                \'.course-title\'
-            ];
-            headerClasses.forEach(function(selector){
-                document.querySelectorAll(selector).forEach(function(e){
-                    e.style.display = \'\';
-                });
-            });
+                    // Restaurar tabs de navegación
+                    var tabClasses = [
+                        '.nav-tabs',
+                        '.nav-tabs-line',
+                        '.secondary-navigation',
+                        '.secondary-nav'
+                    ];
+                    tabClasses.forEach(function(selector){
+                        document.querySelectorAll(selector).forEach(function(e){
+                            e.style.display = '';
+                        });
+                    });
 
-            // Restaurar tabs de navegación
-            var tabClasses = [
-                \'.nav-tabs\',
-                \'.nav-tabs-line\',
-                \'.secondary-navigation\',
-                \'.secondary-nav\'
-            ];
-            tabClasses.forEach(function(selector){
-                document.querySelectorAll(selector).forEach(function(e){
-                    e.style.display = \'\';
-                });
-            });
+                    var btn = document.getElementById('bloquecero-mostrarcurso-btn');
+                    if(btn) btn.style.display = 'none';
+                };
+            ");
+            // --- Script para expandir tarjeta de sección ---
+                $this->content->text .= '
 
-            var btn = document.getElementById(\'bloquecero-mostrarcurso-btn\');
-            if(btn) btn.style.display = \'none\';
-        };
-    ");
-    // --- Script para expandir tarjeta de sección ---
-        $this->content->text .= '
-<script>
-function expandSectionCard(card) {
-    if (card.classList.contains("expanded")) return;
-    var full = card.querySelector(\'.bloquecero-section-activities[data-full="1"]\');
-    var preview = card.querySelector(\'.bloquecero-section-activities[data-preview="1"]\');
-    if (full && preview) {
-        preview.style.display = "none";
-        full.style.display = "block";
+        <style>
+        .bloquecero-section-card { cursor: pointer; }
+        .bloquecero-vermas { color: #6FA24A; font-weight: 500; cursor: pointer; }
+        </style>
+        <style>
+                    #region-main.bloquecero-fadein {
+                        animation: slideDownFade 0.42s cubic-bezier(.42,0,.52,1.24);
+                    }
+
+                    @keyframes slideDownFade {
+                        0% {
+                            opacity: 0;
+                            transform: translateY(-50px);
+                        }
+                        80% {
+                            opacity: 1;
+                            transform: translateY(8px);
+                        }
+                        100% {
+                            opacity: 1;
+                            transform: translateY(0);
+                        }
+                    }
+                        /* Calendario de actividades */
+        .calendario-actividades-maincard {
+            min-height: 180px;
+            display: flex;
+            flex-direction: column;
+            padding: 28px 22px 22px 22px !important;
+            background: #fff;
+            border: 1.5px solid #E2EDE4;
+            border-radius: 3px;
+            box-shadow: 0 2px 14px rgba(89,157,74,0.05);
+        }
+        .calendario-actividades-header {
+            width: 100%;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 10px;
+        }
+        .calendario-actividades-header h3 {
+            margin: 0;
+            font-size: 1.19em;
+            font-weight: 600;
+            color: #0C3B2E;
+            letter-spacing: 0.01em;
+        }
+        .week-selector {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            font-size: 1em;
+            font-weight: 500;
+        }
+        .week-selector button {
+            background: none;
+            border: none;
+            font-size: 1.2em;
+            cursor: pointer;
+            color: #004D35;
+            padding: 2px 10px;
+            border-radius: 5px;
+            transition: background 0.18s, color 0.13s;
+        }
+        .week-selector button:hover {
+            background: #B7C65C;
+            color: #fff;
+        }
+        #week-label {
+            min-width: 90px;
+            text-align: center;
+            font-weight: 600;
+            color: #004D35;
+            font-size: 1em;
+            letter-spacing: 0.01em;
+        }
+        .calendario-actividades-container {
+            width: 100%;
+            padding: 0;
+            margin: 0;
+        }
+                    #activities-week-content ul {
+            padding-left: 0;
+            margin: 0;
+            width: 100%;
+            list-style: none;
+        }
+        #activities-week-content li {
+            margin-bottom: 8px;
+            font-size: 1em;
+            display: flex;
+            align-items: center;
+            color: #222;
+        }
+        #activities-week-content li a {
+            color: #004D35;
+            text-decoration: none;
+            transition: color 0.14s;
+        }
+        #activities-week-content li:hover,
+        #activities-week-content li:hover a {
+            color: #B7C65C;
+        }
+
+
+        .bloquecero-section-activities li a {
+            color: #004D35;
+            text-decoration: none;
+            transition: color 0.14s;
+        }
+        .bloquecero-section-activities li:hover,
+        .bloquecero-section-activities li:hover a {
+            color: #B7C65C;
+        }
+        #activities-week-content li:hover a,
+        .bloquecero-section-activities li:hover a {
+            text-decoration: none !important;
+        }
+            #week-label, #sesion-label {
+                        white-space: pre-line;
+                        text-align: center;
+                        line-height: 1.14;
+                    }
+                        .bloquecero-vermas-btn {
+            background: none;
+            border: none;
+            color: #6FA24A;
+            font-weight: 500;
+            cursor: pointer;
+            font-size: 1em;
+            padding: 0;
+        }
+        .bloquecero-vermas-btn:hover {
+            text-decoration: underline;
+            color: #004D35;
+        }
+                    </style>
+        ';
     }
-    card.classList.add("expanded");
-}
-</script>
-<style>
-.bloquecero-section-card { cursor: pointer; }
-.bloquecero-vermas { color: #6FA24A; font-weight: 500; cursor: pointer; }
-</style>
-<style>
-            #region-main.bloquecero-fadein {
-                animation: slideDownFade 0.42s cubic-bezier(.42,0,.52,1.24);
-            }
 
-            @keyframes slideDownFade {
-                0% {
-                    opacity: 0;
-                    transform: translateY(-50px);
-                }
-                80% {
-                    opacity: 1;
-                    transform: translateY(8px);
-                }
-                100% {
-                    opacity: 1;
-                    transform: translateY(0);
-                }
-            }
-                /* Calendario de actividades */
-.calendario-actividades-maincard {
-    min-height: 180px;
-    display: flex;
-    flex-direction: column;
-    padding: 28px 22px 22px 22px !important;
-    background: #fff;
-    border: 1.5px solid #E2EDE4;
-    border-radius: 3px;
-    box-shadow: 0 2px 14px rgba(89,157,74,0.05);
+    return $this->content;
 }
-.calendario-actividades-header {
-    width: 100%;
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    margin-bottom: 10px;
-}
-.calendario-actividades-header h3 {
-    margin: 0;
-    font-size: 1.19em;
-    font-weight: 600;
-    color: #0C3B2E;
-    letter-spacing: 0.01em;
-}
-.week-selector {
-    display: flex;
-    align-items: center;
-    gap: 10px;
-    font-size: 1em;
-    font-weight: 500;
-}
-.week-selector button {
-    background: none;
-    border: none;
-    font-size: 1.2em;
-    cursor: pointer;
-    color: #004D35;
-    padding: 2px 10px;
-    border-radius: 5px;
-    transition: background 0.18s, color 0.13s;
-}
-.week-selector button:hover {
-    background: #B7C65C;
-    color: #fff;
-}
-#week-label {
-    min-width: 90px;
-    text-align: center;
-    font-weight: 600;
-    color: #004D35;
-    font-size: 1em;
-    letter-spacing: 0.01em;
-}
-.calendario-actividades-container {
-    width: 100%;
-    padding: 0;
-    margin: 0;
-}
-            #activities-week-content ul {
-    padding-left: 0;
-    margin: 0;
-    width: 100%;
-    list-style: none;
-}
-#activities-week-content li {
-    margin-bottom: 8px;
-    font-size: 1em;
-    display: flex;
-    align-items: center;
-    color: #222;
-}
-#activities-week-content li a {
-    color: #004D35;
-    text-decoration: none;
-    transition: color 0.14s;
-}
-#activities-week-content li:hover,
-#activities-week-content li:hover a {
-    color: #B7C65C;
-}
-
-
-.bloquecero-section-activities li a {
-    color: #004D35;
-    text-decoration: none;
-    transition: color 0.14s;
-}
-.bloquecero-section-activities li:hover,
-.bloquecero-section-activities li:hover a {
-    color: #B7C65C;
-}
-#activities-week-content li:hover a,
-.bloquecero-section-activities li:hover a {
-    text-decoration: none !important;
-}
-    #week-label, #sesion-label {
-                white-space: pre-line;
-                text-align: center;
-                line-height: 1.14;
-            }
-                .bloquecero-vermas-btn {
-    background: none;
-    border: none;
-    color: #6FA24A;
-    font-weight: 500;
-    cursor: pointer;
-    font-size: 1em;
-    padding: 0;
-}
-.bloquecero-vermas-btn:hover {
-    text-decoration: underline;
-    color: #004D35;
-}
-            </style>
-';
-}
-
-        return $this->content;
-    }
 
     public function applicable_formats() {
         return array(
