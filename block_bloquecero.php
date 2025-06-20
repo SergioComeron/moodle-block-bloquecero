@@ -513,7 +513,7 @@ foreach ($modinfo->sections[$section->section] as $cmid) {
             <span id="week-label"></span>
             <button id="next-week">&gt;</button>
         </div>
-        <span class="sesiones-directo-calendaricon" title="Ver todas las sesiones">
+        <span class="calendario-actividades-calendaricon" title="Ver todas las actividades">
             <!-- Icono SVG calendario -->
             <svg width="22" height="22" viewBox="0 0 24 24" style="vertical-align:middle;cursor:pointer;"><rect x="3" y="5" width="18" height="16" rx="3" fill="#B7C65C" /><rect x="7" y="9" width="2.5" height="2.5" rx="1" fill="#fff"/><rect x="11" y="9" width="2.5" height="2.5" rx="1" fill="#fff"/><rect x="15" y="9" width="2.5" height="2.5" rx="1" fill="#fff"/><rect x="7" y="13" width="2.5" height="2.5" rx="1" fill="#fff"/><rect x="11" y="13" width="2.5" height="2.5" rx="1" fill="#fff"/><rect x="15" y="13" width="2.5" height="2.5" rx="1" fill="#fff"/></svg>
         </span>
@@ -1970,6 +1970,13 @@ function toggleSectionCard(btn) {
             <div id="modal-sesiones-list" style="margin-top:20px; max-height:50vh; overflow-y:auto;"></div>
         </div>
     </div>
+    <div id="modal-actividades-todas" style="display:none; position:fixed; z-index:9999; left:0; top:0; width:100vw; height:100vh; background:rgba(0,0,0,0.32); align-items:center; justify-content:center;">
+    <div style="background:#fff; border-radius:10px; padding:28px 24px; min-width:300px; max-width:92vw; box-shadow:0 8px 32px rgba(0,0,0,0.16); position:relative; text-align:left;">
+        <button onclick="document.getElementById(\'modal-actividades-todas\').style.display=\'none\'" style="position:absolute; top:10px; right:16px; background:none; border:none; font-size:1.3em; color:#999; cursor:pointer;">&times;</button>
+        <h2 style="margin-top:0; font-size:1.15em;">Todas las actividades</h2>
+        <div id="modal-actividades-list" style="margin-top:20px; max-height:50vh; overflow-y:auto;"></div>
+    </div>
+</div>
     ';
 
     // PASAR PHP ARRAY DE SESIONES A JS GLOBAL (antes del cierre del div principal)
@@ -1982,6 +1989,24 @@ function toggleSectionCard(btn) {
     // Añade el script JS para el modal de sesiones fuera de cualquier echo PHP (como HTML, después del modal y antes del cierre del div)
     $this->content->text .= '
     <script>
+    document.addEventListener("DOMContentLoaded", function() {
+    var icon = document.querySelector(".calendario-actividades-calendaricon");
+    if (icon) {
+        icon.addEventListener("click", function() {
+            // Aquí puedes usar el mismo HTML que tienes en calendarActivities
+            var actividades = <?php echo json_encode($calendarActivities); ?>;
+            document.getElementById("modal-actividades-list").innerHTML = actividades;
+            document.getElementById("modal-actividades-todas").style.display = "flex";
+        });
+    }
+    // Cierra la modal si haces click fuera
+    var modal = document.getElementById("modal-actividades-todas");
+    if (modal) {
+        modal.addEventListener("click", function(e){
+            if(e.target === modal) modal.style.display = "none";
+        });
+    }
+});
     document.addEventListener("DOMContentLoaded", function() {
         var btn = document.getElementById("bloquecero-bibliografia-btn");
         var modal = document.getElementById("bloquecero-bibliografia-modal");
