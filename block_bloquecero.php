@@ -385,11 +385,11 @@ foreach ($modinfo->sections[$section->section] as $cmid) {
                 $activitieslist = '<div style="margin-top:12px; color:#888; font-size:0.95em;" class="bloquecero-section-activities" data-preview="1">' . get_string('noactivities', 'block_bloquecero') . '</div>';
                 $activitieslist_full = '<div style="margin-top:12px; color:#888; font-size:0.95em; display:none;" class="bloquecero-section-activities" data-full="1">' . get_string('noactivities', 'block_bloquecero') . '</div>';
             }
-
+            // print_r($all_activities_array);
             // Guardar el contenido HTML de las actividades para esta sección con un id único
             $sectionid = 'section-activities-' . $sectioncount;
             $sectionsActivitiesData[$sectionid] = $activitieslist_full;
-
+            // print_r($sectionsActivitiesData);
             // Colores alternos por índice de tarjeta
             $tarjeta_colores = [
                 ['bg' => '#F2F5F3', 'linea' => '#B7C65C'], // gris verdoso claro
@@ -410,6 +410,7 @@ foreach ($modinfo->sections[$section->section] as $cmid) {
 
             // Construir la tarjeta como string (con badge si corresponde)
             $card_html = '<div class="bloquecero-section-card" style="background: '.$bg_color.'">';
+            // print_r($activitieslist);
             $card_html .= '
                 <div class="bloquecero-section-header-flex" style="display:flex;align-items:center;justify-content:space-between;width:100%;gap:12px;margin-bottom:8px;">
                     <div class="bloquecero-section-number" style="flex:1 1 auto;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;"><a href="'. $sectionurl .'" class="bloquecero-section-number">'. $sectiontitle .'</a></div>'
@@ -443,6 +444,7 @@ foreach ($modinfo->sections[$section->section] as $cmid) {
 
         // Inyectar la definición del array de actividades en JavaScript
         $sectionsActivitiesJson = json_encode($sectionsActivitiesData);
+        // print_r($sectionsActivitiesData);
 
         $courseDates = '';
         if (!empty($COURSE->startdate)) {
@@ -477,6 +479,7 @@ foreach ($modinfo->sections[$section->section] as $cmid) {
 
         // --- Calcular el selector de semanas usando las fechas del curso ---
         $courseStart = $COURSE->startdate;
+        $courseEnd = !empty($COURSE->enddate) ? $COURSE->enddate : time(); // Usa la fecha de fin del curso o la fecha actual si no está definida
 
         $weeks = ceil(($courseEnd - $courseStart) / (7 * 24 * 60 * 60));
         $options = '';
@@ -504,13 +507,18 @@ foreach ($modinfo->sections[$section->section] as $cmid) {
         $calendarioActividades = '
 <div class="udima-maincard calendario-actividades-maincard">
     <div class="calendario-actividades-header">
-        <h3>Calendario de actividades</h3>
+        <h3>Actividades</h3>
         <div class="week-selector">
             <button id="prev-week">&lt;</button>
             <span id="week-label"></span>
             <button id="next-week">&gt;</button>
         </div>
+        <span class="sesiones-directo-calendaricon" title="Ver todas las sesiones">
+            <!-- Icono SVG calendario -->
+            <svg width="22" height="22" viewBox="0 0 24 24" style="vertical-align:middle;cursor:pointer;"><rect x="3" y="5" width="18" height="16" rx="3" fill="#B7C65C" /><rect x="7" y="9" width="2.5" height="2.5" rx="1" fill="#fff"/><rect x="11" y="9" width="2.5" height="2.5" rx="1" fill="#fff"/><rect x="15" y="9" width="2.5" height="2.5" rx="1" fill="#fff"/><rect x="7" y="13" width="2.5" height="2.5" rx="1" fill="#fff"/><rect x="11" y="13" width="2.5" height="2.5" rx="1" fill="#fff"/><rect x="15" y="13" width="2.5" height="2.5" rx="1" fill="#fff"/></svg>
+        </span>
     </div>
+    
     <div class="calendario-actividades-container">
         <div id="activities-week-content"></div>
     </div>
@@ -2022,9 +2030,9 @@ function toggleSectionCard(btn) {
 if (!$is_editing) {
     // Inyecta JS para ocultar todo menos este bloque al cargar la página
     $PAGE->requires->js_init_code("
-        document.addEventListener(\'DOMContentLoaded\', function() {
-            var region = document.getElementById(\'region-main\');
-            if (region) region.style.display = \'none\';
+        document.addEventListener('DOMContentLoaded', function() {
+            var region = document.getElementById('region-main');
+            if (region) region.style.display = 'none';
 
             // Oculta todos los bloques menos el tuyo
             document.querySelectorAll(\'.block\').forEach(function(b){
