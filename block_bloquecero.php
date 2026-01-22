@@ -67,6 +67,12 @@ class block_bloquecero extends block_base {
             return null;
         }
 
+        // Verificación adicional: solo mostrar en course/view.php
+        $scriptname = basename($_SERVER['SCRIPT_NAME']);
+        if ($scriptname !== 'view.php' || strpos($_SERVER['SCRIPT_NAME'], '/course/') === false) {
+            return null;
+        }
+
         
         $is_editing = $PAGE->user_is_editing();
 
@@ -75,30 +81,6 @@ class block_bloquecero extends block_base {
         }
     
         $this->content = new stdClass;
-
-        // Ejemplo: array de profesores. En la práctica, recupera los profesores según el curso.
-        $teachers = array(
-            (object)[
-                'id'       => 1,
-                'fullname' => 'Prof. Sinesio Delgado',
-                'email'    => 'sinesio.delgado@udima.es',
-                'phone'    => '+34 911896994 - Extensión 3563',
-                'schedule' => '<ul>
-                                    <li>Lunes y Martes de 17:00 a 19:00 h.</li>
-                                    <li>Miércoles y Jueves de 12:00 a 14:00 h.</li>
-                               </ul>'
-            ],
-            (object)[
-                'id'       => 2,
-                'fullname' => 'Prof. María López',
-                'email'    => 'maria.lopez@udima.es',
-                'phone'    => '+34 911000111 - Extensión 1234',
-                'schedule' => '<ul>
-                                    <li>Martes y Miércoles de 10:00 a 12:00 h.</li>
-                                    <li>Viernes de 15:00 a 17:00 h.</li>
-                               </ul>'
-            ]
-        );
 
         $coursecontext = context_course::instance($COURSE->id);
         require_once($CFG->dirroot . '/user/lib.php');
@@ -116,29 +98,38 @@ class block_bloquecero extends block_base {
 
         global $OUTPUT;
         $teachersP = array();
+        $teachersP = array();
         foreach ($teachersraw as $teacher) {
-            // Recupera el teléfono y horario personalizados si existen en la configuración del bloque
-            $phonekey = 'userphone_' . $teacher->id;
-            $schedulekey = 'userschedule_' . $teacher->id;
-            $phone = isset($this->config->$phonekey) ? $this->config->$phonekey : (isset($teacher->phone1) ? $teacher->phone1 : '');
-            $schedulekey = 'userschedule_' . $teacher->id;
+            $userpic = $OUTPUT->user_picture($teacher, ['size' => 80, 'class' => 'teacher-photo']);
+            
+            // Obtener teléfono y horario guardados en la configuración del bloque
+            $phone = '';
             $schedule = '';
-            if (isset($this->config->$schedulekey)) {
-                if (is_array($this->config->$schedulekey) && isset($this->config->{$schedulekey}['text'])) {
-                    $schedule = $this->config->{$schedulekey}['text'];
-                } else {
-                    $schedule = $this->config->$schedulekey;
-                }
-            } else {
-                $schedule = '<ul><li>Horarios no disponibles</li></ul>';
+            
+            // Buscar el teléfono guardado para este profesor
+            $phoneKey = 'userphone_' . $teacher->id;
+            if (!empty($this->config->$phoneKey)) {
+                $phone = $this->config->$phoneKey;
             }
+            
+            // Buscar el horario guardado para este profesor
+            $scheduleKey = 'userschedule_' . $teacher->id;
+            if (!empty($this->config->$scheduleKey)) {
+                if (is_array($this->config->$scheduleKey)) {
+                    // Es un editor, tiene formato array con 'text' y 'format'
+                    $schedule = $this->config->$scheduleKey['text'];
+                } else {
+                    $schedule = $this->config->$scheduleKey;
+                }
+            }
+            
             $teachersP[] = (object)[
                 'id'          => $teacher->id,
                 'fullname'    => fullname($teacher),
                 'email'       => $teacher->email,
                 'phone'       => $phone,
-                'picturehtml' => $OUTPUT->user_picture($teacher, array('size' => 100)),
-                'schedule'    => $schedule
+                'schedule'    => $schedule,
+                'picturehtml' => $userpic  // Cambiado de 'userpic' a 'picturehtml'
             ];
         }
 
@@ -155,24 +146,39 @@ class block_bloquecero extends block_base {
         $forum_anuncios_url = '#';
         if (!empty($this->config->forumid)) {
             $id_forum_anuncios = $this->config->forumid;
-            $cm_forum_anuncios = get_coursemodule_from_instance('forum', $id_forum_anuncios);
-            $forum_anuncios_url = new moodle_url('/mod/forum/view.php', array('id' => $id_forum_anuncios));
-            $count_anuncios = forum_get_discussions_unread($cm_forum_anuncios);
+            // Verificar que el foro existe antes de acceder
+            if ($DB->record_exists('forum', ['id' => $id_forum_anuncios])) {
+                $cm_forum_anuncios = get_coursemodule_from_instance('forum', $id_forum_anuncios);
+                if ($cm_forum_anuncios) {
+                    $forum_anuncios_url = new moodle_url('/mod/forum/view.php', array('id' => $cm_forum_anuncios->id));
+                    $count_anuncios = forum_get_discussions_unread($cm_forum_anuncios);
+                }
+            }
         }
 
         $forum_tutorias_url = '#';
         if (!empty($this->config->forumtutoriasid)) {
             $id_forum_tutorias = $this->config->forumtutoriasid;
-            $cm_forum_tutorias = get_coursemodule_from_instance('forum', $id_forum_tutorias);
-            $forum_tutorias_url = new moodle_url('/mod/forum/view.php', array('id' => $id_forum_tutorias));
-            $count_tutorias = forum_get_discussions_unread($cm_forum_tutorias);
+            // Verificar que el foro existe antes de acceder
+            if ($DB->record_exists('forum', ['id' => $id_forum_tutorias])) {
+                $cm_forum_tutorias = get_coursemodule_from_instance('forum', $id_forum_tutorias);
+                if ($cm_forum_tutorias) {
+                    $forum_tutorias_url = new moodle_url('/mod/forum/view.php', array('id' => $cm_forum_tutorias->id));
+                    $count_tutorias = forum_get_discussions_unread($cm_forum_tutorias);
+                }
+            }
         }
 
         if (!empty($this->config->forumestudiantesid)) {
             $id_forum_estudiantes = $this->config->forumestudiantesid;
-            $cm_forum_estudiantes = get_coursemodule_from_instance('forum', $id_forum_estudiantes);
-            $forum_estudiantes_url = new moodle_url('/mod/forum/view.php', array('id' => $id_forum_estudiantes));
-            $count_estudiantes = forum_get_discussions_unread($cm_forum_estudiantes);
+            // Verificar que el foro existe antes de acceder
+            if ($DB->record_exists('forum', ['id' => $id_forum_estudiantes])) {
+                $cm_forum_estudiantes = get_coursemodule_from_instance('forum', $id_forum_estudiantes);
+                if ($cm_forum_estudiantes) {
+                    $forum_estudiantes_url = new moodle_url('/mod/forum/view.php', array('id' => $cm_forum_estudiantes->id));
+                    $count_estudiantes = forum_get_discussions_unread($cm_forum_estudiantes);
+                }
+            }
         }
         $guide_url = !empty($this->config->guide_url) ? $this->config->guide_url : '#';
         // $bibliography_url = !empty($this->config->bibliography_url) ? $this->config->bibliography_url : '#';
@@ -456,6 +462,8 @@ class block_bloquecero extends block_base {
 
         // Bloque para mostrar el Calendario de actividades (mismo ancho que el carrusel)
         $calendarActivities = '';
+        $activitiesData = []; // Array para pasar a JavaScript con información completa
+
         foreach ($modinfo->cms as $cm) {
             if (!$cm->uservisible) {
                 continue;
@@ -464,22 +472,130 @@ class block_bloquecero extends block_base {
             if ($startdate) {
                 $activitytime = userdate($startdate, get_string('strftimedateshort'));
                 $icon = $OUTPUT->pix_icon('icon', $cm->modfullname, $cm->modname, ['class' => 'activityicon']);
+
+                // Determinar fecha de vencimiento y estado de entrega
+                $duedate = 0;
+                $submitted = false;
+                $modname = $cm->modname;
+
+                // Para tareas (assign)
+                if ($modname === 'assign' && $cm->instance) {
+                    $assignment = $DB->get_record('assign', ['id' => $cm->instance]);
+                    if ($assignment) {
+                        $duedate = $assignment->duedate;
+                        // Verificar si hay entrega
+                        $submission = $DB->get_record('assign_submission', [
+                            'assignment' => $cm->instance,
+                            'userid' => $USER->id,
+                            'latest' => 1
+                        ]);
+                        $submitted = $submission && $submission->status === 'submitted';
+                    }
+                }
+                // Para cuestionarios (quiz)
+                else if ($modname === 'quiz' && $cm->instance) {
+                    $quiz = $DB->get_record('quiz', ['id' => $cm->instance]);
+                    if ($quiz) {
+                        $duedate = $quiz->timeclose;
+                        // Verificar si tiene intentos
+                        $attempts = $DB->count_records('quiz_attempts', [
+                            'quiz' => $cm->instance,
+                            'userid' => $USER->id
+                        ]);
+                        $submitted = $attempts > 0;
+                    }
+                }
+
+                // Si no hay duedate, usar startdate
+                if (!$duedate) {
+                    $duedate = $startdate;
+                }
+
+                // Construir objeto de actividad para JavaScript
+                $activitiesData[] = [
+                    'name' => format_string($cm->name),
+                    'url' => $cm->url->out(),
+                    'icon' => $icon,
+                    'modname' => $modname,
+                    'modfullname' => format_string($cm->modfullname),
+                    'startdate' => $startdate,
+                    'duedate' => $duedate,
+                    'submitted' => $submitted
+                ];
+
                 $calendarActivities .= '<li data-timestamp="' . $startdate . '" style="margin-bottom: 6px;">' . $icon .
                     ' <a href="' . $cm->url . '">' .
                     format_string($cm->name) . '</a> <span style="font-size:0.9em; color:#666;">(Inicio: ' . $activitytime . ')</span></li>';
             }
         }
+
         if ($calendarActivities) {
-            $calendarActivities = '<ul id="activities-list" style="margin: 12px 0 0 0; padding-left: 18px; list-style: none;">' 
+            $calendarActivities = '<ul id="activities-list" style="margin: 12px 0 0 0; padding-left: 18px; list-style: none;">'
                 . $calendarActivities . '</ul>';
         } else {
-            $calendarActivities = '<div style="margin-top:12px; color:#888; font-size:0.95em;">' . 
+            $calendarActivities = '<div style="margin-top:12px; color:#888; font-size:0.95em;">' .
                 get_string('noactivities', 'block_bloquecero') . '</div>';
         }
 
-        // --- Calcular el selector de semanas usando las fechas del curso ---
-        $courseStart = $COURSE->startdate;
-        $courseEnd = !empty($COURSE->enddate) ? $COURSE->enddate : time(); // Usa la fecha de fin del curso o la fecha actual si no está definida
+        // --- SESIONES EN DIRECTO ---
+        // Preparar sesiones en directo desde la base de datos (PRIMERO, antes de calcular semanas)
+        $sesionesZoom = [];
+        $blockinstanceid = $this->instance->id ?? 0;
+
+        if ($blockinstanceid) {
+            $currentTime = time();
+            // Solo mostrar sesiones futuras o en curso (últimas 2 horas)
+            $twohourago = $currentTime - 7200;
+
+            $sessions = $DB->get_records_select(
+                'block_bloquecero_sessions',
+                'blockinstanceid = ? AND courseid = ? AND sessiondate >= ?',
+                [$blockinstanceid, $COURSE->id, $twohourago],
+                'sessiondate ASC'
+            );
+
+            foreach ($sessions as $session) {
+                $sesionesZoom[] = [
+                    'titulo' => $session->name,
+                    'fecha' => $session->sessiondate
+                ];
+            }
+        }
+
+        // --- Calcular el selector de semanas ---
+        // Recopilar todas las fechas de actividades y sesiones para calcular el rango real
+        $allDates = [];
+
+        // Agregar fechas de actividades
+        foreach ($modinfo->cms as $cm) {
+            if (!$cm->uservisible) continue;
+            $startdate = get_cm_start_date($cm);
+            if ($startdate) {
+                $allDates[] = $startdate;
+            }
+        }
+
+        // Agregar fechas de sesiones
+        foreach ($sesionesZoom as $sesion) {
+            $allDates[] = $sesion['fecha'];
+        }
+
+        // Calcular rango de fechas basado en contenido real
+        if (!empty($allDates)) {
+            $minDate = min($allDates);
+            $maxDate = max($allDates);
+            // Agregar margen: empezar el lunes de la semana de la primera fecha
+            $courseStart = strtotime('last monday', $minDate + 86400); // +1 día para que si es lunes no retroceda
+            if ($courseStart > $minDate) {
+                $courseStart = strtotime('last monday', $minDate);
+            }
+            // Terminar el domingo de la semana de la última fecha
+            $courseEnd = strtotime('next sunday', $maxDate);
+        } else {
+            // Si no hay actividades ni sesiones, usar fechas del curso
+            $courseStart = $COURSE->startdate;
+            $courseEnd = !empty($COURSE->enddate) ? $COURSE->enddate : time();
+        }
 
         $weeks = ceil(($courseEnd - $courseStart) / (7 * 24 * 60 * 60));
         $options = '';
@@ -487,21 +603,19 @@ class block_bloquecero extends block_base {
             $options .= '<option value="' . $i . '">Semana ' . $i . '</option>';
         }
 
-        // --- SESIONES EN DIRECTO ---
-        $sesionesZoom = [
-            ['titulo' => 'Clase inaugural', 'fecha' => strtotime('+2 days 18:00'), 'url' => 'https://zoom.us/j/123456789'],
-            ['titulo' => 'Repaso Tema 1', 'fecha' => strtotime('+5 days 17:00'), 'url' => 'https://zoom.us/j/987654321'],
-            ['titulo' => 'Consultas generales', 'fecha' => strtotime('+12 days 19:00'), 'url' => 'https://zoom.us/j/112233445'],
-            ['titulo' => 'Resolución ejercicios', 'fecha' => strtotime('+20 days 16:30'), 'url' => 'https://zoom.us/j/556677889'],
-        ];
         $sesionesZoomList = '';
-        foreach ($sesionesZoom as $sesion) {
-            $fecha = userdate($sesion['fecha'], get_string('strftimedaydatetime', 'langconfig'));
-            $sesionesZoomList .= '<li data-timestamp="' . $sesion['fecha'] . '" style="margin-bottom: 6px;">' .
-                $OUTPUT->pix_icon('i/calendar', '', '', ['class' => 'activityicon']) .
-                ' <a href="' . $sesion['url'] . '" target="_blank">' . format_string($sesion['titulo']) . '</a> <span style="font-size:0.93em; color:#666;">(' . $fecha . ')</span></li>';
+        if (!empty($sesionesZoom)) {
+            foreach ($sesionesZoom as $sesion) {
+                $fecha = userdate($sesion['fecha'], get_string('strftimedaydatetime', 'langconfig'));
+                $sesionesZoomList .= '<li data-timestamp="' . $sesion['fecha'] . '" style="margin-bottom: 6px;">' .
+                    $OUTPUT->pix_icon('i/calendar', '', '', ['class' => 'activityicon']) .
+                    ' <strong>' . format_string($sesion['titulo']) . '</strong> <span style="font-size:0.93em; color:#666;">(' . $fecha . ')</span></li>';
+            }
+            $sesionesZoomList = '<ul id="sesiones-list" style="margin: 12px 0 0 0; padding-left: 18px; list-style: none;">' . $sesionesZoomList . '</ul>';
+        } else {
+            $sesionesZoomList = '<div style="margin: 12px 0; padding: 12px; text-align: center; color: #666; font-size: 0.9em;">' .
+                get_string('nosessionsscheduled', 'block_bloquecero') . '</div>';
         }
-        $sesionesZoomList = '<ul id="sesiones-list" style="margin: 12px 0 0 0; padding-left: 18px; list-style: none;">' . $sesionesZoomList . '</ul>';
 
         // --- NUEVA estructura de la tarjeta de calendario de actividades ---
         $calendarioActividades = '
@@ -518,13 +632,13 @@ class block_bloquecero extends block_base {
                         <svg width="22" height="22" viewBox="0 0 24 24" style="vertical-align:middle;cursor:pointer;"><rect x="3" y="5" width="18" height="16" rx="3" fill="#B7C65C" /><rect x="7" y="9" width="2.5" height="2.5" rx="1" fill="#fff"/><rect x="11" y="9" width="2.5" height="2.5" rx="1" fill="#fff"/><rect x="15" y="9" width="2.5" height="2.5" rx="1" fill="#fff"/><rect x="7" y="13" width="2.5" height="2.5" rx="1" fill="#fff"/><rect x="11" y="13" width="2.5" height="2.5" rx="1" fill="#fff"/><rect x="15" y="13" width="2.5" height="2.5" rx="1" fill="#fff"/></svg>
                     </span>
                 </div>
-                
+
                 <div class="calendario-actividades-container">
                     <div id="activities-week-content"></div>
                 </div>
             </div>
             <script>
-            (function(){
+            document.addEventListener("DOMContentLoaded", function(){
                 const courseStart = ' . $courseStart . ';
                 const totalWeeks = ' . $weeks . ';
                 const now = Math.floor(Date.now() / 1000);
@@ -590,7 +704,7 @@ class block_bloquecero extends block_base {
                     }
                 });
                 filterActivities(currentWeek);
-            })();
+            });
             </script>
             ';
 
@@ -620,7 +734,7 @@ class block_bloquecero extends block_base {
             </div>
         </div>
         <script>
-        (function(){
+        document.addEventListener("DOMContentLoaded", function(){
             const courseStart = ' . $courseStart . ';
             const totalWeeks = ' . $weeks . ';
             const now = Math.floor(Date.now() / 1000);
@@ -685,7 +799,7 @@ class block_bloquecero extends block_base {
                 }
             });
             filterSesiones(currentWeek);
-        })();
+        });
         </script>
         ';
 
@@ -865,6 +979,23 @@ class block_bloquecero extends block_base {
             display: flex;
             gap: 20px;
             margin: 20px 40px;
+            align-items: stretch;
+            }
+            .bloquecero-maincards-row > div {
+            display: flex;
+            }
+            .udima-maincard,
+            .calendario-actividades-maincard,
+            .sesiones-directo-maincard {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            }
+            .calendario-actividades-container,
+            .sesiones-directo-container {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
             }
 
             </style>
@@ -1467,6 +1598,7 @@ class block_bloquecero extends block_base {
             /* Sesiones en directo (igual que calendario, pero .sesiones-directo-*) */
             .sesiones-directo-maincard {
                 min-height: 180px;
+                height: 100%;
                 display: flex;
                 flex-direction: column;
                 padding: 28px 22px 22px 22px !important;
@@ -1552,6 +1684,27 @@ class block_bloquecero extends block_base {
                 font-weight: 600;
                 color: #004D35;
                 letter-spacing: 0.01em;
+            }
+            .week-selector,
+            .sesiones-directo-selector {
+                display: flex;
+                align-items: center;
+                gap: 10px;
+                font-size: 1em;
+                font-weight: 500;
+                margin-left: auto;
+                flex-shrink: 0;
+                white-space: nowrap;
+            }
+            .calendario-actividades-calendaricon,
+            .sesiones-directo-calendaricon {
+                flex-shrink: 0;
+                cursor: pointer;
+                transition: opacity 0.15s;
+            }
+            .calendario-actividades-calendaricon:hover,
+            .sesiones-directo-calendaricon:hover {
+                opacity: 0.7;
             }
             .sesiones-directo-container {
                 width: 100%;
@@ -1759,6 +1912,18 @@ class block_bloquecero extends block_base {
                 .sesiones-directo-calendaricon:hover {
                     filter: brightness(1.13) drop-shadow(0 1px 5px #B7C65C33);
                 }
+
+                #bibliografia-content a:hover {
+                    color: #B7C65C !important;
+                    text-decoration: underline !important;
+                }
+                #bibliografia-content ul li {
+                    border-bottom: 1px solid #f0f0f0;
+                    padding-bottom: 10px;
+                }
+                #bibliografia-content ul li:last-child {
+                    border-bottom: none;
+                }
             </style>
             
             <script>
@@ -1952,35 +2117,68 @@ class block_bloquecero extends block_base {
         </div>
     ';
 
+    // --- Generar contenido de bibliografía ---
+    $bibliografiaHTML = '';
+    if (!empty($this->config->bibliography_name) && is_array($this->config->bibliography_name)) {
+        $bibliografiaHTML = '<ul style="list-style:none; padding-left:0; margin:0;">';
+        foreach ($this->config->bibliography_name as $index => $bookname) {
+            if (!empty(trim($bookname))) {
+                $bookurl = !empty($this->config->bibliography_url[$index]) ? trim($this->config->bibliography_url[$index]) : '';
+                
+                $bibliografiaHTML .= '<li style="margin-bottom:14px; display:flex; align-items:flex-start; gap:10px;">';
+                $bibliografiaHTML .= '<span style="color:#B7C65C; font-size:1.3em; flex-shrink:0;">📚</span>';
+                
+                if (!empty($bookurl)) {
+                    $bibliografiaHTML .= '<a href="' . s($bookurl) . '" target="_blank" style="color:#004D35; font-weight:500; text-decoration:none; transition:color 0.14s;">' . s($bookname) . '</a>';
+                } else {
+                    $bibliografiaHTML .= '<span style="color:#333; font-weight:400;">' . s($bookname) . '</span>';
+                }
+                
+                $bibliografiaHTML .= '</li>';
+            }
+        }
+        $bibliografiaHTML .= '</ul>';
+    } else {
+        $bibliografiaHTML = '<p style="color:#888; font-style:italic;">No hay bibliografía configurada.</p>';
+    }
+
     // Justo antes de cerrar el div principal del bloque, añade el HTML del modal:
     $this->content->text .= '
         <!-- Modal de Bibliografía -->
         <div id="bloquecero-bibliografia-modal" style="display:none; position:fixed; z-index:9999; left:0; top:0; width:100vw; height:100vh; background:rgba(0,0,0,0.35); align-items:center; justify-content:center;">
-            <div style="background:#fff; border-radius:10px; padding:32px 28px; min-width:260px; max-width:90vw; box-shadow:0 8px 32px rgba(0,0,0,0.18); position:relative; text-align:center;">
+            <div style="background:#fff; border-radius:10px; padding:32px 28px; min-width:260px; max-width:90vw; box-shadow:0 8px 32px rgba(0,0,0,0.18); position:relative; text-align:left;">
                 <button onclick="document.getElementById(\'bloquecero-bibliografia-modal\').style.display=\'none\'" style="position:absolute; top:10px; right:14px; background:none; border:none; font-size:1.5em; color:#888; cursor:pointer;">&times;</button>
-                <h2 style="margin-top:0;">Bibliography</h2>
+                <h2 style="margin-top:0; color:#004D35; font-size:1.3em;">Bibliografía</h2>
+                <div id="bibliografia-content" style="margin-top:20px; max-height:60vh; overflow-y:auto;"></div>
             </div>
         </div>
         <div id="modal-sesiones-todas" style="display:none; position:fixed; z-index:9999; left:0; top:0; width:100vw; height:100vh; background:rgba(0,0,0,0.32); align-items:center; justify-content:center;">
-            <div style="background:#fff; border-radius:10px; padding:28px 24px; min-width:300px; max-width:92vw; box-shadow:0 8px 32px rgba(0,0,0,0.16); position:relative; text-align:left;">
+            <div style="background:#fff; border-radius:10px; padding:28px 24px; min-width:600px; max-width:90vw; width:auto; box-shadow:0 8px 32px rgba(0,0,0,0.16); position:relative; text-align:left;">
                 <button onclick="document.getElementById(\'modal-sesiones-todas\').style.display=\'none\'" style="position:absolute; top:10px; right:16px; background:none; border:none; font-size:1.3em; color:#999; cursor:pointer;">&times;</button>
-                <h2 style="margin-top:0; font-size:1.15em;">Todas las sesiones en directo</h2>
-                <div id="modal-sesiones-list" style="margin-top:20px; max-height:50vh; overflow-y:auto;"></div>
+                <h2 style="margin-top:0; font-size:1.3em; color:#004D35; margin-bottom:20px;">Todas las sesiones en directo</h2>
+                <div id="modal-sesiones-list" style="margin-top:20px; max-height:60vh; overflow-y:auto;"></div>
             </div>
         </div>
         <div id="modal-actividades-todas" style="display:none; position:fixed; z-index:9999; left:0; top:0; width:100vw; height:100vh; background:rgba(0,0,0,0.32); align-items:center; justify-content:center;">
-        <div style="background:#fff; border-radius:10px; padding:28px 24px; min-width:300px; max-width:92vw; box-shadow:0 8px 32px rgba(0,0,0,0.16); position:relative; text-align:left;">
+        <div style="background:#fff; border-radius:10px; padding:28px 24px; min-width:700px; max-width:90vw; width:auto; box-shadow:0 8px 32px rgba(0,0,0,0.16); position:relative; text-align:left;">
             <button onclick="document.getElementById(\'modal-actividades-todas\').style.display=\'none\'" style="position:absolute; top:10px; right:16px; background:none; border:none; font-size:1.3em; color:#999; cursor:pointer;">&times;</button>
-            <h2 style="margin-top:0; font-size:1.15em;">Todas las actividades</h2>
-            <div id="modal-actividades-list" style="margin-top:20px; max-height:50vh; overflow-y:auto;"></div>
+            <h2 style="margin-top:0; font-size:1.3em; color:#004D35; margin-bottom:10px;">Todas las actividades</h2>
+            <div style="margin-bottom:20px;">
+                <label for="filter-tipo-actividad" style="font-size:0.9em; color:#666; margin-right:10px;">Filtrar por tipo:</label>
+                <select id="filter-tipo-actividad" style="padding:6px 12px; border:1px solid #ddd; border-radius:4px; font-size:0.9em;">
+                    <option value="">Todas las actividades</option>
+                </select>
+            </div>
+            <div id="modal-actividades-list" style="margin-top:20px; max-height:55vh; overflow-y:auto;"></div>
         </div>
     </div>
     ';
 
-    // PASAR PHP ARRAY DE SESIONES A JS GLOBAL (antes del cierre del div principal)
+    // PASAR PHP ARRAY DE SESIONES Y ACTIVIDADES A JS GLOBAL (antes del cierre del div principal)
     $this->content->text .= '
     <script>
     window.bloquecero_sesionesZoom = ' . json_encode($sesionesZoom) . ';
+    window.bloquecero_activitiesData = ' . json_encode($activitiesData) . ';
     </script>
     ';
 
@@ -1989,32 +2187,124 @@ class block_bloquecero extends block_base {
     <script>
         document.addEventListener("DOMContentLoaded", function() {
             var icon = document.querySelector(".calendario-actividades-calendaricon");
-            if (icon) {
-            icon.addEventListener("click", function() {
-                var actividades = '. json_encode($calendarActivities).';
-                // Agregar estilos inline a los enlaces y spans para que sean iguales a los de sesiones-directo
-                actividades = actividades.replace(/<a\s+/g, \'<a style="color:#004D35;font-weight:600;" \');
-                actividades = actividades.replace(/<span\s+/g, \'<span style="color:#666;font-size:0.96em;" \');
-                document.getElementById("modal-actividades-list").innerHTML = actividades;
-                document.getElementById("modal-actividades-todas").style.display = "flex";
-            });
+            var filterSelect = document.getElementById("filter-tipo-actividad");
+            var activitiesData = window.bloquecero_activitiesData || [];
+
+            // Función para renderizar la tabla
+            function renderActivitiesTable(filterType) {
+                var filteredData = filterType ? activitiesData.filter(function(a) { return a.modname === filterType; }) : activitiesData;
+                var now = Math.floor(Date.now() / 1000);
+
+                var tabla = \'<table style="width:100%;border-collapse:collapse;font-size:0.93em;">\' +
+                    \'<thead><tr style="background:#f5f5f5;border-bottom:2px solid #ddd;">\' +
+                    \'<th style="padding:10px;text-align:left;font-weight:600;color:#333;">Actividad</th>\' +
+                    \'<th style="padding:10px;text-align:left;font-weight:600;color:#333;width:140px;">Tipo</th>\' +
+                    \'<th style="padding:10px;text-align:left;font-weight:600;color:#333;width:120px;">Vence</th>\' +
+                    \'<th style="padding:10px;text-align:center;font-weight:600;color:#333;width:80px;">Estado</th>\' +
+                    \'</tr></thead><tbody>\';
+
+                if (filteredData.length === 0) {
+                    tabla += \'<tr><td colspan="4" style="padding:20px;text-align:center;color:#999;">No hay actividades</td></tr>\';
+                } else {
+                    filteredData.forEach(function(activity) {
+                        // Calcular días restantes
+                        var daysRemaining = Math.ceil((activity.duedate - now) / 86400);
+                        var daysText = "";
+                        var daysColor = "#666";
+
+                        if (daysRemaining < 0) {
+                            daysText = "Vencida hace " + Math.abs(daysRemaining) + " días";
+                            daysColor = "#d9534f"; // Rojo
+                        } else if (daysRemaining === 0) {
+                            daysText = "Vence hoy";
+                            daysColor = "#f0ad4e"; // Naranja
+                        } else if (daysRemaining === 1) {
+                            daysText = "Vence mañana";
+                            daysColor = "#f0ad4e"; // Naranja
+                        } else if (daysRemaining <= 3) {
+                            daysText = "En " + daysRemaining + " días";
+                            daysColor = "#f0ad4e"; // Naranja
+                        } else if (daysRemaining <= 7) {
+                            daysText = "En " + daysRemaining + " días";
+                            daysColor = "#5bc0de"; // Azul
+                        } else {
+                            daysText = "En " + daysRemaining + " días";
+                            daysColor = "#5cb85c"; // Verde
+                        }
+
+                        // Estado de entrega
+                        var estadoHTML = activity.submitted ?
+                            \'<span style="color:#5cb85c;font-weight:600;font-size:0.9em;">Entregada</span>\' :
+                            \'<span style="color:#f0ad4e;font-weight:600;font-size:0.9em;">Pendiente</span>\';
+
+                        tabla += \'<tr style="border-bottom:1px solid #eee;transition:background 0.2s;" onmouseover="this.style.background=\\\'#f9f9f9\\\'" onmouseout="this.style.background=\\\'transparent\\\'">\' +
+                            \'<td style="padding:12px;">\' +
+                            \'<div style="display:flex;align-items:center;gap:8px;">\' +
+                            activity.icon +
+                            \'<a href="\' + activity.url + \'" style="color:#004D35;font-weight:600;text-decoration:none;">\' + activity.name + \'</a>\' +
+                            \'</div></td>\' +
+                            \'<td style="padding:12px;color:#666;font-size:0.9em;">\' + activity.modfullname + \'</td>\' +
+                            \'<td style="padding:12px;color:\' + daysColor + \';font-weight:500;font-size:0.88em;">\' + daysText + \'</td>\' +
+                            \'<td style="padding:12px;text-align:center;">\' + estadoHTML + \'</td>\' +
+                            \'</tr>\';
+                    });
+                }
+                tabla += \'</tbody></table>\';
+
+                document.getElementById("modal-actividades-list").innerHTML = tabla;
             }
-            // Cierra la modal si haces click fuera
+
+            // Poblar filtro con tipos únicos
+            if (activitiesData.length > 0 && filterSelect) {
+                var tipos = {};
+                activitiesData.forEach(function(a) {
+                    if (!tipos[a.modname]) {
+                        tipos[a.modname] = a.modfullname;
+                    }
+                });
+                Object.keys(tipos).forEach(function(modname) {
+                    var option = document.createElement("option");
+                    option.value = modname;
+                    option.textContent = tipos[modname];
+                    filterSelect.appendChild(option);
+                });
+
+                // Evento para filtrar
+                filterSelect.addEventListener("change", function() {
+                    renderActivitiesTable(this.value);
+                });
+            }
+
+            // Abrir modal
+            if (icon) {
+                icon.addEventListener("click", function() {
+                    renderActivitiesTable("");
+                    document.getElementById("modal-actividades-todas").style.display = "flex";
+                });
+            }
+
+            // Cerrar modal
             var modal = document.getElementById("modal-actividades-todas");
             if (modal) {
-            modal.addEventListener("click", function(e) {
-                if(e.target === modal) modal.style.display = "none";
-            });
+                modal.addEventListener("click", function(e) {
+                    if(e.target === modal) modal.style.display = "none";
+                });
             }
         });
         document.addEventListener("DOMContentLoaded", function() {
             var btn = document.getElementById("bloquecero-bibliografia-btn");
             var modal = document.getElementById("bloquecero-bibliografia-modal");
-            if(btn && modal) {
+            var content = document.getElementById("bibliografia-content");
+            
+            if(btn && modal && content) {
+                // Insertar el contenido de bibliografía
+                content.innerHTML = ' . json_encode($bibliografiaHTML) . ';
+                
                 btn.addEventListener("click", function(e){
                     e.preventDefault();
                     modal.style.display = "flex";
                 });
+                
                 // Cierra el modal si se hace clic fuera del contenido
                 modal.addEventListener("click", function(e){
                     if(e.target === modal) modal.style.display = "none";
@@ -2028,16 +2318,33 @@ class block_bloquecero extends block_base {
         if (icon) {
             icon.addEventListener("click", function() {
                 var sesiones = window.bloquecero_sesionesZoom || [];
-                var todas = "";
-                for(var i=0; i<sesiones.length; i++) {
-                    var fecha = new Date(sesiones[i].fecha*1000);
-                    var dateString = fecha.toLocaleDateString() + " " + fecha.toLocaleTimeString().slice(0,5);
-                    todas += \'<div style="display:flex;align-items:center;gap:10px;margin-bottom:12px;">\' +
-                        \'<svg width="18" height="18" viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="16" rx="3" fill="#B7C65C"/><rect x="7" y="9" width="2.5" height="2.5" rx="1" fill="#fff"/><rect x="11" y="9" width="2.5" height="2.5" rx="1" fill="#fff"/><rect x="15" y="9" width="2.5" height="2.5" rx="1" fill="#fff"/><rect x="7" y="13" width="2.5" height="2.5" rx="1" fill="#fff"/><rect x="11" y="13" width="2.5" height="2.5" rx="1" fill="#fff"/><rect x="15" y="13" width="2.5" height="2.5" rx="1" fill="#fff"/></svg>\' +
-                        \'<a href="\' + sesiones[i].url + \'" target="_blank" style="color:#004D35;font-weight:600;">\' + sesiones[i].titulo + \'</a>\' +
-                        \'<span style="color:#666;font-size:0.96em;">(\' + dateString + \')</span></div>\';
+                var tabla = \'<table style="width:100%;border-collapse:collapse;font-size:0.95em;">\' +
+                    \'<thead><tr style="background:#f5f5f5;border-bottom:2px solid #ddd;">\' +
+                    \'<th style="padding:10px;text-align:left;font-weight:600;color:#333;">Sesión</th>\' +
+                    \'<th style="padding:10px;text-align:left;font-weight:600;color:#333;">Fecha y hora</th>\' +
+                    \'</tr></thead><tbody>\';
+
+                if (sesiones.length === 0) {
+                    tabla += \'<tr><td colspan="2" style="padding:20px;text-align:center;color:#999;">No hay sesiones programadas</td></tr>\';
+                } else {
+                    for(var i=0; i<sesiones.length; i++) {
+                        var fecha = new Date(sesiones[i].fecha*1000);
+                        var dateString = fecha.toLocaleDateString("es-ES", {day: "2-digit", month: "2-digit", year: "numeric"});
+                        var timeString = fecha.toLocaleTimeString("es-ES", {hour: "2-digit", minute: "2-digit"});
+
+                        tabla += \'<tr style="border-bottom:1px solid #eee;transition:background 0.2s;" onmouseover="this.style.background=\\\'#f9f9f9\\\'" onmouseout="this.style.background=\\\'transparent\\\'">\' +
+                            \'<td style="padding:12px;">\' +
+                            \'<div style="display:flex;align-items:center;gap:8px;">\' +
+                            \'<svg width="16" height="16" viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="16" rx="3" fill="#B7C65C"/><rect x="7" y="9" width="2.5" height="2.5" rx="1" fill="#fff"/><rect x="11" y="9" width="2.5" height="2.5" rx="1" fill="#fff"/><rect x="15" y="9" width="2.5" height="2.5" rx="1" fill="#fff"/><rect x="7" y="13" width="2.5" height="2.5" rx="1" fill="#fff"/><rect x="11" y="13" width="2.5" height="2.5" rx="1" fill="#fff"/><rect x="15" y="13" width="2.5" height="2.5" rx="1" fill="#fff"/></svg>\' +
+                            \'<span style="color:#004D35;font-weight:600;">\' + sesiones[i].titulo + \'</span>\' +
+                            \'</div></td>\' +
+                            \'<td style="padding:12px;color:#666;">\' + dateString + \' - \' + timeString + \'</td>\' +
+                            \'</tr>\';
+                    }
                 }
-                document.getElementById("modal-sesiones-list").innerHTML = todas;
+                tabla += \'</tbody></table>\';
+
+                document.getElementById("modal-sesiones-list").innerHTML = tabla;
                 document.getElementById("modal-sesiones-todas").style.display = "flex";
             });
         }
@@ -2161,6 +2468,7 @@ class block_bloquecero extends block_base {
                         /* Calendario de actividades */
         .calendario-actividades-maincard {
             min-height: 180px;
+            height: 100%;
             display: flex;
             flex-direction: column;
             padding: 28px 22px 22px 22px !important;
@@ -2298,6 +2606,27 @@ class block_bloquecero extends block_base {
 
     public function hide_header() {
         return true;
+    }
+
+    /**
+     * Guardar configuración de la instancia del bloque
+     */
+    public function instance_config_save($data, $nolongerused = false) {
+        global $DB;
+        
+        error_log('=== DATOS RECIBIDOS EN instance_config_save ===');
+        error_log('config_bibliography_name: ' . print_r($data->config_bibliography_name ?? 'NO EXISTE', true));
+        error_log('config_bibliography_url: ' . print_r($data->config_bibliography_url ?? 'NO EXISTE', true));
+        
+        // Moodle automáticamente quita el prefijo config_ al guardar,
+        // así que los datos quedarán como bibliography_name y bibliography_url
+        
+        // Llamar al método padre para guardar
+        $result = parent::instance_config_save($data, $nolongerused);
+        
+        error_log('Resultado guardado: ' . ($result ? 'SÍ' : 'NO'));
+        
+        return $result;
     }
 }
 

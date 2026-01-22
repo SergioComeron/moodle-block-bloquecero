@@ -30,4 +30,12 @@ $capabilities = [
         ],
         'clonepermissionsfrom' => 'moodle/site:manageblocks'
     ],
+    'block/bloquecero:managesessions' => [
+        'captype' => 'write',
+        'contextlevel' => CONTEXT_COURSE,
+        'archetypes' => [
+            'manager' => CAP_ALLOW,
+            'editingteacher' => CAP_ALLOW,
+        ]
+    ],
 ];

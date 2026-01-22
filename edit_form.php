@@ -125,7 +125,31 @@ class block_bloquecero_edit_form extends block_edit_form {
             true
         );
 
+        // --- Configuración de sesiones en directo ---
+        $mform->addElement('header', 'livesessionsheader', get_string('livesessions', 'block_bloquecero'));
+
+        // Get block instance ID if available
+        $blockinstanceid = 0;
+        if (!empty($this->block->instance)) {
+            $blockinstanceid = $this->block->instance->id;
+        }
+
+        // Link to manage sessions page
+        if ($blockinstanceid) {
+            $manageurl = new moodle_url('/blocks/bloquecero/manage_sessions.php', [
+                'courseid' => $COURSE->id,
+                'blockid' => $blockinstanceid
+            ]);
+            $managelink = html_writer::link($manageurl, get_string('managesessions', 'block_bloquecero'),
+                ['target' => '_blank', 'class' => 'btn btn-secondary']);
+            $mform->addElement('static', 'managesessionslink', '', $managelink);
+        } else {
+            $mform->addElement('static', 'managesessionsinfo', '',
+                get_string('saveblockfirst', 'block_bloquecero'));
+        }
+
         // Selector para el número máximo de actividades a mostrar en cada ficha de sección.
+        $mform->addElement('header', 'blokconfig', get_string('blocksconfig', 'block_bloquecero'));
         $maxactivitiesoptions = [];
         for ($i = 1; $i <= 10; $i++) {
             $maxactivitiesoptions[$i] = (string)$i;
@@ -133,5 +157,102 @@ class block_bloquecero_edit_form extends block_edit_form {
         $mform->addElement('select', 'config_maxactivitiespersection', get_string('maxactivitiespersection', 'block_bloquecero'), $maxactivitiesoptions);
         $mform->setDefault('config_maxactivitiespersection', 4);
         $mform->addHelpButton('config_maxactivitiespersection', 'maxactivitiespersection', 'block_bloquecero');
+    }
+
+    /**
+     * Set form data (load existing configuration)
+     */
+    public function set_data($defaults) {
+        global $USER;
+
+        error_log('=== SET_DATA EN EDIT_FORM ===');
+
+        if (!empty($this->block->config)) {
+            error_log('Config existe: ' . print_r($this->block->config, true));
+
+            // Cargar datos del profesor actual
+            $scheduleKey = 'userschedule_' . $USER->id;
+            if (!empty($this->block->config->$scheduleKey)) {
+                // Si es un array (datos del editor), asignarlo directamente
+                if (is_array($this->block->config->$scheduleKey)) {
+                    $defaults->{"config_userschedule_" . $USER->id} = $this->block->config->$scheduleKey;
+                } else {
+                    // Si es texto plano, convertirlo a formato editor
+                    $defaults->{"config_userschedule_" . $USER->id} = [
+                        'text' => $this->block->config->$scheduleKey,
+                        'format' => FORMAT_HTML
+                    ];
+                }
+            }
+
+            // Cargar bibliografía existente
+            if (!empty($this->block->config->bibliography_name) && is_array($this->block->config->bibliography_name)) {
+                error_log('Cargando bibliography_name: ' . print_r($this->block->config->bibliography_name, true));
+
+                foreach ($this->block->config->bibliography_name as $index => $name) {
+                    $defaults->{"bibliography_name[$index]"} = $name;
+                }
+            }
+
+            if (!empty($this->block->config->bibliography_url) && is_array($this->block->config->bibliography_url)) {
+                error_log('Cargando bibliography_url: ' . print_r($this->block->config->bibliography_url, true));
+
+                foreach ($this->block->config->bibliography_url as $index => $url) {
+                    $defaults->{"bibliography_url[$index]"} = $url;
+                }
+            }
+
+        } else {
+            error_log('Config NO existe o está vacío');
+        }
+
+        parent::set_data($defaults);
+    }
+
+    /**
+     * Perform some moodle validation.
+     * Procesa los datos antes de guardarlos.
+     */
+    public function get_data() {
+        $data = parent::get_data();
+
+        if ($data) {
+            // Los campos repetidos vienen SIN el prefijo config_, pero necesitamos añadírselo
+            // para que se guarden correctamente en la configuración del bloque
+            if (isset($data->bibliography_name) && is_array($data->bibliography_name)) {
+                // Filtrar valores vacíos
+                $filteredNames = [];
+                $filteredUrls = [];
+
+                foreach ($data->bibliography_name as $index => $name) {
+                    $name = trim($name);
+                    if ($name !== '') {
+                        $filteredNames[] = $name;
+
+                        $url = isset($data->bibliography_url[$index]) ? trim($data->bibliography_url[$index]) : '';
+                        // Si la URL no está vacía y no empieza por http:// o https://, le añadimos https://
+                        if ($url !== '' && !preg_match('#^https?://#i', $url)) {
+                            $url = 'https://' . $url;
+                        }
+                        $filteredUrls[] = $url;
+                    }
+                }
+
+                // Añadir el prefijo config_ para que se guarde correctamente
+                $data->config_bibliography_name = $filteredNames;
+                $data->config_bibliography_url = $filteredUrls;
+
+                // Eliminar los campos sin prefijo para evitar confusión
+                unset($data->bibliography_name);
+                unset($data->bibliography_url);
+
+                error_log('=== BIBLIOGRAFÍA PROCESADA ===');
+                error_log('config_bibliography_name: ' . print_r($data->config_bibliography_name, true));
+                error_log('config_bibliography_url: ' . print_r($data->config_bibliography_url, true));
+            }
+
+        }
+
+        return $data;
     }
 }
