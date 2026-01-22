@@ -315,7 +315,7 @@ class block_bloquecero extends block_base {
                 if (!empty($course->enddate) && $sectionend > $course->enddate) {
                     $sectionend = $course->enddate;
                 }
-                $sectiontitle = userdate($sectionstart, get_string('strftimedateshort')) . ' - ' . userdate($sectionend - 1, get_string('strftimedateshort'));
+                $sectiontitle = userdate($sectionstart, '%d %b %Y') . ' - ' . userdate($sectionend - 1, '%d %b %Y');
             } else {
                 $sectiontitle = format_string($section->name ?: get_string('section', 'moodle') . ' ' . $section->section);
             }
@@ -454,9 +454,9 @@ class block_bloquecero extends block_base {
 
         $courseDates = '';
         if (!empty($COURSE->startdate)) {
-            $courseDates = userdate($COURSE->startdate, get_string('strftimedateshort'));
+            $courseDates = userdate($COURSE->startdate, '%d %b %Y');
             if (!empty($COURSE->enddate)) {
-                $courseDates .= ' - ' . userdate($COURSE->enddate, get_string('strftimedateshort'));
+                $courseDates .= ' - ' . userdate($COURSE->enddate, '%d %b %Y');
             }
         }
 
@@ -470,7 +470,7 @@ class block_bloquecero extends block_base {
             }
             $startdate = get_cm_start_date($cm);
             if ($startdate) {
-                $activitytime = userdate($startdate, get_string('strftimedateshort'));
+                $activitytime = userdate($startdate, '%d %b %Y');
                 $icon = $OUTPUT->pix_icon('icon', $cm->modfullname, $cm->modname, ['class' => 'activityicon']);
 
                 // Determinar fecha de vencimiento y estado de entrega
