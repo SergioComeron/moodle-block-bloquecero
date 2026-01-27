@@ -143,40 +143,53 @@ class block_bloquecero extends block_base {
         $teachersP = array_slice($teachersP, 0, $maxteachers);
 
         // URLs de los foros y demás secciones
-        $forum_anuncios_url = '#';
+        $forum_anuncios_url = '';
         if (!empty($this->config->forumid)) {
             $id_forum_anuncios = $this->config->forumid;
             // Verificar que el foro existe antes de acceder
             if ($DB->record_exists('forum', ['id' => $id_forum_anuncios])) {
                 $cm_forum_anuncios = get_coursemodule_from_instance('forum', $id_forum_anuncios);
                 if ($cm_forum_anuncios) {
-                    $forum_anuncios_url = new moodle_url('/mod/forum/view.php', array('id' => $cm_forum_anuncios->id));
-                    $count_anuncios = forum_get_discussions_unread($cm_forum_anuncios);
+                    // Usar cm_info para verificar visibilidad respetando permisos del usuario
+                    $cminfo_anuncios = \cm_info::create($cm_forum_anuncios);
+                    if ($cminfo_anuncios->uservisible) {
+                        $forum_anuncios_url = new moodle_url('/mod/forum/view.php', array('id' => $cm_forum_anuncios->id));
+                        $count_anuncios = forum_get_discussions_unread($cm_forum_anuncios);
+                    }
                 }
             }
         }
 
-        $forum_tutorias_url = '#';
+        $forum_tutorias_url = '';
         if (!empty($this->config->forumtutoriasid)) {
             $id_forum_tutorias = $this->config->forumtutoriasid;
             // Verificar que el foro existe antes de acceder
             if ($DB->record_exists('forum', ['id' => $id_forum_tutorias])) {
                 $cm_forum_tutorias = get_coursemodule_from_instance('forum', $id_forum_tutorias);
                 if ($cm_forum_tutorias) {
-                    $forum_tutorias_url = new moodle_url('/mod/forum/view.php', array('id' => $cm_forum_tutorias->id));
-                    $count_tutorias = forum_get_discussions_unread($cm_forum_tutorias);
+                    // Usar cm_info para verificar visibilidad respetando permisos del usuario
+                    $cminfo_tutorias = \cm_info::create($cm_forum_tutorias);
+                    if ($cminfo_tutorias->uservisible) {
+                        $forum_tutorias_url = new moodle_url('/mod/forum/view.php', array('id' => $cm_forum_tutorias->id));
+                        $count_tutorias = forum_get_discussions_unread($cm_forum_tutorias);
+                    }
                 }
             }
         }
 
+        $forum_estudiantes_url = '';
         if (!empty($this->config->forumestudiantesid)) {
             $id_forum_estudiantes = $this->config->forumestudiantesid;
             // Verificar que el foro existe antes de acceder
             if ($DB->record_exists('forum', ['id' => $id_forum_estudiantes])) {
                 $cm_forum_estudiantes = get_coursemodule_from_instance('forum', $id_forum_estudiantes);
                 if ($cm_forum_estudiantes) {
-                    $forum_estudiantes_url = new moodle_url('/mod/forum/view.php', array('id' => $cm_forum_estudiantes->id));
-                    $count_estudiantes = forum_get_discussions_unread($cm_forum_estudiantes);
+                    // Usar cm_info para verificar visibilidad respetando permisos del usuario
+                    $cminfo_estudiantes = \cm_info::create($cm_forum_estudiantes);
+                    if ($cminfo_estudiantes->uservisible) {
+                        $forum_estudiantes_url = new moodle_url('/mod/forum/view.php', array('id' => $cm_forum_estudiantes->id));
+                        $count_estudiantes = forum_get_discussions_unread($cm_forum_estudiantes);
+                    }
                 }
             }
         }
@@ -862,25 +875,28 @@ class block_bloquecero extends block_base {
 
             <!-- Sección de foros y demás secciones -->
             <div style="padding: 0 40px;">
-                <div class="bloquecero-tabs">
+                <div class="bloquecero-tabs">'
+                    . (!empty($forum_anuncios_url) ? '
                     <a href="' . $forum_anuncios_url . '" class="bloquecero-tab">
                         Tablón de anuncios'
                             . (isset($count_anuncios) && is_array($count_anuncios) && array_sum($count_anuncios) > 0
                                 ? ' <span style="display:inline-block;min-width:22px;height:22px;line-height:22px;background:#B7C65C;color:#fff;font-weight:600;font-size:0.98em;border-radius:50%;text-align:center;margin-left:7px;vertical-align:middle;">' . array_sum($count_anuncios) . '</span>'
                                 : '') . '
-                    </a>
+                    </a>' : '')
+                    . (!empty($forum_tutorias_url) ? '
                     <a href="' . $forum_tutorias_url . '" class="bloquecero-tab">
                         Foro de Tutorías'
                         . (isset($count_tutorias) && is_array($count_tutorias) && array_sum($count_tutorias) > 0
                             ? ' <span style="display:inline-block;min-width:22px;height:22px;line-height:22px;background:#B7C65C;color:#fff;font-weight:600;font-size:0.98em;border-radius:50%;text-align:center;margin-left:7px;vertical-align:middle;">' . array_sum($count_tutorias) . '</span>'
                             : '') . '
-                    </a>
+                    </a>' : '')
+                    . (!empty($forum_estudiantes_url) ? '
                     <a href="' . $forum_estudiantes_url . '" class="bloquecero-tab">
                         Foro de Estudiantes'
                         . (isset($count_estudiantes) && is_array($count_estudiantes) && array_sum($count_estudiantes) > 0
                             ? ' <span style="display:inline-block;min-width:22px;height:22px;line-height:22px;background:#B7C65C;color:#fff;font-weight:600;font-size:0.98em;border-radius:50%;text-align:center;margin-left:7px;vertical-align:middle;">' . array_sum($count_estudiantes) . '</span>'
                             : '') . '
-                    </a>
+                    </a>' : '') . '
                 </div>
             </div>
             <!-- Bloques divididos en dos columnas -->
