@@ -720,11 +720,16 @@ class block_bloquecero extends block_base {
             ';
 
         // --- SESIONES EN DIRECTO: genera el bloque con selector de semana ---
-        // Calcular semanas para las sesiones (según fechas simuladas)
-        $sesionesStart = $sesionesZoom[0]['fecha'];
-        $sesionesEnd = $sesionesZoom[count($sesionesZoom)-1]['fecha'];
-        $sesionesWeeks = ceil(($sesionesEnd - $courseStart) / (7 * 24 * 60 * 60));
-        if ($sesionesWeeks < 1) $sesionesWeeks = 1;
+        // Calcular semanas para las sesiones (solo si hay sesiones)
+        $sesionesStart = 0;
+        $sesionesEnd = 0;
+        $sesionesWeeks = 1;
+        if (!empty($sesionesZoom)) {
+            $sesionesStart = $sesionesZoom[0]['fecha'];
+            $sesionesEnd = $sesionesZoom[count($sesionesZoom) - 1]['fecha'];
+            $sesionesWeeks = ceil(($sesionesEnd - $courseStart) / (7 * 24 * 60 * 60));
+            if ($sesionesWeeks < 1) $sesionesWeeks = 1;
+        }
         // Usar el mismo rango de semanas que el curso para coherencia
         $sesionesDirecto = '
         <div class="udima-maincard sesiones-directo-maincard">
