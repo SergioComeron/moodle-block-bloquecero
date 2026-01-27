@@ -300,3 +300,28 @@ Current branch: `zoom`
 Main development branch: `dev`
 
 When creating pull requests, target the `dev` branch, not `main`/`master`.
+
+## Project Organization
+
+### GitHub Integration
+- **Issues**: Track bugs, features, and refactoring tasks
+  - Use templates in `.github/ISSUE_TEMPLATE/`
+  - Labels: bug, enhancement, refactor, urgente, wip, documentation
+  - View at: https://github.com/SergioComeron/moodle-block-bloquecero/issues
+
+- **Project Board**: https://github.com/users/SergioComeron/projects/1
+  - Kanban-style task management
+  - Linked to repository issues
+  - Track development progress
+
+### Documentation Files
+- **README.md**: User-facing documentation and quick start
+- **CLAUDE.md**: This file - technical context for AI assistants
+- **CONTRIBUTING.md**: Contribution guidelines and workflow
+- **CHANGELOG.md**: Version history following Keep a Changelog format
+
+### Current Priority Issues
+See GitHub issues for full list. Key technical debt:
+1. [#1] Refactor: Separate inline CSS/JS to external files (~2300 lines in one file)
+2. [#2] Refactor: Review block_zoom_udima dependency in fetch_sessions.php
+3. [#3] Feature: Add PHPUnit and Behat automated tests
