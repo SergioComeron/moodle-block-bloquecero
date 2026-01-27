@@ -223,9 +223,7 @@ class block_bloquecero extends block_base {
                 document.addEventListener('DOMContentLoaded', function() {
                     var region = document.getElementById('region-main');
                     if (region) region.style.display = '';
-                    document.querySelectorAll('.block').forEach(function(b){
-                        b.style.display = '';
-                    });
+                    // Los bloques laterales siempre visibles, no necesitan reset
                     [
                         '.page-header','.page-context-header','.course-header','.page-header-headings','.page-title','.course-title'
                     ].forEach(function(selector){
@@ -1033,9 +1031,7 @@ class block_bloquecero extends block_base {
                             region.classList.add(\'bloquecero-fadein\');
                         }, 10);
                     }
-                    document.querySelectorAll(\'.block\').forEach(function(b){
-                        b.style.display = \'\';
-                    });
+                    // Los bloques laterales siempre visibles, no necesitan reset
                     [
                         \'.page-header\',\'.page-context-header\',\'.course-header\',\'.page-header-headings\',\'.page-title\',\'.course-title\'
                     ].forEach(function(selector){
@@ -1059,9 +1055,7 @@ class block_bloquecero extends block_base {
                         region.style.display = \'none\';
                         region.classList.remove(\'bloquecero-fadein\');
                     }
-                    document.querySelectorAll(\'.block\').forEach(function(b){
-                        if (!b.classList.contains(\'block_bloquecero\')) b.style.display = \'none\';
-                    });
+                    // Los bloques laterales siempre visibles
                     [
                         \'.page-header\',\'.page-context-header\',\'.course-header\',\'.page-header-headings\',\'.page-title\',\'.course-title\'
                     ].forEach(function(selector){
@@ -1082,9 +1076,7 @@ class block_bloquecero extends block_base {
                 var btnicon = document.getElementById(\'bloquecero-mostrarcurso-icon\');
                 var btntext = document.getElementById(\'bloquecero-mostrarcurso-text\');
                 if (region) region.style.display = \'none\';
-                document.querySelectorAll(\'.block\').forEach(function(b){
-                    if (!b.classList.contains(\'block_bloquecero\')) b.style.display = \'none\';
-                });
+                // Los bloques laterales siempre visibles
                 [
                     \'.page-header\',\'.page-context-header\',\'.course-header\',\'.page-header-headings\',\'.page-title\',\'.course-title\'
                 ].forEach(function(selector){
@@ -2382,10 +2374,7 @@ class block_bloquecero extends block_base {
                     var region = document.getElementById('region-main');
                     if (region) region.style.display = 'none';
 
-                    // Oculta todos los bloques menos el tuyo
-                    document.querySelectorAll('.block').forEach(function(b){
-                        if (!b.classList.contains('block_bloquecero')) b.style.display = 'none';
-                    });
+                    // Los bloques laterales siempre visibles
 
                     // Oculta la cabecera general (título del curso, cabecera, etc.)
                     var headerClasses = [
@@ -2419,9 +2408,7 @@ class block_bloquecero extends block_base {
                 window.bloquecero_restore = function() {
                     var region = document.getElementById('region-main');
                     if (region) region.style.display = '';
-                    document.querySelectorAll('.block').forEach(function(b){
-                        b.style.display = '';
-                    });
+                    // Los bloques laterales siempre visibles, no necesitan reset
 
                     // Restaurar cabecera general y título del curso
                     var headerClasses = [
