@@ -61,5 +61,85 @@ function xmldb_block_bloquecero_upgrade($oldversion) {
         upgrade_block_savepoint(true, 2025061701, 'bloquecero');
     }
 
+    if ($oldversion < 2025061702) {
+        // Define table block_bloquecero_bibliography to be created.
+        $table = new xmldb_table('block_bloquecero_bibliography');
+
+        // Adding fields to table block_bloquecero_bibliography.
+        $table->add_field('id', XMLDB_TYPE_INTEGER, '10', null, XMLDB_NOTNULL, XMLDB_SEQUENCE, null);
+        $table->add_field('blockinstanceid', XMLDB_TYPE_INTEGER, '10', null, XMLDB_NOTNULL, null, null);
+        $table->add_field('courseid', XMLDB_TYPE_INTEGER, '10', null, XMLDB_NOTNULL, null, null);
+        $table->add_field('name', XMLDB_TYPE_CHAR, '255', null, XMLDB_NOTNULL, null, null);
+        $table->add_field('url', XMLDB_TYPE_CHAR, '1333', null, null, null, null);
+        $table->add_field('description', XMLDB_TYPE_TEXT, null, null, null, null, null);
+        $table->add_field('sortorder', XMLDB_TYPE_INTEGER, '10', null, null, null, '0');
+        $table->add_field('timecreated', XMLDB_TYPE_INTEGER, '10', null, XMLDB_NOTNULL, null, null);
+        $table->add_field('timemodified', XMLDB_TYPE_INTEGER, '10', null, XMLDB_NOTNULL, null, null);
+
+        // Adding keys to table block_bloquecero_bibliography.
+        $table->add_key('primary', XMLDB_KEY_PRIMARY, ['id']);
+        $table->add_key('blockinstanceid', XMLDB_KEY_FOREIGN, ['blockinstanceid'], 'block_instances', ['id']);
+        $table->add_key('courseid', XMLDB_KEY_FOREIGN, ['courseid'], 'course', ['id']);
+
+        // Adding indexes to table block_bloquecero_bibliography.
+        $table->add_index('courseid_sortorder', XMLDB_INDEX_NOTUNIQUE, ['courseid', 'sortorder']);
+
+        // Conditionally launch create table for block_bloquecero_bibliography.
+        if (!$dbman->table_exists($table)) {
+            $dbman->create_table($table);
+        }
+
+        // Migrate existing bibliography data from block config to new table.
+        $blocks = $DB->get_records('block_instances', ['blockname' => 'bloquecero']);
+        foreach ($blocks as $block) {
+            if (empty($block->configdata)) {
+                continue;
+            }
+            $config = unserialize(base64_decode($block->configdata));
+            if (!empty($config->bibliography_name) && is_array($config->bibliography_name)) {
+                // Get courseid from block's parent context.
+                $parentcontext = $DB->get_record('context', ['id' => $block->parentcontextid]);
+                if ($parentcontext && $parentcontext->contextlevel == CONTEXT_COURSE) {
+                    $courseid = $parentcontext->instanceid;
+
+                    $now = time();
+                    foreach ($config->bibliography_name as $index => $name) {
+                        $name = trim($name);
+                        if (!empty($name)) {
+                            $url = isset($config->bibliography_url[$index]) ? trim($config->bibliography_url[$index]) : '';
+
+                            $record = new stdClass();
+                            $record->blockinstanceid = $block->id;
+                            $record->courseid = $courseid;
+                            $record->name = $name;
+                            $record->url = $url;
+                            $record->sortorder = $index;
+                            $record->timecreated = $now;
+                            $record->timemodified = $now;
+
+                            $DB->insert_record('block_bloquecero_bibliography', $record);
+                        }
+                    }
+                }
+            }
+        }
+
+        // Bloquecero savepoint reached.
+        upgrade_block_savepoint(true, 2025061702, 'bloquecero');
+    }
+
+    if ($oldversion < 2025061703) {
+        // Add description field to block_bloquecero_bibliography table.
+        $table = new xmldb_table('block_bloquecero_bibliography');
+        $field = new xmldb_field('description', XMLDB_TYPE_TEXT, null, null, null, null, null, 'url');
+
+        if (!$dbman->field_exists($table, $field)) {
+            $dbman->add_field($table, $field);
+        }
+
+        // Bloquecero savepoint reached.
+        upgrade_block_savepoint(true, 2025061703, 'bloquecero');
+    }
+
     return true;
 }
