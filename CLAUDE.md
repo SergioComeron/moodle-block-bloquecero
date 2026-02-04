@@ -34,31 +34,47 @@ This is a Moodle block plugin (`block_bloquecero`) that provides a customized co
   - Forum selectors (announcements, tutorials, students)
   - Per-teacher settings (phone, office hours) - only visible to teacher users
   - Max teachers to display (1-5, default 3)
-  - Bibliography list (repeating fields for book name/URL)
+  - Bibliography management - Link to dedicated management page
   - Live sessions management - Link to dedicated management page
   - Max activities per section (1-10, default 4)
-- Custom data handling in `get_data()` for bibliography arrays
 - Custom data loading in `set_data()` for editor fields
 
-**manage_sessions.php** (live sessions management page) - NEW
+**manage_sessions.php** (live sessions management page)
 - Dedicated interface for managing live sessions
 - Table display of all sessions with edit/delete actions
 - Requires `block/bloquecero:managesessions` capability
 - Shows session sync status with calendar
 - Links to edit_session.php for adding/editing
 
-**edit_session.php** (session form page) - NEW
+**edit_session.php** (session form page)
 - Form for adding/editing individual sessions
 - Handles calendar synchronization (create/update/delete events)
 - Uses session_form.php for form definition
 
-**session_form.php** (session form definition) - NEW
+**session_form.php** (session form definition)
 - MoodleForm for session fields:
   - Name (text, required)
   - Date/time (date_time_selector, required)
   - Duration (duration selector, default 1 hour)
   - Description (textarea, optional)
   - Sync with calendar (checkbox, default enabled)
+
+**manage_bibliography.php** (bibliography management page)
+- Dedicated interface for managing bibliography entries
+- Table display with edit/delete/reorder actions
+- Requires `block/bloquecero:managebibliography` capability
+- Supports moving entries up/down to change display order
+
+**edit_bibliography.php** (bibliography form page)
+- Form for adding/editing individual bibliography entries
+- Auto-prefixes URLs with https:// if missing protocol
+- Uses bibliography_form.php for form definition
+
+**bibliography_form.php** (bibliography form definition)
+- MoodleForm for bibliography fields:
+  - Name (text, required)
+  - URL (text, optional)
+  - Description (textarea, optional)
 
 **lib.php** (plugin file handling)
 - `block_bloquecero_pluginfile()`: Serves header background images stored in system context
@@ -82,19 +98,27 @@ This is a Moodle block plugin (`block_bloquecero`) that provides a customized co
 - `block/bloquecero:addinstance` - Add block to course (manager/admin)
 - `block/bloquecero:myaddinstance` - Add to My Moodle page (manager/admin)
 - `block/bloquecero:viewcourse` - View "show course" toggle button (teachers/managers)
-- `block/bloquecero:managesessions` - Manage live sessions (managers/editing teachers) - NEW
+- `block/bloquecero:managesessions` - Manage live sessions (managers/editing teachers)
+- `block/bloquecero:managebibliography` - Manage bibliography (managers/editing teachers)
 
-**db/install.xml** (database schema) - NEW
+**db/install.xml** (database schema)
 - Table: `block_bloquecero_sessions`
   - id, blockinstanceid, courseid
   - name, sessiondate, duration, description
   - calendarid (link to Moodle calendar event)
   - timecreated, timemodified
-- Indexes on courseid + sessiondate for efficient queries
+  - Index: courseid + sessiondate
+- Table: `block_bloquecero_bibliography`
+  - id, blockinstanceid, courseid
+  - name, url, description
+  - sortorder (for manual ordering)
+  - timecreated, timemodified
+  - Index: courseid + sortorder
 
-**db/upgrade.php** (database upgrades) - NEW
+**db/upgrade.php** (database upgrades)
 - Version 2025061701: Creates block_bloquecero_sessions table
-- Handles upgrades for existing installations
+- Version 2025061702: Creates block_bloquecero_bibliography table + migrates existing config data
+- Version 2025061703: Adds description field to bibliography table
 
 ### Localization
 
@@ -131,13 +155,25 @@ The block extensively hides/shows Moodle UI elements:
 - Shows activity icons, types, dates (start/end)
 - Groups activities by section with expand/collapse functionality
 
-### Bibliography Management
-- Repeating form fields in edit_form.php
-- Stored as arrays: `config_bibliography_name[]` and `config_bibliography_url[]`
-- Auto-prefixes URLs with https:// if missing protocol
-- Filters empty entries during save
+### Bibliography Management (v0.3+)
+**Database-driven with dedicated management interface:**
+- Entries stored in `block_bloquecero_bibliography` table (one row per entry)
+- Management page (manage_bibliography.php) accessible from block configuration
+- Each entry has: name, url (optional), description (optional), sortorder
+- Entries scoped to block instance and course
+- Display in block via modal popup:
+  - Shows all entries ordered by sortorder
+  - Name displayed as link if URL provided, otherwise plain text
+  - Description shown below name in smaller gray text
+  - Shows "No se ha añadido bibliografía todavía" when empty
 
-### Live Sessions Management (NEW v0.2)
+**Entry Management:**
+- Add/edit entries via dedicated form (edit_bibliography.php)
+- Auto-prefixes URLs with https:// if missing protocol
+- Reorder entries using move up/down buttons in management table
+- Delete entries with confirmation
+
+### Live Sessions Management (v0.2+)
 **Database-driven with dedicated management interface:**
 - Sessions stored in `block_bloquecero_sessions` table (one row per session)
 - Management page (manage_sessions.php) accessible from block configuration
@@ -186,14 +222,13 @@ Header background images are served via Moodle's pluginfile.php:
 Block instance config stored as object properties:
 - Simple fields: `$this->config->guide_url`, `$this->config->forumid`
 - Per-user fields: `$this->config->userphone_{userid}`
-- Array fields:
-  - `$this->config->bibliography_name` (array), `$this->config->bibliography_url` (array)
 
-**Live sessions are NOT stored in config** (as of v0.2):
-- Sessions stored in separate database table `block_bloquecero_sessions`
-- Linked by blockinstanceid and courseid
-- Managed through dedicated UI (manage_sessions.php)
-- More scalable for many sessions
+**Sessions and Bibliography are stored in database tables** (not in config):
+- `block_bloquecero_sessions` - Live sessions data
+- `block_bloquecero_bibliography` - Bibliography entries
+- Both linked by blockinstanceid and courseid
+- Managed through dedicated UI pages
+- More scalable than config arrays
 
 ## Code Organization Notes
 
@@ -275,6 +310,36 @@ Block instance config stored as object properties:
 - Event type: 'course', visible to all course participants
 - Duration calculated from session duration field
 - Event ID stored in session.calendarid for updates/deletes
+
+### Managing Bibliography (v0.3+)
+**Access Management Page:**
+1. Go to block configuration (gear icon)
+2. Under "Bibliografía" section, click "Gestionar bibliografía" button
+3. Opens manage_bibliography.php in new tab
+
+**Adding Entries:**
+- Click "Añadir entrada de bibliografía" button
+- Fill form: name (required), URL (optional), description (optional)
+- Save - entry appears in block modal
+
+**Editing Entries:**
+- Click edit icon in bibliography table
+- Modify fields
+- Save changes
+
+**Reordering Entries:**
+- Use up/down arrow icons in management table
+- Order is preserved via sortorder field
+
+**Deleting Entries:**
+- Click delete icon, confirm
+- Entry removed from database
+
+**Display Logic:**
+- block_bloquecero.php queries `block_bloquecero_bibliography` table
+- Ordered by sortorder ascending
+- Displayed in modal popup when user clicks "Bibliografía" button
+- Empty state: "No se ha añadido bibliografía todavía"
 
 ### Changing Activity Display Logic
 Edit the section/activity rendering code in `block_bloquecero::get_content()`:
