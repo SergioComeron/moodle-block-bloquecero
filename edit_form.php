@@ -72,6 +72,16 @@ class block_bloquecero_edit_form extends block_edit_form {
             $teacherlist[$teacher->id] = fullname($teacher) . ' (' . $teacher->email . ')';
         }
 
+        // Checkboxes para seleccionar qué profesores mostrar
+        $mform->addElement('header', 'selectedteachersheader', get_string('selectedteachers', 'block_bloquecero'));
+        $mform->addHelpButton('selectedteachersheader', 'selectedteachers', 'block_bloquecero');
+        foreach ($teachers as $teacher) {
+            $fieldname = 'config_teacher_selected_' . $teacher->id;
+            $mform->addElement('advcheckbox', $fieldname, '', fullname($teacher) . ' (' . $teacher->email . ')');
+            // Por defecto todos marcados
+            $mform->setDefault($fieldname, 1);
+        }
+
         // Si el usuario actual es profesor, permitirle introducir su horario y teléfono
         if (array_key_exists($USER->id, $teachers)) {
             $mform->addElement('header', 'teachercustom', get_string('teachercustom', 'block_bloquecero'));
@@ -85,18 +95,6 @@ class block_bloquecero_edit_form extends block_edit_form {
             $mform->setDefault('config_userschedule_' . $USER->id, '');
             $mform->addHelpButton('config_userschedule_' . $USER->id, 'userschedule', 'block_bloquecero');
         }
-
-        // Selector para el número máximo de profesores a mostrar en el bloque.
-        $maxteachersoptions = [
-            1 => '1',
-            2 => '2',
-            3 => '3',
-            4 => '4',
-            5 => '5'
-        ];
-        $mform->addElement('select', 'config_maxteachers', get_string('maxteachers', 'block_bloquecero'), $maxteachersoptions);
-        $mform->setDefault('config_maxteachers', 3);
-        $mform->addHelpButton('config_maxteachers', 'maxteachers', 'block_bloquecero');
 
         // --- Configuración de bibliografía (lista de libros) ---
         $mform->addElement('header', 'bibliographyheader', get_string('bibliography', 'block_bloquecero'));

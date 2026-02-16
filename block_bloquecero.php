@@ -133,14 +133,23 @@ class block_bloquecero extends block_base {
             ];
         }
 
-        // Obtener el número máximo de profesores a mostrar desde la configuración del bloque
-        $maxteachers = 3;
-        if (!empty($this->config->maxteachers) && is_numeric($this->config->maxteachers)) {
-            $maxteachers = (int)$this->config->maxteachers;
+        // Filtrar profesores según los checkboxes de selección
+        $hasselection = false;
+        if (!empty($this->config)) {
+            foreach ($this->config as $key => $value) {
+                if (strpos($key, 'teacher_selected_') === 0) {
+                    $hasselection = true;
+                    break;
+                }
+            }
         }
-
-        // Limitar el array de profesores a mostrar según config_maxteachers
-        $teachersP = array_slice($teachersP, 0, $maxteachers);
+        if ($hasselection) {
+            $teachersP = array_filter($teachersP, function($t) {
+                $key = 'teacher_selected_' . $t->id;
+                return !empty($this->config->$key);
+            });
+            $teachersP = array_values($teachersP);
+        }
 
         // URLs de los foros y demás secciones
         $forum_anuncios_url = '';
@@ -869,12 +878,15 @@ class block_bloquecero extends block_base {
                 <div class="bloquecero-header-content">
                     <h1 class="bloquecero-header-title">' . format_string($COURSE->fullname) . '</h1>
                     ' . ($courseDates ? '<p class="bloquecero-header-dates">' . $courseDates . '</p>' : '') . '
-                    <p class="bloquecero-header-teachers">Equipo docente: ' . $contactButtonsHtml . '</p>
                 </div>
+            </div>
+            <!-- Equipo docente fuera del header para evitar recorte -->
+            <div class="bloquecero-teachers-row">
+                <p class="bloquecero-header-teachers">Equipo docente: ' . $contactButtonsHtml . '</p>
             </div>
             <!-- Bloques de información de contacto de cada profesor -->
             ' . $contactBlocksHtml . '
-            
+
 
             <!-- Sección de foros y demás secciones -->
             <div style="padding: 0 40px;">
@@ -1816,11 +1828,15 @@ class block_bloquecero extends block_base {
                 font-size: 1em;
                 color: black;
             }
+            .bloquecero-teachers-row {
+                padding: 0 20px;
+            }
             .bloquecero-header-teachers {
                 margin: 0 0 10px 0;
                 font-size: 1.2em;
                 color: black;
                 font-weight: 500;
+                text-align: right;
             }
 
             @media (max-width: 800px) {
