@@ -31,9 +31,9 @@ function get_cm_start_date($cm) {
     $time = 0;
     switch ($cm->modname) {
         case 'assign':
-            // En asignaciones, se usa allowsubmissionsfromdate
-            $assignment = $DB->get_record('assign', array('id' => $cm->instance), 'allowsubmissionsfromdate', MUST_EXIST);
-            $time = $assignment->allowsubmissionsfromdate;
+            // En asignaciones, se usa allowsubmissionsfromdate o duedate como fallback
+            $assignment = $DB->get_record('assign', array('id' => $cm->instance), 'allowsubmissionsfromdate, duedate', MUST_EXIST);
+            $time = $assignment->allowsubmissionsfromdate ? $assignment->allowsubmissionsfromdate : $assignment->duedate;
             break;
         case 'quiz':
             // En cuestionarios, se usa timeopen
@@ -301,6 +301,11 @@ class block_bloquecero extends block_base {
         // Unir los botones con comas
         $contactButtonsHtml = implode(', ', $teachersList);
 
+        // Inicializar completion_info para mostrar estado de finalización
+        $completion = new completion_info($COURSE);
+        $completionenabled = $completion->is_enabled() && !empty($COURSE->showcompletionconditions);
+        $currentuserid = $USER->id;
+
         // Inicializar array para almacenar las actividades de cada sección (clave: id de la sección)
         $sectionsActivitiesData = array();
 
@@ -348,6 +353,8 @@ class block_bloquecero extends block_base {
             $visibleactivities = 0;
             $totalactivities = 0;
             $all_activities_array = [];
+            $section_completed = 0;
+            $section_total_with_completion = 0;
             // print_r($modinfo);
             if (!empty($modinfo->sections[$section->section])) {
                 // Crear un mapa de secciones por ID usando get_section_info_all()
@@ -364,7 +371,31 @@ class block_bloquecero extends block_base {
                     if ($cm->modname !== 'subsection') {
                         // Actividad normal (no subsección)
                         $icon = $OUTPUT->pix_icon('icon', $cm->modfullname, $cm->modname, ['class' => 'activityicon']);
-                        $all_activities_array[] = '<li>' . $icon . ' <a href="' . $cm->url . '">' . format_string($cm->name) . '</a></li>';
+                        $completionhtml = '';
+                        if ($completionenabled && $completion->is_enabled($cm)) {
+                            $completiondata = $completion->get_data($cm);
+                            $section_total_with_completion++;
+                            // Obtener condiciones de finalización
+                            $cmdetails = \core_completion\cm_completion_details::get_instance($cm, $currentuserid);
+                            $condition_parts = [];
+                            if ($cmdetails->is_automatic()) {
+                                foreach ($cmdetails->get_details() as $detail) {
+                                    $condition_parts[] = $detail->description;
+                                }
+                            }
+                            if ($completiondata->completionstate == COMPLETION_COMPLETE || $completiondata->completionstate == COMPLETION_COMPLETE_PASS) {
+                                $completionhtml = '<span class="bloquecero-completion-icon bloquecero-completion-done">&#10003;</span>';
+                                $section_completed++;
+                            } else if ($completiondata->completionstate == COMPLETION_COMPLETE_FAIL) {
+                                $completionhtml = '<span class="bloquecero-completion-icon bloquecero-completion-fail">&#10007;</span>';
+                            } else {
+                                $completionhtml = '<span class="bloquecero-completion-icon bloquecero-completion-pending">&#9675;</span>';
+                            }
+                            if (!empty($condition_parts)) {
+                                $completionhtml .= '<div class="bloquecero-completion-conditions">' . implode(' &middot; ', array_map('htmlspecialchars', $condition_parts)) . '</div>';
+                            }
+                        }
+                        $all_activities_array[] = '<li>' . $icon . ' <a href="' . $cm->url . '">' . format_string($cm->name) . '</a>' . $completionhtml . '</li>';
                         $visibleactivities++;
                         $totalactivities++;
                     } else {
@@ -386,8 +417,32 @@ class block_bloquecero extends block_base {
 
                                         // Generar el icono y el enlace para la actividad de la subsección
                                         $sub_icon = $OUTPUT->pix_icon('icon', $sub_cm->modfullname, $sub_cm->modname, ['class' => 'activityicon']);
+                                        $sub_completionhtml = '';
+                                        if ($completionenabled && $completion->is_enabled($sub_cm)) {
+                                            $sub_completiondata = $completion->get_data($sub_cm);
+                                            $section_total_with_completion++;
+                                            // Obtener condiciones de finalización
+                                            $sub_cmdetails = \core_completion\cm_completion_details::get_instance($sub_cm, $currentuserid);
+                                            $sub_condition_parts = [];
+                                            if ($sub_cmdetails->is_automatic()) {
+                                                foreach ($sub_cmdetails->get_details() as $detail) {
+                                                    $sub_condition_parts[] = $detail->description;
+                                                }
+                                            }
+                                            if ($sub_completiondata->completionstate == COMPLETION_COMPLETE || $sub_completiondata->completionstate == COMPLETION_COMPLETE_PASS) {
+                                                $sub_completionhtml = '<span class="bloquecero-completion-icon bloquecero-completion-done">&#10003;</span>';
+                                                $section_completed++;
+                                            } else if ($sub_completiondata->completionstate == COMPLETION_COMPLETE_FAIL) {
+                                                $sub_completionhtml = '<span class="bloquecero-completion-icon bloquecero-completion-fail">&#10007;</span>';
+                                            } else {
+                                                $sub_completionhtml = '<span class="bloquecero-completion-icon bloquecero-completion-pending">&#9675;</span>';
+                                            }
+                                            if (!empty($sub_condition_parts)) {
+                                                $sub_completionhtml .= '<div class="bloquecero-completion-conditions">' . implode(' &middot; ', array_map('htmlspecialchars', $sub_condition_parts)) . '</div>';
+                                            }
+                                        }
                                         // Añadir sangría con una clase CSS
-                                        $all_activities_array[] = '<li class="bloquecero-subsection-activity" style="margin-left: 20px;">' . $sub_icon . ' <a href="' . $sub_cm->url . '">' . format_string($sub_cm->name) . '</a></li>';
+                                        $all_activities_array[] = '<li class="bloquecero-subsection-activity" style="margin-left: 20px;">' . $sub_icon . ' <a href="' . $sub_cm->url . '">' . format_string($sub_cm->name) . '</a>' . $sub_completionhtml . '</li>';
                                         $visibleactivities++;
                                         $totalactivities++;
                                     }
@@ -447,7 +502,19 @@ class block_bloquecero extends block_base {
                 <div class="bloquecero-section-content">
                     '.$activitieslist.'
                     '.$activitieslist_full.'
-                </div>
+                </div>';
+            // Barra de progreso de completion
+            if ($completionenabled && $section_total_with_completion > 0) {
+                $progress_pct = round(($section_completed / $section_total_with_completion) * 100);
+                $card_html .= '
+                <div class="bloquecero-progress-wrapper">
+                    <div class="bloquecero-progress-bar">
+                        <div class="bloquecero-progress-fill" style="width: '.$progress_pct.'%"></div>
+                    </div>
+                    <span class="bloquecero-progress-text">'.$section_completed.'/'.$section_total_with_completion.' completadas</span>
+                </div>';
+            }
+            $card_html .= '
             </div>';
             
             // Añadir todas las tarjetas al mismo array, sin separar.
@@ -642,16 +709,18 @@ class block_bloquecero extends block_base {
         $calendarioActividades = '
             <div class="udima-maincard calendario-actividades-maincard">
                 <div class="calendario-actividades-header">
-                    <h3>Actividades</h3>
+                    <div class="bloquecero-card-title-row">
+                        <h3>Actividades</h3>
+                        <span class="calendario-actividades-calendaricon" title="Ver todas las actividades">
+                            <svg width="22" height="22" viewBox="0 0 24 24" style="vertical-align:middle;cursor:pointer;"><rect x="3" y="5" width="18" height="16" rx="3" fill="#B7C65C" /><rect x="7" y="9" width="2.5" height="2.5" rx="1" fill="#fff"/><rect x="11" y="9" width="2.5" height="2.5" rx="1" fill="#fff"/><rect x="15" y="9" width="2.5" height="2.5" rx="1" fill="#fff"/><rect x="7" y="13" width="2.5" height="2.5" rx="1" fill="#fff"/><rect x="11" y="13" width="2.5" height="2.5" rx="1" fill="#fff"/><rect x="15" y="13" width="2.5" height="2.5" rx="1" fill="#fff"/></svg>
+                        </span>
+                    </div>
+                    <div class="bloquecero-card-line"></div>
                     <div class="week-selector">
                         <button id="prev-week">&lt;</button>
                         <span id="week-label"></span>
                         <button id="next-week">&gt;</button>
                     </div>
-                    <span class="calendario-actividades-calendaricon" title="Ver todas las actividades">
-                        <!-- Icono SVG calendario -->
-                        <svg width="22" height="22" viewBox="0 0 24 24" style="vertical-align:middle;cursor:pointer;"><rect x="3" y="5" width="18" height="16" rx="3" fill="#B7C65C" /><rect x="7" y="9" width="2.5" height="2.5" rx="1" fill="#fff"/><rect x="11" y="9" width="2.5" height="2.5" rx="1" fill="#fff"/><rect x="15" y="9" width="2.5" height="2.5" rx="1" fill="#fff"/><rect x="7" y="13" width="2.5" height="2.5" rx="1" fill="#fff"/><rect x="11" y="13" width="2.5" height="2.5" rx="1" fill="#fff"/><rect x="15" y="13" width="2.5" height="2.5" rx="1" fill="#fff"/></svg>
-                    </span>
                 </div>
 
                 <div class="calendario-actividades-container">
@@ -744,16 +813,18 @@ class block_bloquecero extends block_base {
         $sesionesDirecto = '
         <div class="udima-maincard sesiones-directo-maincard">
             <div class="sesiones-directo-header">
-                <h3>Sesiones en directo</h3>
+                <div class="bloquecero-card-title-row">
+                    <h3>Sesiones en directo</h3>
+                    <span class="sesiones-directo-calendaricon" title="Ver todas las sesiones">
+                        <svg width="22" height="22" viewBox="0 0 24 24" style="vertical-align:middle;cursor:pointer;"><rect x="3" y="5" width="18" height="16" rx="3" fill="#B7C65C" /><rect x="7" y="9" width="2.5" height="2.5" rx="1" fill="#fff"/><rect x="11" y="9" width="2.5" height="2.5" rx="1" fill="#fff"/><rect x="15" y="9" width="2.5" height="2.5" rx="1" fill="#fff"/><rect x="7" y="13" width="2.5" height="2.5" rx="1" fill="#fff"/><rect x="11" y="13" width="2.5" height="2.5" rx="1" fill="#fff"/><rect x="15" y="13" width="2.5" height="2.5" rx="1" fill="#fff"/></svg>
+                    </span>
+                </div>
+                <div class="bloquecero-card-line"></div>
                 <div class="sesiones-directo-selector">
                     <button id="prev-sesion">&lt;</button>
                     <span id="sesion-label"></span>
                     <button id="next-sesion">&gt;</button>
                 </div>
-                <span class="sesiones-directo-calendaricon" title="Ver todas las sesiones">
-                    <!-- Icono SVG calendario -->
-                    <svg width="22" height="22" viewBox="0 0 24 24" style="vertical-align:middle;cursor:pointer;"><rect x="3" y="5" width="18" height="16" rx="3" fill="#B7C65C" /><rect x="7" y="9" width="2.5" height="2.5" rx="1" fill="#fff"/><rect x="11" y="9" width="2.5" height="2.5" rx="1" fill="#fff"/><rect x="15" y="9" width="2.5" height="2.5" rx="1" fill="#fff"/><rect x="7" y="13" width="2.5" height="2.5" rx="1" fill="#fff"/><rect x="11" y="13" width="2.5" height="2.5" rx="1" fill="#fff"/><rect x="15" y="13" width="2.5" height="2.5" rx="1" fill="#fff"/></svg>
-                </span>
             </div>
             <div class="sesiones-directo-container">
                 <div id="sesiones-list-content"></div>
@@ -877,7 +948,7 @@ class block_bloquecero extends block_base {
             <div class="bloquecero-header-responsive">
                 <img src="' . $fondo_cabecera_img . '" alt="Fondo" class="bloquecero-header-bg-img">
                 <div class="bloquecero-header-content">
-                    <h1 class="bloquecero-header-title">' . format_string($COURSE->fullname) . '</h1>
+                    <h1 class="bloquecero-header-title">' . format_string(trim(explode(' - ', $COURSE->fullname, 2)[0])) . '</h1>
                 </div>
             </div>
             <!-- Fechas y equipo docente fuera del header para evitar recorte -->
@@ -938,23 +1009,13 @@ class block_bloquecero extends block_base {
                 font-size: 0.97em;
                 min-width: 0;
             }
-            .calendario-actividades-header,
-            .sesiones-directo-header {
-                flex-direction: column;
-                align-items: flex-start;
-                gap: 2px;
-            }
             .calendario-actividades-header h3,
             .sesiones-directo-header h3 {
                 font-size: 1.07em;
-                margin-bottom: 2px;
             }
             .week-selector,
             .sesiones-directo-selector {
-                margin-left: 0 !important;
                 font-size: 0.95em;
-                max-width: 100%;
-                white-space: nowrap;
             }
             }
             @media (max-width: 660px) {
@@ -972,38 +1033,24 @@ class block_bloquecero extends block_base {
                 padding: 12px 4px !important;
                 min-width: 0;
             }
-            .calendario-actividades-header,
-            .sesiones-directo-header {
-                flex-direction: column;
-                align-items: flex-start;
-                gap: 2px;
-                width: 100%;
-            }
             .calendario-actividades-header h3,
             .sesiones-directo-header h3 {
                 font-size: 0.99em;
-                margin-bottom: 2px;
             }
             .week-selector,
             .sesiones-directo-selector {
                 font-size: 0.94em;
-                margin-left: 0 !important;
-                max-width: 100%;
-                white-space: nowrap;
             }
             }
             @media (max-width: 500px) {
             .calendario-actividades-header h3,
             .sesiones-directo-header h3 {
                 font-size: 0.92em;
-                margin-bottom: 0;
                 white-space: normal;
             }
             .week-selector,
             .sesiones-directo-selector {
                 font-size: 0.92em;
-                margin-left: 0 !important;
-                max-width: 100%;
                 white-space: normal;
             }
             }
@@ -1635,13 +1682,11 @@ class block_bloquecero extends block_base {
             }
             .calendario-actividades-header {
                 display: flex;
-                align-items: center;
-                justify-content: space-between;
-                gap: 8px;
+                flex-direction: column;
+                gap: 0;
                 min-width: 0;
                 width: 100%;
                 margin-bottom: 10px;
-                flex-wrap: nowrap;
             }
             .calendario-actividades-header h3 {
                 margin: 0;
@@ -1666,10 +1711,8 @@ class block_bloquecero extends block_base {
             }
             .sesiones-directo-header {
                 display: flex;
-                align-items: center;
-                justify-content: space-between;
-                flex-wrap: nowrap;
-                gap: 8px;
+                flex-direction: column;
+                gap: 0;
                 min-width: 0;
                 width: 100%;
                 margin-bottom: 10px;
@@ -1774,19 +1817,6 @@ class block_bloquecero extends block_base {
             </style>
             <style>
             .bloquecero-header-responsive {
-            .calendario-actividades-header .week-selector,
-            .sesiones-directo-header .sesiones-directo-selector {
-                font-size: 0.93em !important;
-            }
-            .calendario-actividades-maincard,
-            .sesiones-directo-maincard {
-                font-size: 1em !important;
-                background: rgba(255, 0, 0, 0.84);  // solo para depuración visual, puedes quitarlo después */
-            }
-            .calendario-actividades-header .week-selector,
-            .sesiones-directo-header .sesiones-directo-selector {
-                font-size: 1em !important;
-            }
                 position: relative;
                 border-radius: 3px;
                 overflow: hidden;
@@ -2470,6 +2500,17 @@ class block_bloquecero extends block_base {
         <style>
         .bloquecero-section-card { cursor: pointer; }
         .bloquecero-vermas { color: #6FA24A; font-weight: 500; cursor: pointer; }
+        .bloquecero-card-title-row { display: flex; align-items: center; justify-content: space-between; width: 100%; gap: 8px; margin-bottom: 8px; }
+        .bloquecero-card-line { height: 3px; width: 100%; background: #B7C65C; border-radius: 2px; margin-bottom: 10px; }
+        .bloquecero-completion-icon { margin-left: 6px; font-size: 0.85em; }
+        .bloquecero-completion-done { color: #4CAF50; }
+        .bloquecero-completion-fail { color: #E53935; }
+        .bloquecero-completion-pending { color: #9E9E9E; }
+        .bloquecero-completion-conditions { font-size: 0.75em; color: #888; margin: 2px 0 4px 24px; line-height: 1.3; }
+        .bloquecero-progress-wrapper { margin-top: 10px; padding-top: 8px; border-top: 1px solid #e0e0e0; }
+        .bloquecero-progress-bar { height: 6px; background: #e0e0e0; border-radius: 3px; overflow: hidden; }
+        .bloquecero-progress-fill { height: 100%; background: #B7C65C; border-radius: 3px; transition: width 0.3s ease; }
+        .bloquecero-progress-text { font-size: 0.8em; color: #666; display: block; margin-top: 4px; }
         </style>
         <style>
                     #region-main.bloquecero-fadein {
@@ -2505,8 +2546,8 @@ class block_bloquecero extends block_base {
         .calendario-actividades-header {
             width: 100%;
             display: flex;
-            align-items: center;
-            justify-content: space-between;
+            flex-direction: column;
+            gap: 0;
             margin-bottom: 10px;
         }
         .calendario-actividades-header h3 {

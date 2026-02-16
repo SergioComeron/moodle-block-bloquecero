@@ -33,7 +33,7 @@ This is a Moodle block plugin (`block_bloquecero`) that provides a customized co
   - Guide URL (course guide link)
   - Forum selectors (announcements, tutorials, students)
   - Per-teacher settings (phone, office hours) - only visible to teacher users
-  - Max teachers to display (1-5, default 3)
+  - Teacher selection checkboxes (`config_teacher_selected_{userid}`) - select which teachers to display
   - Bibliography list (repeating fields for book name/URL)
   - Live sessions management - Link to dedicated management page
   - Max activities per section (1-10, default 4)
@@ -121,12 +121,17 @@ The block extensively hides/shows Moodle UI elements:
 
 ### Teacher Information Display
 - Fetches users with `moodle/course:update` capability
+- **Teacher selection**: Checkboxes in edit_form.php (`config_teacher_selected_{userid}`) control which teachers are visible
+  - If no selection config exists (retrocompatibility), all teachers are shown
+  - If selection exists, only teachers with `teacher_selected_{id} = 1` are displayed
 - Stores per-teacher config as `userphone_{userid}` and `userschedule_{userid}`
 - Teachers can only edit their own phone/schedule in edit_form.php
 - Displays teacher cards with photo, contact info (toggleable)
+- Teacher names and course dates are rendered **outside** the header image container (`.bloquecero-info-row`) to prevent clipping on smaller windows
 
 ### Section/Activity Navigation
 - Implements carousel-style navigation for course sections (weeks/topics)
+- **Subsections are excluded** from the carousel (`$section->component === 'mod_subsection'`); they are shown nested inside their parent section cards
 - Filters activities per section based on `maxactivitiespersection` config
 - Shows activity icons, types, dates (start/end)
 - Groups activities by section with expand/collapse functionality
@@ -185,7 +190,8 @@ Header background images are served via Moodle's pluginfile.php:
 ### Configuration Storage
 Block instance config stored as object properties:
 - Simple fields: `$this->config->guide_url`, `$this->config->forumid`
-- Per-user fields: `$this->config->userphone_{userid}`
+- Per-user fields: `$this->config->userphone_{userid}`, `$this->config->userschedule_{userid}`
+- Teacher selection: `$this->config->teacher_selected_{userid}` (1 = visible, 0 = hidden)
 - Array fields:
   - `$this->config->bibliography_name` (array), `$this->config->bibliography_url` (array)
 
@@ -283,9 +289,10 @@ Edit the section/activity rendering code in `block_bloquecero::get_content()`:
 - Activity icons/dates: search for `get_cm_start_date()`
 
 ### Modifying Teacher Display
-- Max teachers config: edit_form.php:90-99
-- Teacher data collection: block_bloquecero.php:80-138
-- Teacher card HTML: block_bloquecero.php:225-260+
+- Teacher selection checkboxes: edit_form.php:75-83
+- Teacher data collection and filtering: block_bloquecero.php:80-155
+- Teacher card HTML: block_bloquecero.php:267-302
+- Info row (dates + teachers): `.bloquecero-info-row` outside `.bloquecero-header-responsive`
 
 ### Styling Changes
 Locate inline `<style>` blocks in block_bloquecero.php:
@@ -296,7 +303,6 @@ Locate inline `<style>` blocks in block_bloquecero.php:
 
 ## Git Workflow
 
-Current branch: `zoom`
 Main development branch: `dev`
 
 When creating pull requests, target the `dev` branch, not `main`/`master`.
