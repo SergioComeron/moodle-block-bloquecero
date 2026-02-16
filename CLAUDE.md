@@ -119,6 +119,7 @@ This is a Moodle block plugin (`block_bloquecero`) that provides a customized co
 - Version 2025061701: Creates block_bloquecero_sessions table
 - Version 2025061702: Creates block_bloquecero_bibliography table + migrates existing config data
 - Version 2025061703: Adds description field to bibliography table
+- Version 2025061704: Safety net - ensures bibliography table exists for installs that skipped 2025061702
 
 ### Localization
 

@@ -141,5 +141,32 @@ function xmldb_block_bloquecero_upgrade($oldversion) {
         upgrade_block_savepoint(true, 2025061703, 'bloquecero');
     }
 
+    if ($oldversion < 2025061704) {
+        // Ensure bibliography table exists (may be missing if upgrade path skipped 2025061702).
+        $table = new xmldb_table('block_bloquecero_bibliography');
+
+        if (!$dbman->table_exists($table)) {
+            $table->add_field('id', XMLDB_TYPE_INTEGER, '10', null, XMLDB_NOTNULL, XMLDB_SEQUENCE, null);
+            $table->add_field('blockinstanceid', XMLDB_TYPE_INTEGER, '10', null, XMLDB_NOTNULL, null, null);
+            $table->add_field('courseid', XMLDB_TYPE_INTEGER, '10', null, XMLDB_NOTNULL, null, null);
+            $table->add_field('name', XMLDB_TYPE_CHAR, '255', null, XMLDB_NOTNULL, null, null);
+            $table->add_field('url', XMLDB_TYPE_CHAR, '1333', null, null, null, null);
+            $table->add_field('description', XMLDB_TYPE_TEXT, null, null, null, null, null);
+            $table->add_field('sortorder', XMLDB_TYPE_INTEGER, '10', null, null, null, '0');
+            $table->add_field('timecreated', XMLDB_TYPE_INTEGER, '10', null, XMLDB_NOTNULL, null, null);
+            $table->add_field('timemodified', XMLDB_TYPE_INTEGER, '10', null, XMLDB_NOTNULL, null, null);
+
+            $table->add_key('primary', XMLDB_KEY_PRIMARY, ['id']);
+            $table->add_key('blockinstanceid', XMLDB_KEY_FOREIGN, ['blockinstanceid'], 'block_instances', ['id']);
+            $table->add_key('courseid', XMLDB_KEY_FOREIGN, ['courseid'], 'course', ['id']);
+
+            $table->add_index('courseid_sortorder', XMLDB_INDEX_NOTUNIQUE, ['courseid', 'sortorder']);
+
+            $dbman->create_table($table);
+        }
+
+        upgrade_block_savepoint(true, 2025061704, 'bloquecero');
+    }
+
     return true;
 }
