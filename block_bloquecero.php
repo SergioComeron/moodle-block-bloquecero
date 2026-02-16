@@ -2177,29 +2177,40 @@ class block_bloquecero extends block_base {
         </div>
     ';
 
-    // --- Generar contenido de bibliografía ---
+    // --- Generar contenido de bibliografía desde BD ---
     $bibliografiaHTML = '';
-    if (!empty($this->config->bibliography_name) && is_array($this->config->bibliography_name)) {
+    $bibliographies = $DB->get_records('block_bloquecero_bibliography',
+        ['blockinstanceid' => $this->instance->id, 'courseid' => $COURSE->id],
+        'sortorder ASC');
+
+    if (!empty($bibliographies)) {
         $bibliografiaHTML = '<ul style="list-style:none; padding-left:0; margin:0;">';
-        foreach ($this->config->bibliography_name as $index => $bookname) {
-            if (!empty(trim($bookname))) {
-                $bookurl = !empty($this->config->bibliography_url[$index]) ? trim($this->config->bibliography_url[$index]) : '';
-                
+        foreach ($bibliographies as $entry) {
+            $bookname = trim($entry->name);
+            if (!empty($bookname)) {
+                $bookurl = !empty($entry->url) ? trim($entry->url) : '';
+                $bookdesc = !empty($entry->description) ? trim($entry->description) : '';
+
                 $bibliografiaHTML .= '<li style="margin-bottom:14px; display:flex; align-items:flex-start; gap:10px;">';
                 $bibliografiaHTML .= '<span style="color:#B7C65C; font-size:1.3em; flex-shrink:0;">📚</span>';
-                
+                $bibliografiaHTML .= '<div style="flex:1;">';
+
                 if (!empty($bookurl)) {
                     $bibliografiaHTML .= '<a href="' . s($bookurl) . '" target="_blank" style="color:#004D35; font-weight:500; text-decoration:none; transition:color 0.14s;">' . s($bookname) . '</a>';
                 } else {
                     $bibliografiaHTML .= '<span style="color:#333; font-weight:400;">' . s($bookname) . '</span>';
                 }
-                
-                $bibliografiaHTML .= '</li>';
+
+                if (!empty($bookdesc)) {
+                    $bibliografiaHTML .= '<p style="margin:4px 0 0 0; color:#666; font-size:0.9em;">' . s($bookdesc) . '</p>';
+                }
+
+                $bibliografiaHTML .= '</div></li>';
             }
         }
         $bibliografiaHTML .= '</ul>';
     } else {
-        $bibliografiaHTML = '<p style="color:#888; font-style:italic;">No hay bibliografía configurada.</p>';
+        $bibliografiaHTML = '<p style="color:#888; font-style:italic;">' . get_string('nobibliographyyet', 'block_bloquecero') . '</p>';
     }
 
     // Justo antes de cerrar el div principal del bloque, añade el HTML del modal:
@@ -2674,26 +2685,6 @@ class block_bloquecero extends block_base {
         return true;
     }
 
-    /**
-     * Guardar configuración de la instancia del bloque
-     */
-    public function instance_config_save($data, $nolongerused = false) {
-        global $DB;
-        
-        error_log('=== DATOS RECIBIDOS EN instance_config_save ===');
-        error_log('config_bibliography_name: ' . print_r($data->config_bibliography_name ?? 'NO EXISTE', true));
-        error_log('config_bibliography_url: ' . print_r($data->config_bibliography_url ?? 'NO EXISTE', true));
-        
-        // Moodle automáticamente quita el prefijo config_ al guardar,
-        // así que los datos quedarán como bibliography_name y bibliography_url
-        
-        // Llamar al método padre para guardar
-        $result = parent::instance_config_save($data, $nolongerused);
-        
-        error_log('Resultado guardado: ' . ($result ? 'SÍ' : 'NO'));
-        
-        return $result;
-    }
 }
 
             

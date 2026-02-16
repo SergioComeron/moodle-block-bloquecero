@@ -96,32 +96,28 @@ class block_bloquecero_edit_form extends block_edit_form {
             $mform->addHelpButton('config_userschedule_' . $USER->id, 'userschedule', 'block_bloquecero');
         }
 
-        // --- Configuración de bibliografía (lista de libros) ---
+        // --- Configuración de bibliografía ---
         $mform->addElement('header', 'bibliographyheader', get_string('bibliography', 'block_bloquecero'));
 
-        // Número de libros a mostrar por defecto (puedes cambiarlo)
-        $numbooks = 3;
-        if (!empty($this->block->config) && !empty($this->block->config->bibliography_name)) {
-            $numbooks = max(3, count($this->block->config->bibliography_name));
+        // Get block instance ID if available
+        $blockinstanceid = 0;
+        if (!empty($this->block->instance)) {
+            $blockinstanceid = $this->block->instance->id;
         }
 
-        $repeatarray = [];
-        $repeatarray[] = $mform->createElement('text', 'bibliography_name', get_string('bookname', 'block_bloquecero'));
-        $mform->setType('bibliography_name', PARAM_TEXT);
-        $repeatarray[] = $mform->createElement('text', 'bibliography_url', get_string('bookurl', 'block_bloquecero'));
-        $mform->setType('bibliography_url', PARAM_URL);
-
-        $repeats = $numbooks;
-        $this->repeat_elements(
-            $repeatarray,
-            $repeats,
-            [],
-            'bibliography_repeats',
-            'bibliography_add_fields',
-            1,
-            get_string('addbook', 'block_bloquecero'),
-            true
-        );
+        // Link to manage bibliography page
+        if ($blockinstanceid) {
+            $managebiburl = new moodle_url('/blocks/bloquecero/manage_bibliography.php', [
+                'courseid' => $COURSE->id,
+                'blockid' => $blockinstanceid
+            ]);
+            $managebiblink = html_writer::link($managebiburl, get_string('managebibliography', 'block_bloquecero'),
+                ['target' => '_blank', 'class' => 'btn btn-secondary']);
+            $mform->addElement('static', 'managebibliographylink', '', $managebiblink);
+        } else {
+            $mform->addElement('static', 'managebibliographyinfo', '',
+                get_string('saveblockfirst', 'block_bloquecero'));
+        }
 
         // --- Configuración de sesiones en directo ---
         $mform->addElement('header', 'livesessionsheader', get_string('livesessions', 'block_bloquecero'));
@@ -183,23 +179,6 @@ class block_bloquecero_edit_form extends block_edit_form {
                 }
             }
 
-            // Cargar bibliografía existente
-            if (!empty($this->block->config->bibliography_name) && is_array($this->block->config->bibliography_name)) {
-                error_log('Cargando bibliography_name: ' . print_r($this->block->config->bibliography_name, true));
-
-                foreach ($this->block->config->bibliography_name as $index => $name) {
-                    $defaults->{"bibliography_name[$index]"} = $name;
-                }
-            }
-
-            if (!empty($this->block->config->bibliography_url) && is_array($this->block->config->bibliography_url)) {
-                error_log('Cargando bibliography_url: ' . print_r($this->block->config->bibliography_url, true));
-
-                foreach ($this->block->config->bibliography_url as $index => $url) {
-                    $defaults->{"bibliography_url[$index]"} = $url;
-                }
-            }
-
         } else {
             error_log('Config NO existe o está vacío');
         }
@@ -211,46 +190,4 @@ class block_bloquecero_edit_form extends block_edit_form {
      * Perform some moodle validation.
      * Procesa los datos antes de guardarlos.
      */
-    public function get_data() {
-        $data = parent::get_data();
-
-        if ($data) {
-            // Los campos repetidos vienen SIN el prefijo config_, pero necesitamos añadírselo
-            // para que se guarden correctamente en la configuración del bloque
-            if (isset($data->bibliography_name) && is_array($data->bibliography_name)) {
-                // Filtrar valores vacíos
-                $filteredNames = [];
-                $filteredUrls = [];
-
-                foreach ($data->bibliography_name as $index => $name) {
-                    $name = trim($name);
-                    if ($name !== '') {
-                        $filteredNames[] = $name;
-
-                        $url = isset($data->bibliography_url[$index]) ? trim($data->bibliography_url[$index]) : '';
-                        // Si la URL no está vacía y no empieza por http:// o https://, le añadimos https://
-                        if ($url !== '' && !preg_match('#^https?://#i', $url)) {
-                            $url = 'https://' . $url;
-                        }
-                        $filteredUrls[] = $url;
-                    }
-                }
-
-                // Añadir el prefijo config_ para que se guarde correctamente
-                $data->config_bibliography_name = $filteredNames;
-                $data->config_bibliography_url = $filteredUrls;
-
-                // Eliminar los campos sin prefijo para evitar confusión
-                unset($data->bibliography_name);
-                unset($data->bibliography_url);
-
-                error_log('=== BIBLIOGRAFÍA PROCESADA ===');
-                error_log('config_bibliography_name: ' . print_r($data->config_bibliography_name, true));
-                error_log('config_bibliography_url: ' . print_r($data->config_bibliography_url, true));
-            }
-
-        }
-
-        return $data;
-    }
 }
