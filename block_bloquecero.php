@@ -325,6 +325,7 @@ class block_bloquecero extends block_base {
         foreach ($modinfo->get_section_info_all() as $section) {
             if ($section->section == 0) continue;
             if (!$section->uservisible) continue;
+            if (!empty($section->component) && $section->component === 'mod_subsection') continue;
             $sectionurl = new moodle_url('/course/view.php', ['id' => $COURSE->id, 'section' => $section->section]);
             $course = $modinfo->get_course();
             if ($course->format == 'weeks' && empty($section->name)) {
@@ -877,11 +878,11 @@ class block_bloquecero extends block_base {
                 <img src="' . $fondo_cabecera_img . '" alt="Fondo" class="bloquecero-header-bg-img">
                 <div class="bloquecero-header-content">
                     <h1 class="bloquecero-header-title">' . format_string($COURSE->fullname) . '</h1>
-                    ' . ($courseDates ? '<p class="bloquecero-header-dates">' . $courseDates . '</p>' : '') . '
                 </div>
             </div>
-            <!-- Equipo docente fuera del header para evitar recorte -->
-            <div class="bloquecero-teachers-row">
+            <!-- Fechas y equipo docente fuera del header para evitar recorte -->
+            <div class="bloquecero-info-row">
+                ' . ($courseDates ? '<p class="bloquecero-header-dates">' . $courseDates . '</p>' : '') . '
                 <p class="bloquecero-header-teachers">Equipo docente: ' . $contactButtonsHtml . '</p>
             </div>
             <!-- Bloques de información de contacto de cada profesor -->
@@ -1828,15 +1829,15 @@ class block_bloquecero extends block_base {
                 font-size: 1em;
                 color: black;
             }
-            .bloquecero-teachers-row {
+            .bloquecero-info-row {
                 padding: 0 20px;
+                text-align: right;
             }
             .bloquecero-header-teachers {
                 margin: 0 0 10px 0;
                 font-size: 1.2em;
                 color: black;
                 font-weight: 500;
-                text-align: right;
             }
 
             @media (max-width: 800px) {
