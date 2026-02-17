@@ -216,9 +216,11 @@ class block_bloquecero extends block_base {
                         type="button"
                         onclick="event.preventDefault(); window.bloquecero_toggle()"
                         class="moodle-toggle-btn"
+                        aria-expanded="false"
+                        aria-label="' . get_string('togglecourse', 'block_bloquecero') . '"
                         title="Mostrar u ocultar curso">
                         <span class="moodle-toggle-circle">
-                            <svg id="bloquecero-mostrarcurso-icon" class="moodle-toggle-chevron" width="24" height="24" viewBox="0 0 24 24">
+                            <svg id="bloquecero-mostrarcurso-icon" class="moodle-toggle-chevron" width="24" height="24" viewBox="0 0 24 24" aria-hidden="true">
                                 <polyline points="9 6 15 12 9 18" fill="none" stroke="#1655A0" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round"/>
                             </svg>
                         </span>
@@ -269,13 +271,19 @@ class block_bloquecero extends block_base {
         foreach ($teachersP as $teacher) {
             $uniqueId = 'contact-info-' . $teacher->id;
             $teachersList[] = '
-                <button class="bloquecero-teacher-btn" type="button" onclick="toggleContactInfo(\'' . $uniqueId . '\')">
+                <button class="bloquecero-teacher-btn" type="button"
+                    onclick="toggleContactInfo(\'' . $uniqueId . '\')"
+                    aria-expanded="false"
+                    aria-controls="' . $uniqueId . '">
                     <span>' . format_string($teacher->fullname) . '</span>
                 </button>';
 
             // Bloque de información de contacto para este profesor (oculto por defecto).
             $contactBlocksHtml .= '
-                <div id="' . $uniqueId . '" style="
+                <div id="' . $uniqueId . '" role="region"
+                    aria-hidden="true"
+                    aria-label="' . get_string('contactinfo', 'block_bloquecero', format_string($teacher->fullname)) . '"
+                    style="
                     display: none;
                     margin: 20px 40px;
                     text-align: left;
@@ -384,12 +392,12 @@ class block_bloquecero extends block_base {
                                 }
                             }
                             if ($completiondata->completionstate == COMPLETION_COMPLETE || $completiondata->completionstate == COMPLETION_COMPLETE_PASS) {
-                                $completionhtml = '<span class="bloquecero-completion-icon bloquecero-completion-done">&#10003;</span>';
+                                $completionhtml = '<span class="bloquecero-completion-icon bloquecero-completion-done" aria-label="' . get_string('completed', 'block_bloquecero') . '">&#10003;</span>';
                                 $section_completed++;
                             } else if ($completiondata->completionstate == COMPLETION_COMPLETE_FAIL) {
-                                $completionhtml = '<span class="bloquecero-completion-icon bloquecero-completion-fail">&#10007;</span>';
+                                $completionhtml = '<span class="bloquecero-completion-icon bloquecero-completion-fail" aria-label="' . get_string('failed', 'block_bloquecero') . '">&#10007;</span>';
                             } else {
-                                $completionhtml = '<span class="bloquecero-completion-icon bloquecero-completion-pending">&#9675;</span>';
+                                $completionhtml = '<span class="bloquecero-completion-icon bloquecero-completion-pending" aria-label="' . get_string('pending', 'block_bloquecero') . '">&#9675;</span>';
                             }
                             if (!empty($condition_parts)) {
                                 $completionhtml .= '<div class="bloquecero-completion-conditions">' . implode(' &middot; ', array_map('htmlspecialchars', $condition_parts)) . '</div>';
@@ -430,12 +438,12 @@ class block_bloquecero extends block_base {
                                                 }
                                             }
                                             if ($sub_completiondata->completionstate == COMPLETION_COMPLETE || $sub_completiondata->completionstate == COMPLETION_COMPLETE_PASS) {
-                                                $sub_completionhtml = '<span class="bloquecero-completion-icon bloquecero-completion-done">&#10003;</span>';
+                                                $sub_completionhtml = '<span class="bloquecero-completion-icon bloquecero-completion-done" aria-label="' . get_string('completed', 'block_bloquecero') . '">&#10003;</span>';
                                                 $section_completed++;
                                             } else if ($sub_completiondata->completionstate == COMPLETION_COMPLETE_FAIL) {
-                                                $sub_completionhtml = '<span class="bloquecero-completion-icon bloquecero-completion-fail">&#10007;</span>';
+                                                $sub_completionhtml = '<span class="bloquecero-completion-icon bloquecero-completion-fail" aria-label="' . get_string('failed', 'block_bloquecero') . '">&#10007;</span>';
                                             } else {
-                                                $sub_completionhtml = '<span class="bloquecero-completion-icon bloquecero-completion-pending">&#9675;</span>';
+                                                $sub_completionhtml = '<span class="bloquecero-completion-icon bloquecero-completion-pending" aria-label="' . get_string('pending', 'block_bloquecero') . '">&#9675;</span>';
                                             }
                                             if (!empty($sub_condition_parts)) {
                                                 $sub_completionhtml .= '<div class="bloquecero-completion-conditions">' . implode(' &middot; ', array_map('htmlspecialchars', $sub_condition_parts)) . '</div>';
@@ -457,15 +465,15 @@ class block_bloquecero extends block_base {
             $remaining = count($all_activities_array) - $maxactivities;
             if ($remaining > 0) {
                 // $activities_preview[] = '<li class="bloquecero-vermas">+' . $remaining . ' más</li>';
-                    $activities_preview[] = '<li class="bloquecero-vermas"><button type="button" class="bloquecero-vermas-btn" onclick="toggleSectionCard(this)">+' . $remaining . ' más</button></li>';
-                $all_activities_array[] = '<li class="bloquecero-vermas"><button type="button" class="bloquecero-vermas-btn" onclick="toggleSectionCard(this)">mostrar menos</button></li>';
+                    $activities_preview[] = '<li class="bloquecero-vermas"><button type="button" class="bloquecero-vermas-btn" onclick="toggleSectionCard(this)" aria-expanded="false">+' . $remaining . ' ' . get_string('more', 'block_bloquecero') . '</button></li>';
+                $all_activities_array[] = '<li class="bloquecero-vermas"><button type="button" class="bloquecero-vermas-btn" onclick="toggleSectionCard(this)" aria-expanded="true">' . get_string('showless', 'block_bloquecero') . '</button></li>';
 
             }
             $activitieslist = '<ul class="bloquecero-section-activities" data-preview="1" style="margin: 12px 0 0 0; padding-left: 0; list-style: none;">' . implode('', $activities_preview) . '</ul>';
             $activitieslist_full = '<ul class="bloquecero-section-activities" data-full="1" style="margin: 12px 0 0 0; padding-left: 0; list-style: none; display:none;">' . implode('', $all_activities_array) . '</ul>';
             if (!$all_activities_array) {
-                $activitieslist = '<div style="margin-top:12px; color:#888; font-size:0.95em;" class="bloquecero-section-activities" data-preview="1">' . get_string('noactivities', 'block_bloquecero') . '</div>';
-                $activitieslist_full = '<div style="margin-top:12px; color:#888; font-size:0.95em; display:none;" class="bloquecero-section-activities" data-full="1">' . get_string('noactivities', 'block_bloquecero') . '</div>';
+                $activitieslist = '<div style="margin-top:12px; color:#595959; font-size:0.95em;" class="bloquecero-section-activities" data-preview="1">' . get_string('noactivities', 'block_bloquecero') . '</div>';
+                $activitieslist_full = '<div style="margin-top:12px; color:#595959; font-size:0.95em; display:none;" class="bloquecero-section-activities" data-full="1">' . get_string('noactivities', 'block_bloquecero') . '</div>';
             }
             // print_r($all_activities_array);
             // Guardar el contenido HTML de las actividades para esta sección con un id único
@@ -508,7 +516,7 @@ class block_bloquecero extends block_base {
                 $progress_pct = round(($section_completed / $section_total_with_completion) * 100);
                 $card_html .= '
                 <div class="bloquecero-progress-wrapper">
-                    <div class="bloquecero-progress-bar">
+                    <div class="bloquecero-progress-bar" role="progressbar" aria-valuenow="'.$progress_pct.'" aria-valuemin="0" aria-valuemax="100" aria-label="' . get_string('completionprogress', 'block_bloquecero') . '">
                         <div class="bloquecero-progress-fill" style="width: '.$progress_pct.'%"></div>
                     </div>
                     <span class="bloquecero-progress-text">'.$section_completed.'/'.$section_total_with_completion.' completadas</span>
@@ -526,10 +534,10 @@ class block_bloquecero extends block_base {
 
         // Envolver el carrusel en un contenedor con botones laterales
         $carouselContainer = '
-            <div class="carousel-container" style="position: relative; display: flex; align-items: center; margin-bottom: 20px; padding: 0 40px;">
-                 <button class="carousel-btn carousel-btn-left" onclick="scrollCarousel(-1)" style="background: transparent; border: none; color: #004D35; font-size: 1.5em; padding: 0; cursor: pointer; position: absolute; left: 0; z-index: 2; height: 100%;">&lt;</button>
+            <div class="carousel-container" role="region" aria-label="' . get_string('coursesections', 'block_bloquecero') . '" aria-roledescription="carousel" style="position: relative; display: flex; align-items: center; margin-bottom: 20px; padding: 0 40px;">
+                 <button class="carousel-btn carousel-btn-left" onclick="scrollCarousel(-1)" aria-label="' . get_string('previoussection', 'block_bloquecero') . '" style="background: transparent; border: none; color: #004D35; font-size: 1.5em; padding: 0; cursor: pointer; position: absolute; left: 0; z-index: 2; height: 100%;">&#8249;</button>
                  ' . $sectionscarousel . '
-                 <button class="carousel-btn carousel-btn-right" onclick="scrollCarousel(1)" style="background: transparent; border: none; color: #004D35; font-size: 1.5em; padding: 0; cursor: pointer; position: absolute; right: 0; z-index: 2; height: 100%;">&gt;</button>
+                 <button class="carousel-btn carousel-btn-right" onclick="scrollCarousel(1)" aria-label="' . get_string('nextsection', 'block_bloquecero') . '" style="background: transparent; border: none; color: #004D35; font-size: 1.5em; padding: 0; cursor: pointer; position: absolute; right: 0; z-index: 2; height: 100%;">&#8250;</button>
             </div>
         ';
 
@@ -613,7 +621,7 @@ class block_bloquecero extends block_base {
 
                 $calendarActivities .= '<li data-timestamp="' . $startdate . '" style="margin-bottom: 6px;">' . $icon .
                     ' <a href="' . $cm->url . '">' .
-                    format_string($cm->name) . '</a> <span style="font-size:0.9em; color:#666;">(Inicio: ' . $activitytime . ')</span></li>';
+                    format_string($cm->name) . '</a> <span style="font-size:0.9em; color:#555;">(Inicio: ' . $activitytime . ')</span></li>';
             }
         }
 
@@ -621,7 +629,7 @@ class block_bloquecero extends block_base {
             $calendarActivities = '<ul id="activities-list" style="margin: 12px 0 0 0; padding-left: 18px; list-style: none;">'
                 . $calendarActivities . '</ul>';
         } else {
-            $calendarActivities = '<div style="margin-top:12px; color:#888; font-size:0.95em;">' .
+            $calendarActivities = '<div style="margin-top:12px; color:#595959; font-size:0.95em;">' .
                 get_string('noactivities', 'block_bloquecero') . '</div>';
         }
 
@@ -697,11 +705,11 @@ class block_bloquecero extends block_base {
                 $fecha = userdate($sesion['fecha'], get_string('strftimedaydatetime', 'langconfig'));
                 $sesionesZoomList .= '<li data-timestamp="' . $sesion['fecha'] . '" style="margin-bottom: 6px;">' .
                     $OUTPUT->pix_icon('i/calendar', '', '', ['class' => 'activityicon']) .
-                    ' <strong>' . format_string($sesion['titulo']) . '</strong> <span style="font-size:0.93em; color:#666;">(' . $fecha . ')</span></li>';
+                    ' <strong>' . format_string($sesion['titulo']) . '</strong> <span style="font-size:0.93em; color:#555;">(' . $fecha . ')</span></li>';
             }
             $sesionesZoomList = '<ul id="sesiones-list" style="margin: 12px 0 0 0; padding-left: 18px; list-style: none;">' . $sesionesZoomList . '</ul>';
         } else {
-            $sesionesZoomList = '<div style="margin: 12px 0; padding: 12px; text-align: center; color: #666; font-size: 0.9em;">' .
+            $sesionesZoomList = '<div style="margin: 12px 0; padding: 12px; text-align: center; color: #555; font-size: 0.9em;">' .
                 get_string('nosessionsscheduled', 'block_bloquecero') . '</div>';
         }
 
@@ -711,15 +719,15 @@ class block_bloquecero extends block_base {
                 <div class="calendario-actividades-header">
                     <div class="bloquecero-card-title-row">
                         <h3>Actividades</h3>
-                        <span class="calendario-actividades-calendaricon" title="Ver todas las actividades">
-                            <svg width="22" height="22" viewBox="0 0 24 24" style="vertical-align:middle;cursor:pointer;"><rect x="3" y="5" width="18" height="16" rx="3" fill="#B7C65C" /><rect x="7" y="9" width="2.5" height="2.5" rx="1" fill="#fff"/><rect x="11" y="9" width="2.5" height="2.5" rx="1" fill="#fff"/><rect x="15" y="9" width="2.5" height="2.5" rx="1" fill="#fff"/><rect x="7" y="13" width="2.5" height="2.5" rx="1" fill="#fff"/><rect x="11" y="13" width="2.5" height="2.5" rx="1" fill="#fff"/><rect x="15" y="13" width="2.5" height="2.5" rx="1" fill="#fff"/></svg>
-                        </span>
+                        <button type="button" class="calendario-actividades-calendaricon" aria-label="' . get_string('viewallactivities', 'block_bloquecero') . '" style="background:none;border:none;padding:0;cursor:pointer;">
+                            <svg width="22" height="22" viewBox="0 0 24 24" aria-hidden="true" style="vertical-align:middle;"><rect x="3" y="5" width="18" height="16" rx="3" fill="#B7C65C" /><rect x="7" y="9" width="2.5" height="2.5" rx="1" fill="#fff"/><rect x="11" y="9" width="2.5" height="2.5" rx="1" fill="#fff"/><rect x="15" y="9" width="2.5" height="2.5" rx="1" fill="#fff"/><rect x="7" y="13" width="2.5" height="2.5" rx="1" fill="#fff"/><rect x="11" y="13" width="2.5" height="2.5" rx="1" fill="#fff"/><rect x="15" y="13" width="2.5" height="2.5" rx="1" fill="#fff"/></svg>
+                        </button>
                     </div>
                     <div class="bloquecero-card-line"></div>
                     <div class="week-selector">
-                        <button id="prev-week">&lt;</button>
-                        <span id="week-label"></span>
-                        <button id="next-week">&gt;</button>
+                        <button id="prev-week" aria-label="' . get_string('previousweek', 'block_bloquecero') . '">&lt;</button>
+                        <span id="week-label" aria-live="polite"></span>
+                        <button id="next-week" aria-label="' . get_string('nextweek', 'block_bloquecero') . '">&gt;</button>
                     </div>
                 </div>
 
@@ -771,7 +779,7 @@ class block_bloquecero extends block_base {
                         if(anyVisible) {
                             contentContainer.innerHTML = "<ul>" + ul.innerHTML + "</ul>";
                         } else {
-                            contentContainer.innerHTML = \'<div style="margin-top:12px; color:#888; font-size:0.95em; text-align:center;">No hay actividades para esta semana.</div>\';
+                            contentContainer.innerHTML = \'<div style="margin-top:12px; color:#595959; font-size:0.95em; text-align:center;">No hay actividades para esta semana.</div>\';
                         }
                     } else {
                         // Si no hay actividades en absoluto
@@ -815,15 +823,15 @@ class block_bloquecero extends block_base {
             <div class="sesiones-directo-header">
                 <div class="bloquecero-card-title-row">
                     <h3>Sesiones en directo</h3>
-                    <span class="sesiones-directo-calendaricon" title="Ver todas las sesiones">
-                        <svg width="22" height="22" viewBox="0 0 24 24" style="vertical-align:middle;cursor:pointer;"><rect x="3" y="5" width="18" height="16" rx="3" fill="#B7C65C" /><rect x="7" y="9" width="2.5" height="2.5" rx="1" fill="#fff"/><rect x="11" y="9" width="2.5" height="2.5" rx="1" fill="#fff"/><rect x="15" y="9" width="2.5" height="2.5" rx="1" fill="#fff"/><rect x="7" y="13" width="2.5" height="2.5" rx="1" fill="#fff"/><rect x="11" y="13" width="2.5" height="2.5" rx="1" fill="#fff"/><rect x="15" y="13" width="2.5" height="2.5" rx="1" fill="#fff"/></svg>
-                    </span>
+                    <button type="button" class="sesiones-directo-calendaricon" aria-label="' . get_string('viewallsessions', 'block_bloquecero') . '" style="background:none;border:none;padding:0;cursor:pointer;">
+                        <svg width="22" height="22" viewBox="0 0 24 24" aria-hidden="true" style="vertical-align:middle;"><rect x="3" y="5" width="18" height="16" rx="3" fill="#B7C65C" /><rect x="7" y="9" width="2.5" height="2.5" rx="1" fill="#fff"/><rect x="11" y="9" width="2.5" height="2.5" rx="1" fill="#fff"/><rect x="15" y="9" width="2.5" height="2.5" rx="1" fill="#fff"/><rect x="7" y="13" width="2.5" height="2.5" rx="1" fill="#fff"/><rect x="11" y="13" width="2.5" height="2.5" rx="1" fill="#fff"/><rect x="15" y="13" width="2.5" height="2.5" rx="1" fill="#fff"/></svg>
+                    </button>
                 </div>
                 <div class="bloquecero-card-line"></div>
                 <div class="sesiones-directo-selector">
-                    <button id="prev-sesion">&lt;</button>
-                    <span id="sesion-label"></span>
-                    <button id="next-sesion">&gt;</button>
+                    <button id="prev-sesion" aria-label="' . get_string('previousweek', 'block_bloquecero') . '">&lt;</button>
+                    <span id="sesion-label" aria-live="polite"></span>
+                    <button id="next-sesion" aria-label="' . get_string('nextweek', 'block_bloquecero') . '">&gt;</button>
                 </div>
             </div>
             <div class="sesiones-directo-container">
@@ -874,7 +882,7 @@ class block_bloquecero extends block_base {
                     if(anyVisible) {
                         sesionesContainer.innerHTML = "<ul>" + ul.innerHTML + "</ul>";
                     } else {
-                        sesionesContainer.innerHTML = \'<div style="margin-top:12px; color:#888; font-size:0.95em; text-align:center;">No hay sesiones para esta semana.</div>\';
+                        sesionesContainer.innerHTML = \'<div style="margin-top:12px; color:#595959; font-size:0.95em; text-align:center;">No hay sesiones para esta semana.</div>\';
                     }
                 } else {
                     sesionesContainer.innerHTML = doc.body.innerHTML;
@@ -921,7 +929,7 @@ class block_bloquecero extends block_base {
                 text-align: left !important;
             }
             </style>
-            <div class="udima-menu-bar">
+            <nav class="udima-menu-bar" aria-label="' . get_string('coursemenu', 'block_bloquecero') . '">
             <a href="' . new moodle_url('/grade/report/grader/index.php', array('id' => $COURSE->id)) . '" class="udima-menu-link">
                 ' . $OUTPUT->pix_icon('t/grades', '', 'moodle', ['class' => 'menu-icon']) . '
                 <span>Calificaciones</span>
@@ -942,13 +950,13 @@ class block_bloquecero extends block_base {
                 ' . $OUTPUT->pix_icon('i/settings', '', 'moodle', ['class' => 'menu-icon']) . '
                 <span>Configuración</span>
             </a>' : '') .
-            '</div>
+            '</nav>
             <div style="padding: 0 20px; font-family: Arial, sans-serif;">
             <!-- Resto del contenido del bloque -->
             <div class="bloquecero-header-responsive">
-                <img src="' . $fondo_cabecera_img . '" alt="Fondo" class="bloquecero-header-bg-img">
+                <img src="' . $fondo_cabecera_img . '" alt="" role="presentation" class="bloquecero-header-bg-img">
                 <div class="bloquecero-header-content">
-                    <h1 class="bloquecero-header-title">' . format_string(trim(explode(' - ', $COURSE->fullname, 2)[0])) . '</h1>
+                    <h2 class="bloquecero-header-title">' . format_string(trim(explode(' - ', $COURSE->fullname, 2)[0])) . '</h2>
                 </div>
             </div>
             <!-- Fechas y equipo docente fuera del header para evitar recorte -->
@@ -962,29 +970,29 @@ class block_bloquecero extends block_base {
 
             <!-- Sección de foros y demás secciones -->
             <div style="padding: 0 40px;">
-                <div class="bloquecero-tabs">'
+                <nav class="bloquecero-tabs" aria-label="' . get_string('courseforums', 'block_bloquecero') . '">'
                     . (!empty($forum_anuncios_url) ? '
                     <a href="' . $forum_anuncios_url . '" class="bloquecero-tab">
                         Tablón de anuncios'
                             . (isset($count_anuncios) && is_array($count_anuncios) && array_sum($count_anuncios) > 0
-                                ? ' <span style="display:inline-block;min-width:22px;height:22px;line-height:22px;background:#B7C65C;color:#fff;font-weight:600;font-size:0.98em;border-radius:50%;text-align:center;margin-left:7px;vertical-align:middle;">' . array_sum($count_anuncios) . '</span>'
+                                ? ' <span style="display:inline-block;min-width:22px;height:22px;line-height:22px;background:#4E6A1E;color:#fff;font-weight:600;font-size:0.98em;border-radius:50%;text-align:center;margin-left:7px;vertical-align:middle;" aria-label="' . array_sum($count_anuncios) . ' ' . get_string('unreadposts', 'block_bloquecero') . '">' . array_sum($count_anuncios) . '</span>'
                                 : '') . '
                     </a>' : '')
                     . (!empty($forum_tutorias_url) ? '
                     <a href="' . $forum_tutorias_url . '" class="bloquecero-tab">
                         Foro de Tutorías'
                         . (isset($count_tutorias) && is_array($count_tutorias) && array_sum($count_tutorias) > 0
-                            ? ' <span style="display:inline-block;min-width:22px;height:22px;line-height:22px;background:#B7C65C;color:#fff;font-weight:600;font-size:0.98em;border-radius:50%;text-align:center;margin-left:7px;vertical-align:middle;">' . array_sum($count_tutorias) . '</span>'
+                            ? ' <span style="display:inline-block;min-width:22px;height:22px;line-height:22px;background:#4E6A1E;color:#fff;font-weight:600;font-size:0.98em;border-radius:50%;text-align:center;margin-left:7px;vertical-align:middle;" aria-label="' . array_sum($count_tutorias) . ' ' . get_string('unreadposts', 'block_bloquecero') . '">' . array_sum($count_tutorias) . '</span>'
                             : '') . '
                     </a>' : '')
                     . (!empty($forum_estudiantes_url) ? '
                     <a href="' . $forum_estudiantes_url . '" class="bloquecero-tab">
                         Foro de Estudiantes'
                         . (isset($count_estudiantes) && is_array($count_estudiantes) && array_sum($count_estudiantes) > 0
-                            ? ' <span style="display:inline-block;min-width:22px;height:22px;line-height:22px;background:#B7C65C;color:#fff;font-weight:600;font-size:0.98em;border-radius:50%;text-align:center;margin-left:7px;vertical-align:middle;">' . array_sum($count_estudiantes) . '</span>'
+                            ? ' <span style="display:inline-block;min-width:22px;height:22px;line-height:22px;background:#4E6A1E;color:#fff;font-weight:600;font-size:0.98em;border-radius:50%;text-align:center;margin-left:7px;vertical-align:middle;" aria-label="' . array_sum($count_estudiantes) . ' ' . get_string('unreadposts', 'block_bloquecero') . '">' . array_sum($count_estudiantes) . '</span>'
                             : '') . '
                     </a>' : '') . '
-                </div>
+                </nav>
             </div>
             <!-- Bloques divididos en dos columnas -->
             <div class="bloquecero-maincards-row">
@@ -1087,7 +1095,7 @@ class block_bloquecero extends block_base {
                 var isHidden = region && region.style.display === \'none\';
 
                 if (isHidden) {
-                    if(btn) btn.classList.add(\'open\');
+                    if(btn) { btn.classList.add(\'open\'); btn.setAttribute(\'aria-expanded\', \'true\'); }
                     if(btntext) btntext.innerHTML = \'ocultar curso\';
                     if (region) {
                         region.style.display = \'\';
@@ -1114,7 +1122,7 @@ class block_bloquecero extends block_base {
                     }
                     if(btntext) btntext.innerHTML = \'ocultar curso\';
                 } else {
-                    if(btn) btn.classList.remove(\'open\');
+                    if(btn) { btn.classList.remove(\'open\'); btn.setAttribute(\'aria-expanded\', \'false\'); }
                     if(btntext) btntext.innerHTML = \'mostrar curso\';
                     if (region) {
                         region.style.display = \'none\';
@@ -1178,7 +1186,7 @@ class block_bloquecero extends block_base {
                 top: auto;
                 right: auto;
                 top: 10px;
-                background: #B7C65C;
+                background: #4E6A1E;
                 color: #fff;
                 font-weight: 600;
                 font-size: 1em;
@@ -1400,7 +1408,7 @@ class block_bloquecero extends block_base {
                     color: #0C3B2E !important;
                 }
                 .udima-card .section-number {
-                    color: #B7C65C !important;
+                    color: #6B7D2E !important;
                     font-size: 2em;
                     font-weight: 700;
                     margin-bottom: 16px;
@@ -1426,7 +1434,7 @@ class block_bloquecero extends block_base {
                     transition: color 0.2s;
                 }
                 .udima-card .section-arrow {
-                    color: #B7C65C !important;
+                    color: #6B7D2E !important;
                     font-size: 1.6em;
                     margin-left: 18px;
                     transition: transform 0.3s;
@@ -1522,11 +1530,11 @@ class block_bloquecero extends block_base {
                     font-size: 1.07em;
                     margin-right: 3px;
                     display: inline-block;
-                    color: #6FA24A;
+                    color: #3D7A1C;
                 }
                 .udima-menu-link:hover,
                 .udima-menu-link:focus {
-                    color: #B7C65C;
+                    color: #6B7D2E;
                     border-bottom: 2.5px solid #B7C65C;
                     outline: none;
                     background: none;
@@ -1614,7 +1622,7 @@ class block_bloquecero extends block_base {
                 .bloquecero-section-number {
                     font-size: 1.0em;
                     font-weight: 400;
-                    color: #B7C65C;
+                    color: #6B7D2E;
                     flex: none;
                     letter-spacing: 0.05em;
                 }
@@ -1623,7 +1631,7 @@ class block_bloquecero extends block_base {
                 .bloquecero-section-number:visited {
                     font-size: 1.0em;
                     font-weight: 400;
-                    color: #B7C65C;
+                    color: #6B7D2E;
                     flex: none;
                     letter-spacing: 0.05em;
                     text-decoration: none;
@@ -1633,7 +1641,7 @@ class block_bloquecero extends block_base {
                 }
                 .bloquecero-section-number:hover,
                 .bloquecero-section-number:focus {
-                    color: #A0B34F; /* Opcional: color al pasar el mouse */
+                    color: #6B7D2E;
                 }
                 .bloquecero-section-line {
                     width: 100%;
@@ -1800,7 +1808,7 @@ class block_bloquecero extends block_base {
             }
             #sesiones-list-content li:hover,
             #sesiones-list-content li:hover a {
-                color: #B7C65C;
+                color: #6B7D2E;
             }
             #sesiones-list-content li:hover a {
                 text-decoration: none !important;
@@ -1922,7 +1930,7 @@ class block_bloquecero extends block_base {
             }
             .bloquecero-teacher-btn:hover,
             .bloquecero-teacher-btn:focus {
-                color: #B7C65C;
+                color: #6B7D2E;
                 text-decoration: underline;
             }
             </style>
@@ -1948,7 +1956,7 @@ class block_bloquecero extends block_base {
                 }
                 .bloquecero-tab:hover,
                 .bloquecero-tab:focus {
-                    color: #B7C65C;
+                    color: #6B7D2E;
                     border-bottom: 2.5px solid #B7C65C;
                 }
                 @media (max-width: 600px) {
@@ -1974,7 +1982,7 @@ class block_bloquecero extends block_base {
                 }
 
                 #bibliografia-content a:hover {
-                    color: #B7C65C !important;
+                    color: #6B7D2E !important;
                     text-decoration: underline !important;
                 }
                 #bibliografia-content ul li {
@@ -2070,21 +2078,30 @@ class block_bloquecero extends block_base {
                     setTimeout(updateCarouselArrows, 500);
                 }
                 function toggleContactInfo(id) {
-            // Oculta todas las fichas de profesor
+            // Oculta todas las fichas de profesor y resetea sus botones
             document.querySelectorAll(\'div[id^="contact-info-"]\').forEach(function(block) {
                 if (block.id !== id) {
                     block.style.opacity = "0";
                     block.style.transform = "scaleY(0)";
+                    block.setAttribute("aria-hidden", "true");
                     setTimeout(function() {
                         block.style.display = "none";
                     }, 300);
                 }
             });
+            document.querySelectorAll(\'.bloquecero-teacher-btn\').forEach(function(b) {
+                if (b.getAttribute("aria-controls") !== id) {
+                    b.setAttribute("aria-expanded", "false");
+                }
+            });
             // Activa/desactiva solo la ficha pulsada
             const contactInfo = document.getElementById(id);
+            const triggerBtn = document.querySelector(\'[aria-controls="\' + id + \'"]\');
             const isHidden = contactInfo.style.display === "none" || contactInfo.style.opacity === "0";
             if (isHidden) {
                 contactInfo.style.display = "block";
+                contactInfo.setAttribute("aria-hidden", "false");
+                if (triggerBtn) triggerBtn.setAttribute("aria-expanded", "true");
                 setTimeout(() => {
                     contactInfo.style.opacity = "1";
                     contactInfo.style.transform = "scaleY(1)";
@@ -2092,6 +2109,8 @@ class block_bloquecero extends block_base {
             } else {
                 contactInfo.style.opacity = "0";
                 contactInfo.style.transform = "scaleY(0)";
+                contactInfo.setAttribute("aria-hidden", "true");
+                if (triggerBtn) triggerBtn.setAttribute("aria-expanded", "false");
                 setTimeout(() => {
                     contactInfo.style.display = "none";
                 }, 300);
@@ -2133,6 +2152,14 @@ class block_bloquecero extends block_base {
                 window.addEventListener(\'load\', updateCarouselArrows);
                 window.addEventListener(\'resize\', updateCarouselArrows);
                 document.querySelector(".sections-carousel").addEventListener(\'scroll\', updateCarouselArrows);
+                // Navegación por teclado del carrusel
+                var carouselContainer = document.querySelector(\'.carousel-container\');
+                if (carouselContainer) {
+                    carouselContainer.addEventListener(\'keydown\', function(e) {
+                        if (e.key === \'ArrowLeft\') { e.preventDefault(); scrollCarousel(-1); }
+                        else if (e.key === \'ArrowRight\') { e.preventDefault(); scrollCarousel(1); }
+                    });
+                }
                 window.addEventListener("load", function() {
                     var carousel = document.querySelector(\'.sections-carousel\');
                     var badgeCard = carousel ? carousel.querySelector(\'.bloquecero-section-card .bloquecero-section-badge\') : null;
@@ -2164,6 +2191,7 @@ class block_bloquecero extends block_base {
                         full.style.display = "none";
                     }
                     card.classList.remove("expanded");
+                    btn.setAttribute("aria-expanded", "false");
                 } else {
                     // Si está colapsada, expande
                     if (preview && full) {
@@ -2171,6 +2199,7 @@ class block_bloquecero extends block_base {
                         full.style.display = "block";
                     }
                     card.classList.add("expanded");
+                    btn.setAttribute("aria-expanded", "true");
                 }
             }
             </script>
@@ -2192,7 +2221,7 @@ class block_bloquecero extends block_base {
                 $bookdesc = !empty($entry->description) ? trim($entry->description) : '';
 
                 $bibliografiaHTML .= '<li style="margin-bottom:14px; display:flex; align-items:flex-start; gap:10px;">';
-                $bibliografiaHTML .= '<span style="color:#B7C65C; font-size:1.3em; flex-shrink:0;">📚</span>';
+                $bibliografiaHTML .= '<span style="color:#6B7D2E; font-size:1.3em; flex-shrink:0;" aria-hidden="true">📚</span>';
                 $bibliografiaHTML .= '<div style="flex:1;">';
 
                 if (!empty($bookurl)) {
@@ -2202,7 +2231,7 @@ class block_bloquecero extends block_base {
                 }
 
                 if (!empty($bookdesc)) {
-                    $bibliografiaHTML .= '<p style="margin:4px 0 0 0; color:#666; font-size:0.9em;">' . s($bookdesc) . '</p>';
+                    $bibliografiaHTML .= '<p style="margin:4px 0 0 0; color:#555; font-size:0.9em;">' . s($bookdesc) . '</p>';
                 }
 
                 $bibliografiaHTML .= '</div></li>';
@@ -2210,32 +2239,32 @@ class block_bloquecero extends block_base {
         }
         $bibliografiaHTML .= '</ul>';
     } else {
-        $bibliografiaHTML = '<p style="color:#888; font-style:italic;">' . get_string('nobibliographyyet', 'block_bloquecero') . '</p>';
+        $bibliografiaHTML = '<p style="color:#595959; font-style:italic;">' . get_string('nobibliographyyet', 'block_bloquecero') . '</p>';
     }
 
     // Justo antes de cerrar el div principal del bloque, añade el HTML del modal:
     $this->content->text .= '
         <!-- Modal de Bibliografía -->
-        <div id="bloquecero-bibliografia-modal" style="display:none; position:fixed; z-index:9999; left:0; top:0; width:100vw; height:100vh; background:rgba(0,0,0,0.35); align-items:center; justify-content:center;">
+        <div id="bloquecero-bibliografia-modal" role="dialog" aria-modal="true" aria-labelledby="bloquecero-bibliografia-modal-title" style="display:none; position:fixed; z-index:9999; left:0; top:0; width:100vw; height:100vh; background:rgba(0,0,0,0.35); align-items:center; justify-content:center;">
             <div style="background:#fff; border-radius:10px; padding:32px 28px; min-width:260px; max-width:90vw; box-shadow:0 8px 32px rgba(0,0,0,0.18); position:relative; text-align:left;">
-                <button onclick="document.getElementById(\'bloquecero-bibliografia-modal\').style.display=\'none\'" style="position:absolute; top:10px; right:14px; background:none; border:none; font-size:1.5em; color:#888; cursor:pointer;">&times;</button>
-                <h2 style="margin-top:0; color:#004D35; font-size:1.3em;">Bibliografía</h2>
+                <button onclick="bloqueceroModal.close(\'bloquecero-bibliografia-modal\')" aria-label="' . get_string('close', 'block_bloquecero') . '" style="position:absolute; top:10px; right:14px; background:none; border:none; font-size:1.5em; color:#595959; cursor:pointer;">&times;</button>
+                <h2 id="bloquecero-bibliografia-modal-title" style="margin-top:0; color:#004D35; font-size:1.3em;">Bibliografía</h2>
                 <div id="bibliografia-content" style="margin-top:20px; max-height:60vh; overflow-y:auto;"></div>
             </div>
         </div>
-        <div id="modal-sesiones-todas" style="display:none; position:fixed; z-index:9999; left:0; top:0; width:100vw; height:100vh; background:rgba(0,0,0,0.32); align-items:center; justify-content:center;">
+        <div id="modal-sesiones-todas" role="dialog" aria-modal="true" aria-labelledby="modal-sesiones-title" style="display:none; position:fixed; z-index:9999; left:0; top:0; width:100vw; height:100vh; background:rgba(0,0,0,0.32); align-items:center; justify-content:center;">
             <div style="background:#fff; border-radius:10px; padding:28px 24px; min-width:600px; max-width:90vw; width:auto; box-shadow:0 8px 32px rgba(0,0,0,0.16); position:relative; text-align:left;">
-                <button onclick="document.getElementById(\'modal-sesiones-todas\').style.display=\'none\'" style="position:absolute; top:10px; right:16px; background:none; border:none; font-size:1.3em; color:#999; cursor:pointer;">&times;</button>
-                <h2 style="margin-top:0; font-size:1.3em; color:#004D35; margin-bottom:20px;">Todas las sesiones en directo</h2>
+                <button onclick="bloqueceroModal.close(\'modal-sesiones-todas\')" aria-label="' . get_string('close', 'block_bloquecero') . '" style="position:absolute; top:10px; right:16px; background:none; border:none; font-size:1.3em; color:#595959; cursor:pointer;">&times;</button>
+                <h2 id="modal-sesiones-title" style="margin-top:0; font-size:1.3em; color:#004D35; margin-bottom:20px;">Todas las sesiones en directo</h2>
                 <div id="modal-sesiones-list" style="margin-top:20px; max-height:60vh; overflow-y:auto;"></div>
             </div>
         </div>
-        <div id="modal-actividades-todas" style="display:none; position:fixed; z-index:9999; left:0; top:0; width:100vw; height:100vh; background:rgba(0,0,0,0.32); align-items:center; justify-content:center;">
+        <div id="modal-actividades-todas" role="dialog" aria-modal="true" aria-labelledby="modal-actividades-title" style="display:none; position:fixed; z-index:9999; left:0; top:0; width:100vw; height:100vh; background:rgba(0,0,0,0.32); align-items:center; justify-content:center;">
         <div style="background:#fff; border-radius:10px; padding:28px 24px; min-width:700px; max-width:90vw; width:auto; box-shadow:0 8px 32px rgba(0,0,0,0.16); position:relative; text-align:left;">
-            <button onclick="document.getElementById(\'modal-actividades-todas\').style.display=\'none\'" style="position:absolute; top:10px; right:16px; background:none; border:none; font-size:1.3em; color:#999; cursor:pointer;">&times;</button>
-            <h2 style="margin-top:0; font-size:1.3em; color:#004D35; margin-bottom:10px;">Todas las actividades</h2>
+            <button onclick="bloqueceroModal.close(\'modal-actividades-todas\')" aria-label="' . get_string('close', 'block_bloquecero') . '" style="position:absolute; top:10px; right:16px; background:none; border:none; font-size:1.3em; color:#595959; cursor:pointer;">&times;</button>
+            <h2 id="modal-actividades-title" style="margin-top:0; font-size:1.3em; color:#004D35; margin-bottom:10px;">Todas las actividades</h2>
             <div style="margin-bottom:20px;">
-                <label for="filter-tipo-actividad" style="font-size:0.9em; color:#666; margin-right:10px;">Filtrar por tipo:</label>
+                <label for="filter-tipo-actividad" style="font-size:0.9em; color:#555; margin-right:10px;">Filtrar por tipo:</label>
                 <select id="filter-tipo-actividad" style="padding:6px 12px; border:1px solid #ddd; border-radius:4px; font-size:0.9em;">
                     <option value="">Todas las actividades</option>
                 </select>
@@ -2250,6 +2279,58 @@ class block_bloquecero extends block_base {
     <script>
     window.bloquecero_sesionesZoom = ' . json_encode($sesionesZoom) . ';
     window.bloquecero_activitiesData = ' . json_encode($activitiesData) . ';
+    </script>
+    ';
+
+    // Gestión accesible de modales: focus trapping, Escape key, restaurar foco
+    $this->content->text .= '
+    <script>
+    window.bloqueceroModal = {
+        activeModal: null,
+        previousFocus: null,
+        _escHandler: null,
+        _trapHandler: null,
+        open: function(modalId) {
+            var modal = document.getElementById(modalId);
+            if (!modal) return;
+            this.previousFocus = document.activeElement;
+            this.activeModal = modal;
+            modal.style.display = "flex";
+            var focusable = modal.querySelectorAll("button, [href], input, select, textarea");
+            if (focusable.length > 0) {
+                var firstEl = focusable[0];
+                setTimeout(function() { firstEl.focus(); }, 50);
+            }
+            var self = this;
+            this._escHandler = function(e) {
+                if (e.key === "Escape") { self.close(modalId); }
+            };
+            document.addEventListener("keydown", this._escHandler);
+            this._trapHandler = function(e) {
+                if (e.key !== "Tab") return;
+                var els = modal.querySelectorAll("button, [href], input, select, textarea");
+                var first = els[0];
+                var last = els[els.length - 1];
+                if (e.shiftKey) {
+                    if (document.activeElement === first) { e.preventDefault(); last.focus(); }
+                } else {
+                    if (document.activeElement === last) { e.preventDefault(); first.focus(); }
+                }
+            };
+            document.addEventListener("keydown", this._trapHandler);
+        },
+        close: function(modalId) {
+            var modal = document.getElementById(modalId);
+            if (modal) modal.style.display = "none";
+            if (this._escHandler) document.removeEventListener("keydown", this._escHandler);
+            if (this._trapHandler) document.removeEventListener("keydown", this._trapHandler);
+            this._escHandler = null;
+            this._trapHandler = null;
+            this.activeModal = null;
+            if (this.previousFocus) this.previousFocus.focus();
+            this.previousFocus = null;
+        }
+    };
     </script>
     ';
 
@@ -2268,20 +2349,20 @@ class block_bloquecero extends block_base {
 
                 var tabla = \'<table style="width:100%;border-collapse:collapse;font-size:0.93em;">\' +
                     \'<thead><tr style="background:#f5f5f5;border-bottom:2px solid #ddd;">\' +
-                    \'<th style="padding:10px;text-align:left;font-weight:600;color:#333;">Actividad</th>\' +
-                    \'<th style="padding:10px;text-align:left;font-weight:600;color:#333;width:140px;">Tipo</th>\' +
-                    \'<th style="padding:10px;text-align:left;font-weight:600;color:#333;width:120px;">Vence</th>\' +
-                    \'<th style="padding:10px;text-align:center;font-weight:600;color:#333;width:80px;">Estado</th>\' +
+                    \'<th scope="col" style="padding:10px;text-align:left;font-weight:600;color:#333;">Actividad</th>\' +
+                    \'<th scope="col" style="padding:10px;text-align:left;font-weight:600;color:#333;width:140px;">Tipo</th>\' +
+                    \'<th scope="col" style="padding:10px;text-align:left;font-weight:600;color:#333;width:120px;">Vence</th>\' +
+                    \'<th scope="col" style="padding:10px;text-align:center;font-weight:600;color:#333;width:80px;">Estado</th>\' +
                     \'</tr></thead><tbody>\';
 
                 if (filteredData.length === 0) {
-                    tabla += \'<tr><td colspan="4" style="padding:20px;text-align:center;color:#999;">No hay actividades</td></tr>\';
+                    tabla += \'<tr><td colspan="4" style="padding:20px;text-align:center;color:#595959;">No hay actividades</td></tr>\';
                 } else {
                     filteredData.forEach(function(activity) {
                         // Calcular días restantes
                         var daysRemaining = Math.ceil((activity.duedate - now) / 86400);
                         var daysText = "";
-                        var daysColor = "#666";
+                        var daysColor = "#555";
 
                         if (daysRemaining < 0) {
                             daysText = "Vencida hace " + Math.abs(daysRemaining) + " días";
@@ -2308,13 +2389,13 @@ class block_bloquecero extends block_base {
                             \'<span style="color:#5cb85c;font-weight:600;font-size:0.9em;">Entregada</span>\' :
                             \'<span style="color:#f0ad4e;font-weight:600;font-size:0.9em;">Pendiente</span>\';
 
-                        tabla += \'<tr style="border-bottom:1px solid #eee;transition:background 0.2s;" onmouseover="this.style.background=\\\'#f9f9f9\\\'" onmouseout="this.style.background=\\\'transparent\\\'">\' +
+                        tabla += \'<tr style="border-bottom:1px solid #eee;transition:background 0.2s;">\' +
                             \'<td style="padding:12px;">\' +
                             \'<div style="display:flex;align-items:center;gap:8px;">\' +
                             activity.icon +
                             \'<a href="\' + activity.url + \'" style="color:#004D35;font-weight:600;text-decoration:none;">\' + activity.name + \'</a>\' +
                             \'</div></td>\' +
-                            \'<td style="padding:12px;color:#666;font-size:0.9em;">\' + activity.modfullname + \'</td>\' +
+                            \'<td style="padding:12px;color:#555;font-size:0.9em;">\' + activity.modfullname + \'</td>\' +
                             \'<td style="padding:12px;color:\' + daysColor + \';font-weight:500;font-size:0.88em;">\' + daysText + \'</td>\' +
                             \'<td style="padding:12px;text-align:center;">\' + estadoHTML + \'</td>\' +
                             \'</tr>\';
@@ -2350,15 +2431,15 @@ class block_bloquecero extends block_base {
             if (icon) {
                 icon.addEventListener("click", function() {
                     renderActivitiesTable("");
-                    document.getElementById("modal-actividades-todas").style.display = "flex";
+                    bloqueceroModal.open("modal-actividades-todas");
                 });
             }
 
-            // Cerrar modal
+            // Cerrar modal al hacer clic fuera
             var modal = document.getElementById("modal-actividades-todas");
             if (modal) {
                 modal.addEventListener("click", function(e) {
-                    if(e.target === modal) modal.style.display = "none";
+                    if(e.target === modal) bloqueceroModal.close("modal-actividades-todas");
                 });
             }
         });
@@ -2373,12 +2454,12 @@ class block_bloquecero extends block_base {
                 
                 btn.addEventListener("click", function(e){
                     e.preventDefault();
-                    modal.style.display = "flex";
+                    bloqueceroModal.open("bloquecero-bibliografia-modal");
                 });
-                
+
                 // Cierra el modal si se hace clic fuera del contenido
                 modal.addEventListener("click", function(e){
-                    if(e.target === modal) modal.style.display = "none";
+                    if(e.target === modal) bloqueceroModal.close("bloquecero-bibliografia-modal");
                 });
             }
         });
@@ -2391,39 +2472,39 @@ class block_bloquecero extends block_base {
                 var sesiones = window.bloquecero_sesionesZoom || [];
                 var tabla = \'<table style="width:100%;border-collapse:collapse;font-size:0.95em;">\' +
                     \'<thead><tr style="background:#f5f5f5;border-bottom:2px solid #ddd;">\' +
-                    \'<th style="padding:10px;text-align:left;font-weight:600;color:#333;">Sesión</th>\' +
-                    \'<th style="padding:10px;text-align:left;font-weight:600;color:#333;">Fecha y hora</th>\' +
+                    \'<th scope="col" style="padding:10px;text-align:left;font-weight:600;color:#333;">Sesión</th>\' +
+                    \'<th scope="col" style="padding:10px;text-align:left;font-weight:600;color:#333;">Fecha y hora</th>\' +
                     \'</tr></thead><tbody>\';
 
                 if (sesiones.length === 0) {
-                    tabla += \'<tr><td colspan="2" style="padding:20px;text-align:center;color:#999;">No hay sesiones programadas</td></tr>\';
+                    tabla += \'<tr><td colspan="2" style="padding:20px;text-align:center;color:#595959;">No hay sesiones programadas</td></tr>\';
                 } else {
                     for(var i=0; i<sesiones.length; i++) {
                         var fecha = new Date(sesiones[i].fecha*1000);
                         var dateString = fecha.toLocaleDateString("es-ES", {day: "2-digit", month: "2-digit", year: "numeric"});
                         var timeString = fecha.toLocaleTimeString("es-ES", {hour: "2-digit", minute: "2-digit"});
 
-                        tabla += \'<tr style="border-bottom:1px solid #eee;transition:background 0.2s;" onmouseover="this.style.background=\\\'#f9f9f9\\\'" onmouseout="this.style.background=\\\'transparent\\\'">\' +
+                        tabla += \'<tr style="border-bottom:1px solid #eee;transition:background 0.2s;">\' +
                             \'<td style="padding:12px;">\' +
                             \'<div style="display:flex;align-items:center;gap:8px;">\' +
                             \'<svg width="16" height="16" viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="16" rx="3" fill="#B7C65C"/><rect x="7" y="9" width="2.5" height="2.5" rx="1" fill="#fff"/><rect x="11" y="9" width="2.5" height="2.5" rx="1" fill="#fff"/><rect x="15" y="9" width="2.5" height="2.5" rx="1" fill="#fff"/><rect x="7" y="13" width="2.5" height="2.5" rx="1" fill="#fff"/><rect x="11" y="13" width="2.5" height="2.5" rx="1" fill="#fff"/><rect x="15" y="13" width="2.5" height="2.5" rx="1" fill="#fff"/></svg>\' +
                             \'<span style="color:#004D35;font-weight:600;">\' + sesiones[i].titulo + \'</span>\' +
                             \'</div></td>\' +
-                            \'<td style="padding:12px;color:#666;">\' + dateString + \' - \' + timeString + \'</td>\' +
+                            \'<td style="padding:12px;color:#555;">\' + dateString + \' - \' + timeString + \'</td>\' +
                             \'</tr>\';
                     }
                 }
                 tabla += \'</tbody></table>\';
 
                 document.getElementById("modal-sesiones-list").innerHTML = tabla;
-                document.getElementById("modal-sesiones-todas").style.display = "flex";
+                bloqueceroModal.open("modal-sesiones-todas");
             });
         }
         // Cierra la modal si haces click fuera
         var modal = document.getElementById("modal-sesiones-todas");
         if (modal) {
             modal.addEventListener("click", function(e){
-                if(e.target === modal) modal.style.display = "none";
+                if(e.target === modal) bloqueceroModal.close("modal-sesiones-todas");
             });
         }
     });
@@ -2510,18 +2591,18 @@ class block_bloquecero extends block_base {
 
         <style>
         .bloquecero-section-card { cursor: pointer; }
-        .bloquecero-vermas { color: #6FA24A; font-weight: 500; cursor: pointer; }
+        .bloquecero-vermas { color: #3D7A1C; font-weight: 500; cursor: pointer; }
         .bloquecero-card-title-row { display: flex; align-items: center; justify-content: space-between; width: 100%; gap: 8px; margin-bottom: 8px; }
         .bloquecero-card-line { height: 3px; width: 100%; background: #B7C65C; border-radius: 2px; margin-bottom: 10px; }
         .bloquecero-completion-icon { margin-left: 6px; font-size: 0.85em; }
         .bloquecero-completion-done { color: #4CAF50; }
         .bloquecero-completion-fail { color: #E53935; }
-        .bloquecero-completion-pending { color: #9E9E9E; }
-        .bloquecero-completion-conditions { font-size: 0.75em; color: #888; margin: 2px 0 4px 24px; line-height: 1.3; }
+        .bloquecero-completion-pending { color: #595959; }
+        .bloquecero-completion-conditions { font-size: 0.75em; color: #595959; margin: 2px 0 4px 24px; line-height: 1.3; }
         .bloquecero-progress-wrapper { margin-top: 10px; padding-top: 8px; border-top: 1px solid #e0e0e0; }
         .bloquecero-progress-bar { height: 6px; background: #e0e0e0; border-radius: 3px; overflow: hidden; }
         .bloquecero-progress-fill { height: 100%; background: #B7C65C; border-radius: 3px; transition: width 0.3s ease; }
-        .bloquecero-progress-text { font-size: 0.8em; color: #666; display: block; margin-top: 4px; }
+        .bloquecero-progress-text { font-size: 0.8em; color: #555; display: block; margin-top: 4px; }
         </style>
         <style>
                     #region-main.bloquecero-fadein {
@@ -2586,7 +2667,7 @@ class block_bloquecero extends block_base {
             transition: background 0.18s, color 0.13s;
         }
         .week-selector button:hover {
-            background: #B7C65C;
+            background: #4E6A1E;
             color: #fff;
         }
         #week-label {
@@ -2622,7 +2703,7 @@ class block_bloquecero extends block_base {
         }
         #activities-week-content li:hover,
         #activities-week-content li:hover a {
-            color: #B7C65C;
+            color: #6B7D2E;
         }
 
 
@@ -2633,11 +2714,17 @@ class block_bloquecero extends block_base {
         }
         .bloquecero-section-activities li:hover,
         .bloquecero-section-activities li:hover a {
-            color: #B7C65C;
+            color: #6B7D2E;
         }
         #activities-week-content li:hover a,
         .bloquecero-section-activities li:hover a {
             text-decoration: none !important;
+        }
+        #modal-actividades-list table tr:hover,
+        #modal-actividades-list table tr:focus-within,
+        #modal-sesiones-list table tr:hover,
+        #modal-sesiones-list table tr:focus-within {
+            background: #f9f9f9;
         }
             #week-label, #sesion-label {
                         white-space: pre-line;
@@ -2647,7 +2734,7 @@ class block_bloquecero extends block_base {
                         .bloquecero-vermas-btn {
             background: none;
             border: none;
-            color: #6FA24A;
+            color: #3D7A1C;
             font-weight: 500;
             cursor: pointer;
             font-size: 1em;

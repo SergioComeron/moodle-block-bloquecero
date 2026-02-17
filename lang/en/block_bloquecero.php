@@ -80,3 +80,24 @@ $string['editbibliography'] = 'Edit bibliography';
 $string['invalidurl'] = 'The URL entered is not valid';
 $string['managebibliography'] = 'Manage bibliography';
 $string['nobibliographyyet'] = 'No bibliography has been added yet';
+
+// Accessibility strings.
+$string['close'] = 'Close';
+$string['completed'] = 'Completed';
+$string['completionprogress'] = 'Completion progress';
+$string['contactinfo'] = 'Contact information for {$a}';
+$string['courseforums'] = 'Course forums';
+$string['coursemenu'] = 'Course menu';
+$string['coursesections'] = 'Course sections';
+$string['failed'] = 'Failed';
+$string['more'] = 'more';
+$string['nextsection'] = 'Next section';
+$string['nextweek'] = 'Next week';
+$string['pending'] = 'Pending';
+$string['previoussection'] = 'Previous section';
+$string['previousweek'] = 'Previous week';
+$string['showless'] = 'show less';
+$string['togglecourse'] = 'Show or hide course content';
+$string['unreadposts'] = 'unread posts';
+$string['viewallactivities'] = 'View all activities';
+$string['viewallsessions'] = 'View all sessions';
