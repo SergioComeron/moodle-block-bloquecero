@@ -36,9 +36,9 @@ function get_cm_start_date($cm) {
             $time = $assignment->allowsubmissionsfromdate ? $assignment->allowsubmissionsfromdate : $assignment->duedate;
             break;
         case 'quiz':
-            // En cuestionarios, se usa timeopen
-            $quiz = $DB->get_record('quiz', array('id' => $cm->instance), 'timeopen', MUST_EXIST);
-            $time = $quiz->timeopen;
+            // En cuestionarios, se usa timeopen o timeclose como fallback
+            $quiz = $DB->get_record('quiz', array('id' => $cm->instance), 'timeopen, timeclose', MUST_EXIST);
+            $time = $quiz->timeopen ? $quiz->timeopen : $quiz->timeclose;
             break;
         // Agregar otros casos según el tipo de actividad
         default:
@@ -619,9 +619,13 @@ class block_bloquecero extends block_base {
                     'submitted' => $submitted
                 ];
 
+                $duedateHtml = '';
+                if ($duedate && $duedate !== $startdate) {
+                    $duedateHtml = ' · Fin: ' . userdate($duedate, '%d %b %Y');
+                }
                 $calendarActivities .= '<li data-timestamp="' . $startdate . '" style="margin-bottom: 6px;">' . $icon .
                     ' <a href="' . $cm->url . '">' .
-                    format_string($cm->name) . '</a> <span style="font-size:0.9em; color:#555;">(Inicio: ' . $activitytime . ')</span></li>';
+                    format_string($cm->name) . '</a> <span style="font-size:0.9em; color:#555;">(Inicio: ' . $activitytime . $duedateHtml . ')</span></li>';
             }
         }
 
@@ -2389,6 +2393,13 @@ class block_bloquecero extends block_base {
                             \'<span style="color:#5cb85c;font-weight:600;font-size:0.9em;">Entregada</span>\' :
                             \'<span style="color:#f0ad4e;font-weight:600;font-size:0.9em;">Pendiente</span>\';
 
+                        var dueDateStr = "";
+                        if (activity.duedate) {
+                            var dd = new Date(activity.duedate * 1000);
+                            var dayNames = ["ene","feb","mar","abr","may","jun","jul","ago","sep","oct","nov","dic"];
+                            dueDateStr = \'<br><span style="font-size:0.85em;color:#888;">\' + dd.getDate() + \' \' + dayNames[dd.getMonth()] + \' \' + dd.getFullYear() + \'</span>\';
+                        }
+
                         tabla += \'<tr style="border-bottom:1px solid #eee;transition:background 0.2s;">\' +
                             \'<td style="padding:12px;">\' +
                             \'<div style="display:flex;align-items:center;gap:8px;">\' +
@@ -2396,7 +2407,7 @@ class block_bloquecero extends block_base {
                             \'<a href="\' + activity.url + \'" style="color:#004D35;font-weight:600;text-decoration:none;">\' + activity.name + \'</a>\' +
                             \'</div></td>\' +
                             \'<td style="padding:12px;color:#555;font-size:0.9em;">\' + activity.modfullname + \'</td>\' +
-                            \'<td style="padding:12px;color:\' + daysColor + \';font-weight:500;font-size:0.88em;">\' + daysText + \'</td>\' +
+                            \'<td style="padding:12px;color:\' + daysColor + \';font-weight:500;font-size:0.88em;">\' + daysText + dueDateStr + \'</td>\' +
                             \'<td style="padding:12px;text-align:center;">\' + estadoHTML + \'</td>\' +
                             \'</tr>\';
                     });

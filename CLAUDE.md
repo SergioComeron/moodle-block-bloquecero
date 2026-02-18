@@ -21,7 +21,7 @@ This is a Moodle block plugin (`block_bloquecero`) that provides a customized co
 - `class block_bloquecero extends block_base` with two main methods:
   - `init()`: Sets block title
   - `get_content()`: Generates all block HTML, JavaScript, and CSS (main rendering method)
-- `get_cm_start_date($cm)`: Helper function to extract activity start dates based on module type (assign, quiz)
+- `get_cm_start_date($cm)`: Helper function to extract activity start dates based on module type (assign, quiz). For assign: uses `allowsubmissionsfromdate` or `duedate` as fallback. For quiz: uses `timeopen` or `timeclose` as fallback (so quizzes without open date but with close date still appear).
 - Contains extensive inline HTML generation with embedded JavaScript for UI interactions
 - Implements course section navigation with carousel-style week/topic browsing
 - Handles teacher profile display with contact information toggles
@@ -353,6 +353,16 @@ Edit the section/activity rendering code in `block_bloquecero::get_content()`:
 - Section carousel logic: ~lines 500-600
 - Activity filtering: search for `maxactivitiespersection`
 - Activity icons/dates: search for `get_cm_start_date()`
+
+**Date display in "Actividades" card (week selector card):**
+- Each activity shows `(Inicio: dd mmm yyyy · Fin: dd mmm yyyy)` when the end date differs from start
+- Built in `$calendarActivities` list; `$duedateHtml` is appended when `$duedate !== $startdate`
+- For assign: startdate = `allowsubmissionsfromdate`, duedate = `duedate`
+- For quiz: startdate = `timeopen` (or `timeclose` fallback), duedate = `timeclose`
+
+**Date display in activities modal table (calendar icon):**
+- "Vence" column shows relative text ("En X días", "Vencida hace X días") + actual date below
+- `dueDateStr` always shown when `activity.duedate` is non-zero (regardless of startdate equality)
 
 ### Modifying Teacher Display
 - Teacher selection checkboxes: edit_form.php:75-83
