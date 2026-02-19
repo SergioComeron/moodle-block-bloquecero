@@ -208,6 +208,9 @@ class block_bloquecero extends block_base {
         $zoom_url = new moodle_url('/path/to/zoom');
         $tasks_url = new moodle_url('/path/to/tasks');
 
+        $strShowCourse = get_string('showcourse', 'block_bloquecero');
+        $strHideCourse = get_string('hidecourse', 'block_bloquecero');
+
         $togglebuttonhtml = '';
         if (!$is_editing) {
             $togglebuttonhtml = '
@@ -218,13 +221,13 @@ class block_bloquecero extends block_base {
                         class="moodle-toggle-btn"
                         aria-expanded="false"
                         aria-label="' . get_string('togglecourse', 'block_bloquecero') . '"
-                        title="Mostrar u ocultar curso">
+                        title="' . get_string('togglecourse', 'block_bloquecero') . '">
                         <span class="moodle-toggle-circle">
                             <svg id="bloquecero-mostrarcurso-icon" class="moodle-toggle-chevron" width="24" height="24" viewBox="0 0 24 24" aria-hidden="true">
                                 <polyline points="9 6 15 12 9 18" fill="none" stroke="#1655A0" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round"/>
                             </svg>
                         </span>
-                        <span id="bloquecero-mostrarcurso-text" class="moodle-toggle-label">mostrar curso</span>
+                        <span id="bloquecero-mostrarcurso-text" class="moodle-toggle-label">' . $strShowCourse . '</span>
                     </button>
                     </div>';
         }
@@ -493,9 +496,9 @@ class block_bloquecero extends block_base {
             // Badge destacado si corresponde
             $badge = null;
             if ($format === 'weeks' && $section->section == $todaysection) {
-                $badge = 'Actual';
+                $badge = get_string('current', 'block_bloquecero');
             } else if ($format === 'topics' && $section->section == $highlightedsection) {
-                $badge = 'Destacada';
+                $badge = get_string('highlighted', 'block_bloquecero');
             }
 
             // Construir la tarjeta como string (con badge si corresponde)
@@ -624,8 +627,8 @@ class block_bloquecero extends block_base {
                     $duedateHtml = ' · Fin: ' . userdate($duedate, '%d %b %Y');
                 }
                 $calendarActivities .= '<li data-timestamp="' . $startdate . '" style="margin-bottom: 6px;">' . $icon .
-                    ' <a href="' . $cm->url . '">' .
-                    format_string($cm->name) . '</a> <span style="font-size:0.9em; color:#555;">(Inicio: ' . $activitytime . $duedateHtml . ')</span></li>';
+                    ' <a href="' . $cm->url . '">' . format_string($cm->name) . '</a>' .
+                    '<br><span style="font-size:0.82em; color:#777; padding-left:4px;">Inicio: ' . $activitytime . $duedateHtml . '</span></li>';
             }
         }
 
@@ -722,9 +725,10 @@ class block_bloquecero extends block_base {
             <div class="udima-maincard calendario-actividades-maincard">
                 <div class="calendario-actividades-header">
                     <div class="bloquecero-card-title-row">
-                        <h3>Actividades</h3>
-                        <button type="button" class="calendario-actividades-calendaricon" aria-label="' . get_string('viewallactivities', 'block_bloquecero') . '" style="background:none;border:none;padding:0;cursor:pointer;">
-                            <svg width="22" height="22" viewBox="0 0 24 24" aria-hidden="true" style="vertical-align:middle;"><rect x="3" y="5" width="18" height="16" rx="3" fill="#B7C65C" /><rect x="7" y="9" width="2.5" height="2.5" rx="1" fill="#fff"/><rect x="11" y="9" width="2.5" height="2.5" rx="1" fill="#fff"/><rect x="15" y="9" width="2.5" height="2.5" rx="1" fill="#fff"/><rect x="7" y="13" width="2.5" height="2.5" rx="1" fill="#fff"/><rect x="11" y="13" width="2.5" height="2.5" rx="1" fill="#fff"/><rect x="15" y="13" width="2.5" height="2.5" rx="1" fill="#fff"/></svg>
+                        <h3>' . get_string('activities', 'block_bloquecero') . '</h3>
+                        <button type="button" class="calendario-actividades-calendaricon" aria-label="' . get_string('viewallactivities', 'block_bloquecero') . '">
+                            <svg width="16" height="16" viewBox="0 0 24 24" aria-hidden="true" style="vertical-align:middle;flex-shrink:0;"><rect x="3" y="5" width="18" height="16" rx="3" fill="currentColor" /><rect x="7" y="9" width="2.5" height="2.5" rx="1" fill="#fff"/><rect x="11" y="9" width="2.5" height="2.5" rx="1" fill="#fff"/><rect x="15" y="9" width="2.5" height="2.5" rx="1" fill="#fff"/><rect x="7" y="13" width="2.5" height="2.5" rx="1" fill="#fff"/><rect x="11" y="13" width="2.5" height="2.5" rx="1" fill="#fff"/><rect x="15" y="13" width="2.5" height="2.5" rx="1" fill="#fff"/></svg>
+                            <span>' . get_string('viewall', 'block_bloquecero') . '</span>
                         </button>
                     </div>
                     <div class="bloquecero-card-line"></div>
@@ -759,7 +763,7 @@ class block_bloquecero extends block_base {
                 function formatDate(ts) {
                     const d = new Date(ts * 1000);
                     const day = d.getDate();
-                    const monthNames = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+                    const monthNames = ' . json_encode(explode(',', get_string('monthnames', 'block_bloquecero'))) . ';
                     return day + " " + monthNames[d.getMonth()];
                 }
                 function filterActivities(week) {
@@ -826,9 +830,10 @@ class block_bloquecero extends block_base {
         <div class="udima-maincard sesiones-directo-maincard">
             <div class="sesiones-directo-header">
                 <div class="bloquecero-card-title-row">
-                    <h3>Sesiones en directo</h3>
-                    <button type="button" class="sesiones-directo-calendaricon" aria-label="' . get_string('viewallsessions', 'block_bloquecero') . '" style="background:none;border:none;padding:0;cursor:pointer;">
-                        <svg width="22" height="22" viewBox="0 0 24 24" aria-hidden="true" style="vertical-align:middle;"><rect x="3" y="5" width="18" height="16" rx="3" fill="#B7C65C" /><rect x="7" y="9" width="2.5" height="2.5" rx="1" fill="#fff"/><rect x="11" y="9" width="2.5" height="2.5" rx="1" fill="#fff"/><rect x="15" y="9" width="2.5" height="2.5" rx="1" fill="#fff"/><rect x="7" y="13" width="2.5" height="2.5" rx="1" fill="#fff"/><rect x="11" y="13" width="2.5" height="2.5" rx="1" fill="#fff"/><rect x="15" y="13" width="2.5" height="2.5" rx="1" fill="#fff"/></svg>
+                    <h3>' . get_string('livesessions', 'block_bloquecero') . '</h3>
+                    <button type="button" class="sesiones-directo-calendaricon" aria-label="' . get_string('viewallsessions', 'block_bloquecero') . '">
+                        <svg width="16" height="16" viewBox="0 0 24 24" aria-hidden="true" style="vertical-align:middle;flex-shrink:0;"><rect x="3" y="5" width="18" height="16" rx="3" fill="currentColor" /><rect x="7" y="9" width="2.5" height="2.5" rx="1" fill="#fff"/><rect x="11" y="9" width="2.5" height="2.5" rx="1" fill="#fff"/><rect x="15" y="9" width="2.5" height="2.5" rx="1" fill="#fff"/><rect x="7" y="13" width="2.5" height="2.5" rx="1" fill="#fff"/><rect x="11" y="13" width="2.5" height="2.5" rx="1" fill="#fff"/><rect x="15" y="13" width="2.5" height="2.5" rx="1" fill="#fff"/></svg>
+                        <span>' . get_string('viewall', 'block_bloquecero') . '</span>
                     </button>
                 </div>
                 <div class="bloquecero-card-line"></div>
@@ -936,23 +941,23 @@ class block_bloquecero extends block_base {
             <nav class="udima-menu-bar" aria-label="' . get_string('coursemenu', 'block_bloquecero') . '">
             <a href="' . new moodle_url('/grade/report/grader/index.php', array('id' => $COURSE->id)) . '" class="udima-menu-link">
                 ' . $OUTPUT->pix_icon('t/grades', '', 'moodle', ['class' => 'menu-icon']) . '
-                <span>Calificaciones</span>
+                <span>' . get_string('grades', 'block_bloquecero') . '</span>
             </a>
             <a href="' . new moodle_url('/user/index.php', array('id' => $COURSE->id)) . '" class="udima-menu-link">
                 ' . $OUTPUT->pix_icon('i/users', '', 'moodle', ['class' => 'menu-icon']) . '
-                <span>Participantes</span>
+                <span>' . get_string('participants', 'block_bloquecero') . '</span>
             </a>
             <a href="#" id="bloquecero-bibliografia-btn" class="udima-menu-link">
                 ' . $OUTPUT->pix_icon('book', '', 'moodle', ['class' => 'menu-icon']) . '
-                <span>Bibliografía</span>
+                <span>' . get_string('bibliography', 'block_bloquecero') . '</span>
             </a>
             <a href="' . $guide_url . '" class="udima-menu-link" target="_blank">
                 ' . $OUTPUT->pix_icon('i/info', '', 'moodle', ['class' => 'menu-icon']) . '
-                <span>Guía docente</span>
+                <span>' . get_string('teacherguide', 'block_bloquecero') . '</span>
             </a>' . ((has_capability('moodle/course:update', $coursecontext)) ? '
             <a href="' . (new moodle_url('/course/edit.php', array('id' => $COURSE->id))) . '" class="udima-menu-link">
                 ' . $OUTPUT->pix_icon('i/settings', '', 'moodle', ['class' => 'menu-icon']) . '
-                <span>Configuración</span>
+                <span>' . get_string('settings', 'block_bloquecero') . '</span>
             </a>' : '') .
             '</nav>
             <div style="padding: 0 20px; font-family: Arial, sans-serif;">
@@ -966,7 +971,7 @@ class block_bloquecero extends block_base {
             <!-- Fechas y equipo docente fuera del header para evitar recorte -->
             <div class="bloquecero-info-row">
                 ' . ($courseDates ? '<p class="bloquecero-header-dates">' . $courseDates . '</p>' : '') . '
-                <p class="bloquecero-header-teachers">Equipo docente: ' . $contactButtonsHtml . '</p>
+                <p class="bloquecero-header-teachers">' . get_string('teachingteam', 'block_bloquecero') . ': ' . $contactButtonsHtml . '</p>
             </div>
             <!-- Bloques de información de contacto de cada profesor -->
             ' . $contactBlocksHtml . '
@@ -977,21 +982,21 @@ class block_bloquecero extends block_base {
                 <nav class="bloquecero-tabs" aria-label="' . get_string('courseforums', 'block_bloquecero') . '">'
                     . (!empty($forum_anuncios_url) ? '
                     <a href="' . $forum_anuncios_url . '" class="bloquecero-tab">
-                        Tablón de anuncios'
+                        ' . get_string('noticeboard', 'block_bloquecero')
                             . (isset($count_anuncios) && is_array($count_anuncios) && array_sum($count_anuncios) > 0
                                 ? ' <span style="display:inline-block;min-width:22px;height:22px;line-height:22px;background:#4E6A1E;color:#fff;font-weight:600;font-size:0.98em;border-radius:50%;text-align:center;margin-left:7px;vertical-align:middle;" aria-label="' . array_sum($count_anuncios) . ' ' . get_string('unreadposts', 'block_bloquecero') . '">' . array_sum($count_anuncios) . '</span>'
                                 : '') . '
                     </a>' : '')
                     . (!empty($forum_tutorias_url) ? '
                     <a href="' . $forum_tutorias_url . '" class="bloquecero-tab">
-                        Foro de Tutorías'
+                        ' . get_string('forum_tutorias', 'block_bloquecero')
                         . (isset($count_tutorias) && is_array($count_tutorias) && array_sum($count_tutorias) > 0
                             ? ' <span style="display:inline-block;min-width:22px;height:22px;line-height:22px;background:#4E6A1E;color:#fff;font-weight:600;font-size:0.98em;border-radius:50%;text-align:center;margin-left:7px;vertical-align:middle;" aria-label="' . array_sum($count_tutorias) . ' ' . get_string('unreadposts', 'block_bloquecero') . '">' . array_sum($count_tutorias) . '</span>'
                             : '') . '
                     </a>' : '')
                     . (!empty($forum_estudiantes_url) ? '
                     <a href="' . $forum_estudiantes_url . '" class="bloquecero-tab">
-                        Foro de Estudiantes'
+                        ' . get_string('forum_estudiantes', 'block_bloquecero')
                         . (isset($count_estudiantes) && is_array($count_estudiantes) && array_sum($count_estudiantes) > 0
                             ? ' <span style="display:inline-block;min-width:22px;height:22px;line-height:22px;background:#4E6A1E;color:#fff;font-weight:600;font-size:0.98em;border-radius:50%;text-align:center;margin-left:7px;vertical-align:middle;" aria-label="' . array_sum($count_estudiantes) . ' ' . get_string('unreadposts', 'block_bloquecero') . '">' . array_sum($count_estudiantes) . '</span>'
                             : '') . '
@@ -1009,7 +1014,7 @@ class block_bloquecero extends block_base {
             </div>
                     <!-- Carrusel de tarjetas de secciones -->
                     <div style="text-align: left; padding: 0 40px; margin-bottom: 10px;">
-            <h3 style="color: #004D35; margin-top: 0;">Secciones del curso</h3>
+            <h3 style="color: #004D35; margin-top: 0;">' . get_string('coursesections', 'block_bloquecero') . '</h3>
             </div>' .
             $carouselContainer . '
 
@@ -1100,7 +1105,7 @@ class block_bloquecero extends block_base {
 
                 if (isHidden) {
                     if(btn) { btn.classList.add(\'open\'); btn.setAttribute(\'aria-expanded\', \'true\'); }
-                    if(btntext) btntext.innerHTML = \'ocultar curso\';
+                    if(btntext) btntext.innerHTML = \'' . $strHideCourse . '\';
                     if (region) {
                         region.style.display = \'\';
                         region.classList.remove(\'bloquecero-fadein\');
@@ -1124,10 +1129,10 @@ class block_bloquecero extends block_base {
                     if(btn) {
                         btn.classList.toggle(\'cerrado\', !isHidden);
                     }
-                    if(btntext) btntext.innerHTML = \'ocultar curso\';
+                    if(btntext) btntext.innerHTML = \'' . $strHideCourse . '\';
                 } else {
                     if(btn) { btn.classList.remove(\'open\'); btn.setAttribute(\'aria-expanded\', \'false\'); }
-                    if(btntext) btntext.innerHTML = \'mostrar curso\';
+                    if(btntext) btntext.innerHTML = \'' . $strShowCourse . '\';
                     if (region) {
                         region.style.display = \'none\';
                         region.classList.remove(\'bloquecero-fadein\');
@@ -1144,7 +1149,7 @@ class block_bloquecero extends block_base {
                         document.querySelectorAll(selector).forEach(function(e){ e.style.display = \'none\'; });
                     });
                     // Cambia texto a "mostrar curso"
-                    if(btntext) btntext.innerHTML = \'mostrar curso\';
+                    if(btntext) btntext.innerHTML = \'' . $strShowCourse . '\';
                 }
             };
             // Al cargar, oculta el curso y ajusta el botón
@@ -1164,7 +1169,7 @@ class block_bloquecero extends block_base {
                 ].forEach(function(selector){
                     document.querySelectorAll(selector).forEach(function(e){ e.style.display = \'none\'; });
                 });
-                if(btntext) btntext.innerHTML = \'Mostrar curso\';
+                if(btntext) btntext.innerHTML = \'' . $strShowCourse . '\';
             });
             </script>
             <style>
@@ -1780,12 +1785,25 @@ class block_bloquecero extends block_base {
             .calendario-actividades-calendaricon,
             .sesiones-directo-calendaricon {
                 flex-shrink: 0;
+                display: inline-flex;
+                align-items: center;
+                gap: 5px;
                 cursor: pointer;
-                transition: opacity 0.15s;
+                border: 1px solid #B7C65C;
+                border-radius: 20px;
+                padding: 4px 10px 4px 8px;
+                background: #fff;
+                color: #6B7D2E;
+                font-size: 0.78em;
+                font-weight: 600;
+                box-shadow: 0 1px 4px rgba(0,0,0,0.10);
+                transition: background 0.15s, box-shadow 0.15s, color 0.15s;
             }
             .calendario-actividades-calendaricon:hover,
             .sesiones-directo-calendaricon:hover {
-                opacity: 0.7;
+                background: #B7C65C;
+                color: #fff;
+                box-shadow: 0 2px 8px rgba(107,125,46,0.18);
             }
             .sesiones-directo-container {
                 width: 100%;
@@ -1978,11 +1996,6 @@ class block_bloquecero extends block_base {
                     margin-left: 14px;
                     display: inline-block;
                     vertical-align: middle;
-                    cursor: pointer;
-                    transition: filter 0.17s;
-                }
-                .sesiones-directo-calendaricon:hover {
-                    filter: brightness(1.13) drop-shadow(0 1px 5px #B7C65C33);
                 }
 
                 #bibliografia-content a:hover {
@@ -2252,7 +2265,7 @@ class block_bloquecero extends block_base {
         <div id="bloquecero-bibliografia-modal" role="dialog" aria-modal="true" aria-labelledby="bloquecero-bibliografia-modal-title" style="display:none; position:fixed; z-index:9999; left:0; top:0; width:100vw; height:100vh; background:rgba(0,0,0,0.35); align-items:center; justify-content:center;">
             <div style="background:#fff; border-radius:10px; padding:32px 28px; min-width:260px; max-width:90vw; box-shadow:0 8px 32px rgba(0,0,0,0.18); position:relative; text-align:left;">
                 <button onclick="bloqueceroModal.close(\'bloquecero-bibliografia-modal\')" aria-label="' . get_string('close', 'block_bloquecero') . '" style="position:absolute; top:10px; right:14px; background:none; border:none; font-size:1.5em; color:#595959; cursor:pointer;">&times;</button>
-                <h2 id="bloquecero-bibliografia-modal-title" style="margin-top:0; color:#004D35; font-size:1.3em;">Bibliografía</h2>
+                <h2 id="bloquecero-bibliografia-modal-title" style="margin-top:0; color:#004D35; font-size:1.3em;">' . get_string('bibliography', 'block_bloquecero') . '</h2>
                 <div id="bibliografia-content" style="margin-top:20px; max-height:60vh; overflow-y:auto;"></div>
             </div>
         </div>
@@ -2338,7 +2351,24 @@ class block_bloquecero extends block_base {
     </script>
     ';
 
+    // Strings de i18n para el JS de la tabla de actividades
+    $bloquecero_i18n = [
+        'colactivity' => get_string('colactivity', 'block_bloquecero'),
+        'coltype'     => get_string('coltype', 'block_bloquecero'),
+        'coldue'      => get_string('coldue', 'block_bloquecero'),
+        'colstatus'   => get_string('colstatus', 'block_bloquecero'),
+        'noactivities'=> get_string('noactivities', 'block_bloquecero'),
+        'duetoday'    => get_string('duetoday', 'block_bloquecero'),
+        'duetomorrow' => get_string('duetomorrow', 'block_bloquecero'),
+        'dueindays'   => get_string('dueindays', 'block_bloquecero'),
+        'overduedays' => get_string('overduedays', 'block_bloquecero'),
+        'submitted'   => get_string('submitted', 'block_bloquecero'),
+        'pending'     => get_string('pending', 'block_bloquecero'),
+        'daynames'    => explode(',', get_string('daynames', 'block_bloquecero')),
+    ];
+
     // Añade el script JS para el modal de sesiones fuera de cualquier echo PHP (como HTML, después del modal y antes del cierre del div)
+    $this->content->text .= '<script>var bloqueceroI18n = ' . json_encode($bloquecero_i18n) . ';</script>';
     $this->content->text .= '
     <script>
         document.addEventListener("DOMContentLoaded", function() {
@@ -2353,14 +2383,14 @@ class block_bloquecero extends block_base {
 
                 var tabla = \'<table style="width:100%;border-collapse:collapse;font-size:0.93em;">\' +
                     \'<thead><tr style="background:#f5f5f5;border-bottom:2px solid #ddd;">\' +
-                    \'<th scope="col" style="padding:10px;text-align:left;font-weight:600;color:#333;">Actividad</th>\' +
-                    \'<th scope="col" style="padding:10px;text-align:left;font-weight:600;color:#333;width:140px;">Tipo</th>\' +
-                    \'<th scope="col" style="padding:10px;text-align:left;font-weight:600;color:#333;width:120px;">Vence</th>\' +
-                    \'<th scope="col" style="padding:10px;text-align:center;font-weight:600;color:#333;width:80px;">Estado</th>\' +
+                    \'<th scope="col" style="padding:10px;text-align:left;font-weight:600;color:#333;">\' + bloqueceroI18n.colactivity + \'</th>\' +
+                    \'<th scope="col" style="padding:10px;text-align:left;font-weight:600;color:#333;width:140px;">\' + bloqueceroI18n.coltype + \'</th>\' +
+                    \'<th scope="col" style="padding:10px;text-align:left;font-weight:600;color:#333;width:120px;">\' + bloqueceroI18n.coldue + \'</th>\' +
+                    \'<th scope="col" style="padding:10px;text-align:center;font-weight:600;color:#333;width:80px;">\' + bloqueceroI18n.colstatus + \'</th>\' +
                     \'</tr></thead><tbody>\';
 
                 if (filteredData.length === 0) {
-                    tabla += \'<tr><td colspan="4" style="padding:20px;text-align:center;color:#595959;">No hay actividades</td></tr>\';
+                    tabla += \'<tr><td colspan="4" style="padding:20px;text-align:center;color:#595959;">\' + bloqueceroI18n.noactivities + \'</td></tr>\';
                 } else {
                     filteredData.forEach(function(activity) {
                         // Calcular días restantes
@@ -2369,34 +2399,34 @@ class block_bloquecero extends block_base {
                         var daysColor = "#555";
 
                         if (daysRemaining < 0) {
-                            daysText = "Vencida hace " + Math.abs(daysRemaining) + " días";
+                            daysText = bloqueceroI18n.overduedays.replace("{n}",Math.abs(daysRemaining));
                             daysColor = "#d9534f"; // Rojo
                         } else if (daysRemaining === 0) {
-                            daysText = "Vence hoy";
+                            daysText = bloqueceroI18n.duetoday;
                             daysColor = "#f0ad4e"; // Naranja
                         } else if (daysRemaining === 1) {
-                            daysText = "Vence mañana";
+                            daysText = bloqueceroI18n.duetomorrow;
                             daysColor = "#f0ad4e"; // Naranja
                         } else if (daysRemaining <= 3) {
-                            daysText = "En " + daysRemaining + " días";
+                            daysText = bloqueceroI18n.dueindays.replace("{n}",daysRemaining);
                             daysColor = "#f0ad4e"; // Naranja
                         } else if (daysRemaining <= 7) {
-                            daysText = "En " + daysRemaining + " días";
+                            daysText = bloqueceroI18n.dueindays.replace("{n}",daysRemaining);
                             daysColor = "#5bc0de"; // Azul
                         } else {
-                            daysText = "En " + daysRemaining + " días";
+                            daysText = bloqueceroI18n.dueindays.replace("{n}",daysRemaining);
                             daysColor = "#5cb85c"; // Verde
                         }
 
                         // Estado de entrega
                         var estadoHTML = activity.submitted ?
-                            \'<span style="color:#5cb85c;font-weight:600;font-size:0.9em;">Entregada</span>\' :
-                            \'<span style="color:#f0ad4e;font-weight:600;font-size:0.9em;">Pendiente</span>\';
+                            \'<span style="color:#5cb85c;font-weight:600;font-size:0.9em;">\' + bloqueceroI18n.submitted + \'</span>\' :
+                            \'<span style="color:#f0ad4e;font-weight:600;font-size:0.9em;">\' + bloqueceroI18n.pending + \'</span>\';
 
                         var dueDateStr = "";
                         if (activity.duedate) {
                             var dd = new Date(activity.duedate * 1000);
-                            var dayNames = ["ene","feb","mar","abr","may","jun","jul","ago","sep","oct","nov","dic"];
+                            var dayNames = bloqueceroI18n.daynames;
                             dueDateStr = \'<br><span style="font-size:0.85em;color:#888;">\' + dd.getDate() + \' \' + dayNames[dd.getMonth()] + \' \' + dd.getFullYear() + \'</span>\';
                         }
 
@@ -2603,7 +2633,7 @@ class block_bloquecero extends block_base {
         <style>
         .bloquecero-section-card { cursor: pointer; }
         .bloquecero-vermas { color: #3D7A1C; font-weight: 500; cursor: pointer; }
-        .bloquecero-card-title-row { display: flex; align-items: center; justify-content: space-between; width: 100%; gap: 8px; margin-bottom: 8px; }
+        .bloquecero-card-title-row { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; width: 100%; gap: 8px; margin-bottom: 8px; }
         .bloquecero-card-line { height: 3px; width: 100%; background: #B7C65C; border-radius: 2px; margin-bottom: 10px; }
         .bloquecero-completion-icon { margin-left: 6px; font-size: 0.85em; }
         .bloquecero-completion-done { color: #4CAF50; }
