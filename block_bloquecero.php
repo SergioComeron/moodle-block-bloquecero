@@ -2398,14 +2398,14 @@ class block_bloquecero extends block_base {
             </div>
         </div>
         <div id="modal-sesiones-todas" role="dialog" aria-modal="true" aria-labelledby="modal-sesiones-title" style="display:none; position:fixed; z-index:9999; left:0; top:0; width:100vw; height:100vh; background:rgba(0,0,0,0.32); align-items:center; justify-content:center;">
-            <div style="background:#fff; border-radius:10px; padding:28px 24px; min-width:600px; max-width:90vw; width:auto; box-shadow:0 8px 32px rgba(0,0,0,0.16); position:relative; text-align:left;">
+            <div class="bloquecero-modal-inner" style="background:#fff; border-radius:10px; padding:28px 24px; min-width:600px; max-width:90vw; width:auto; box-shadow:0 8px 32px rgba(0,0,0,0.16); position:relative; text-align:left;">
                 <button onclick="bloqueceroModal.close(\'modal-sesiones-todas\')" aria-label="' . get_string('close', 'block_bloquecero') . '" style="position:absolute; top:10px; right:16px; background:none; border:none; font-size:1.3em; color:#595959; cursor:pointer;">&times;</button>
                 <h2 id="modal-sesiones-title" style="margin-top:0; font-size:1.3em; color:#004D35; margin-bottom:20px;">Todas las sesiones en directo</h2>
-                <div id="modal-sesiones-list" style="margin-top:20px; max-height:60vh; overflow-y:auto;"></div>
+                <div id="modal-sesiones-list" style="margin-top:20px; max-height:60vh; overflow-y:auto; overflow-x:auto;"></div>
             </div>
         </div>
         <div id="modal-actividades-todas" role="dialog" aria-modal="true" aria-labelledby="modal-actividades-title" style="display:none; position:fixed; z-index:9999; left:0; top:0; width:100vw; height:100vh; background:rgba(0,0,0,0.32); align-items:center; justify-content:center;">
-        <div style="background:#fff; border-radius:10px; padding:28px 24px; min-width:700px; max-width:90vw; width:auto; box-shadow:0 8px 32px rgba(0,0,0,0.16); position:relative; text-align:left;">
+        <div class="bloquecero-modal-inner" style="background:#fff; border-radius:10px; padding:28px 24px; min-width:700px; max-width:90vw; width:auto; box-shadow:0 8px 32px rgba(0,0,0,0.16); position:relative; text-align:left;">
             <button onclick="bloqueceroModal.close(\'modal-actividades-todas\')" aria-label="' . get_string('close', 'block_bloquecero') . '" style="position:absolute; top:10px; right:16px; background:none; border:none; font-size:1.3em; color:#595959; cursor:pointer;">&times;</button>
             <h2 id="modal-actividades-title" style="margin-top:0; font-size:1.3em; color:#004D35; margin-bottom:10px;">Todas las actividades</h2>
             <div style="margin-bottom:20px;">
@@ -2414,7 +2414,7 @@ class block_bloquecero extends block_base {
                     <option value="">Todas las actividades</option>
                 </select>
             </div>
-            <div id="modal-actividades-list" style="margin-top:20px; max-height:55vh; overflow-y:auto;"></div>
+            <div id="modal-actividades-list" style="margin-top:20px; max-height:55vh; overflow-y:auto; overflow-x:auto;"></div>
         </div>
     </div>
     ';
@@ -2901,6 +2901,39 @@ class block_bloquecero extends block_base {
         #modal-sesiones-list table tr:hover,
         #modal-sesiones-list table tr:focus-within {
             background: #f9f9f9;
+        }
+        @media (max-width: 660px) {
+            .bloquecero-modal-inner {
+                min-width: auto !important;
+                width: calc(100vw - 24px) !important;
+                max-width: calc(100vw - 24px) !important;
+                max-height: 88vh !important;
+                overflow-y: auto !important;
+                padding: 16px 12px !important;
+                border-radius: 8px !important;
+                box-sizing: border-box;
+            }
+            .bloquecero-modal-inner h2 {
+                font-size: 1.05em !important;
+                margin-bottom: 12px !important;
+                padding-right: 24px;
+            }
+            #modal-actividades-list,
+            #modal-sesiones-list {
+                max-height: 65vh !important;
+                font-size: 0.82em;
+            }
+            #modal-actividades-list table,
+            #modal-sesiones-list table {
+                font-size: 0.85em;
+                min-width: 480px;
+            }
+            #modal-actividades-list table td,
+            #modal-sesiones-list table td,
+            #modal-actividades-list table th,
+            #modal-sesiones-list table th {
+                padding: 8px 6px !important;
+            }
         }
             #week-label, #sesion-label {
                         white-space: pre-line;
