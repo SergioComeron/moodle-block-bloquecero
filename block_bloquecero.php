@@ -1422,6 +1422,24 @@ class block_bloquecero extends block_base {
                     max-width: calc((100% - 54px) / 4);
                     min-width: calc((100% - 54px) / 4);
                 }
+                @media (max-width: 660px) {
+                    .section-card,
+                    .sections-carousel:has(.section-card:nth-child(n+5)) .section-card {
+                        flex: 0 0 72vw !important;
+                        max-width: 72vw !important;
+                        min-width: 0 !important;
+                        box-sizing: border-box;
+                    }
+                }
+                @media (max-width: 480px) {
+                    .section-card,
+                    .sections-carousel:has(.section-card:nth-child(n+5)) .section-card {
+                        flex: 0 0 80vw !important;
+                        max-width: 80vw !important;
+                        min-width: 0 !important;
+                        box-sizing: border-box;
+                    }
+                }
                 .section-title-header .section-title-text {
                     color: #fff !important;
                     font-weight: 600;
