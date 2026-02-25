@@ -1268,9 +1268,6 @@ class block_bloquecero extends block_base {
             #page-navbar {
                 display: none !important;
             }
-            body:not(.editing) #section-0 {
-                display: none !important;
-            }
             .block_calendar_month.block.card.mb-3 {
                 display: block !important;
             }
