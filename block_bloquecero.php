@@ -1170,6 +1170,12 @@ class block_bloquecero extends block_base {
             margin: 20px 40px;
             align-items: stretch;
             }
+            @media (max-width: 660px) {
+            .bloquecero-maincards-row {
+                margin: 12px 0 !important;
+                gap: 10px !important;
+            }
+            }
             .bloquecero-maincards-row > div {
             display: flex;
             }
