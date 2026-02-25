@@ -1137,6 +1137,9 @@ class block_bloquecero extends block_base {
                 width: 100% !important;
                 margin-bottom: 14px;
             }
+            .carousel-container {
+                padding: 0 24px !important;
+            }
             .udima-maincard,
             .sesiones-directo-maincard {
                 font-size: 0.96em;
@@ -2017,7 +2020,11 @@ class block_bloquecero extends block_base {
                     text-align: center;
                 }
                 .carousel-container {
-                    padding: 0 28px !important;
+                    padding: 0 22px !important;
+                }
+                .carousel-btn-left,
+                .carousel-btn-right {
+                    font-size: 1.2em !important;
                 }
             }
 
