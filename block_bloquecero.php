@@ -1053,7 +1053,7 @@ class block_bloquecero extends block_base {
                 <span>' . get_string('settings', 'block_bloquecero') . '</span>
             </a>' : '') .
             '</nav>
-            <div style="padding: 0 20px; font-family: Arial, sans-serif;">
+            <div class="bloquecero-main-wrapper" style="padding: 0 20px; font-family: Arial, sans-serif;">
             <!-- Resto del contenido del bloque -->
             <div class="bloquecero-header-responsive">
                 ' . ($fondo_cabecera_img ? '<img src="' . $fondo_cabecera_img . '" alt="" role="presentation" class="bloquecero-header-bg-img">' : '') . '
@@ -1140,7 +1140,7 @@ class block_bloquecero extends block_base {
             .udima-maincard,
             .sesiones-directo-maincard {
                 font-size: 0.96em;
-                padding: 12px 4px !important;
+                padding: 12px 8px !important;
                 min-width: 0;
             }
             .calendario-actividades-header h3,
@@ -1995,8 +1995,11 @@ class block_bloquecero extends block_base {
                 line-height: 1.6;
             }
             @media (max-width: 600px) {
+                .bloquecero-main-wrapper {
+                    padding: 0 6px !important;
+                }
                 .bloquecero-info-row {
-                    padding: 0 8px;
+                    padding: 0 4px;
                     text-align: center;
                 }
                 .bloquecero-header-dates {
@@ -2006,6 +2009,9 @@ class block_bloquecero extends block_base {
                 .bloquecero-header-teachers {
                     font-size: 0.92em;
                     text-align: center;
+                }
+                .carousel-container {
+                    padding: 0 28px !important;
                 }
             }
 
