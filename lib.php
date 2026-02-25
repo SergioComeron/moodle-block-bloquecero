@@ -48,7 +48,7 @@ function block_bloquecero_before_standard_top_of_body_html() {
 
     return '<style>
         #courseindex-drawer,
-        .drawer-left,
+        .courseindex,
         .drawer-toggler.drawer-left-toggle { display: none !important; }
     </style>';
 }
