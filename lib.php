@@ -22,6 +22,37 @@
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 
+/**
+ * Oculta el índice de curso (drawer izquierdo) en todas las páginas de cursos
+ * que tienen el bloque instalado.
+ */
+function block_bloquecero_before_standard_top_of_body_html() {
+    global $COURSE, $DB;
+
+    if (empty($COURSE) || $COURSE->id == SITEID) {
+        return '';
+    }
+
+    static $hasblock = null;
+    if ($hasblock === null) {
+        $coursecontext = context_course::instance($COURSE->id);
+        $hasblock = $DB->record_exists('block_instances', [
+            'blockname'       => 'bloquecero',
+            'parentcontextid' => $coursecontext->id,
+        ]);
+    }
+
+    if (!$hasblock) {
+        return '';
+    }
+
+    return '<style>
+        #courseindex-drawer,
+        .drawer-left,
+        .drawer-toggler.drawer-left-toggle { display: none !important; }
+    </style>';
+}
+
 function block_bloquecero_pluginfile($course, $cm, $context, $filearea, $args, $forcedownload, array $options = array()) {
     // Asegúrate de que estamos en el contexto del sistema (donde se guarda la config del plugin).
     if ($context->contextlevel != CONTEXT_SYSTEM) {

@@ -122,5 +122,6 @@ $string['duetomorrow'] = 'Due tomorrow';
 $string['dueindays'] = 'In {n} days';
 $string['overduedays'] = 'Overdue by {n} days';
 $string['submitted'] = 'Submitted';
+$string['graded'] = 'Graded';
 $string['monthnames'] = 'Jan,Feb,Mar,Apr,May,Jun,Jul,Aug,Sep,Oct,Nov,Dec';
 $string['daynames'] = 'jan,feb,mar,apr,may,jun,jul,aug,sep,oct,nov,dec';

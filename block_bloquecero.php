@@ -40,13 +40,18 @@ function get_cm_start_date($cm) {
             $quiz = $DB->get_record('quiz', array('id' => $cm->instance), 'timeopen, timeclose', MUST_EXIST);
             $time = $quiz->timeopen ? $quiz->timeopen : $quiz->timeclose;
             break;
+        case 'forum':
+            // En foros, se usa assesstimestart (fecha de inicio del rango de calificación)
+            $forum = $DB->get_record('forum', array('id' => $cm->instance), 'assesstimestart, assesstimefinish');
+            $time = $forum ? $forum->assesstimestart : 0;
+            break;
         // Agregar otros casos según el tipo de actividad
         default:
             // Si no se define fecha de inicio para ese tipo, se deja en 0 o se puede devolver NULL
             $time = 0;
             break;
     }
-    return $time;
+    return (int)$time;
 }
 
 class block_bloquecero extends block_base {
@@ -342,7 +347,7 @@ class block_bloquecero extends block_base {
             if ($section->section == 0) continue;
             if (!$section->uservisible) continue;
             if (!empty($section->component) && $section->component === 'mod_subsection') continue;
-            $sectionurl = new moodle_url('/course/view.php', ['id' => $COURSE->id, 'section' => $section->section]);
+            $sectionurl = new moodle_url('/course/section.php', ['id' => $section->id]);
             $course = $modinfo->get_course();
             if ($course->format == 'weeks' && empty($section->name)) {
                 $startdate = $course->startdate;
@@ -378,6 +383,7 @@ class block_bloquecero extends block_base {
                     $cm = $modinfo->cms[$cmid];
 
                     if (!$cm->uservisible) continue; // Saltar módulos no visibles para el usuario
+                    if ($cm->modname === 'label') continue; // Saltar actividades de texto y media
 
                     if ($cm->modname !== 'subsection') {
                         // Actividad normal (no subsección)
@@ -503,11 +509,12 @@ class block_bloquecero extends block_base {
 
             // Construir la tarjeta como string (con badge si corresponde)
             $card_html = '<div class="bloquecero-section-card" style="background: '.$bg_color.'">';
-            // print_r($activitieslist);
+            if ($badge) {
+                $card_html .= '<span class="bloquecero-section-badge">' . $badge . '</span>';
+            }
             $card_html .= '
-                <div class="bloquecero-section-header-flex" style="display:flex;align-items:center;justify-content:space-between;width:100%;gap:12px;margin-bottom:8px;">
-                    <div class="bloquecero-section-number" style="flex:1 1 auto;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;"><a href="'. $sectionurl .'" class="bloquecero-section-number">'. $sectiontitle .'</a></div>'
-                    . ($badge ? '<span class="bloquecero-section-badge">' . $badge . '</span>' : '') . '
+                <div class="bloquecero-section-header-flex" style="display:flex;flex-direction:column;width:100%;gap:4px;margin-bottom:8px;">
+                    <div style="min-width:0;overflow:hidden;"><a href="'. $sectionurl .'" class="bloquecero-section-number" title="'. htmlspecialchars(strip_tags($sectiontitle)) .'">'. $sectiontitle .'</a></div>
                 </div>
                 <div class="bloquecero-section-line" style="background: '.$line_color.'; margin-bottom:12px;"></div>
                 <div class="bloquecero-section-content">
@@ -563,13 +570,36 @@ class block_bloquecero extends block_base {
         $calendarActivities = '';
         $activitiesData = []; // Array para pasar a JavaScript con información completa
 
+        // Precargar actividades calificables del curso y notas del usuario (2 consultas)
+        $gradedmodules = [];
+        $graderows = $DB->get_records('grade_items', ['courseid' => $COURSE->id, 'itemtype' => 'mod'], '', 'id, itemmodule, iteminstance');
+        foreach ($graderows as $row) {
+            $gradedmodules[$row->itemmodule . '_' . $row->iteminstance] = $row->id;
+        }
+        $usergraded = [];
+        if (!empty($gradedmodules)) {
+            list($insql, $inparams) = $DB->get_in_or_equal(array_values($gradedmodules));
+            $inparams[] = $USER->id;
+            $usergraderows = $DB->get_records_sql(
+                "SELECT gi.itemmodule, gi.iteminstance
+                   FROM {grade_items} gi
+                   JOIN {grade_grades} gg ON gg.itemid = gi.id
+                  WHERE gi.id $insql AND gg.userid = ? AND gg.finalgrade IS NOT NULL",
+                $inparams
+            );
+            foreach ($usergraderows as $row) {
+                $usergraded[$row->itemmodule . '_' . $row->iteminstance] = true;
+            }
+        }
+
         foreach ($modinfo->cms as $cm) {
             if (!$cm->uservisible) {
                 continue;
             }
             $startdate = get_cm_start_date($cm);
-            if ($startdate) {
-                $activitytime = userdate($startdate, '%d %b %Y');
+            $isgraded = isset($gradedmodules[$cm->modname . '_' . $cm->instance]);
+            if ($startdate || $isgraded) {
+                $activitytime = $startdate ? userdate($startdate, '%d %b %Y') : null;
                 $icon = $OUTPUT->pix_icon('icon', $cm->modfullname, $cm->modname, ['class' => 'activityicon']);
 
                 // Determinar fecha de vencimiento y estado de entrega
@@ -604,6 +634,20 @@ class block_bloquecero extends block_base {
                         $submitted = $attempts > 0;
                     }
                 }
+                // Para foros (forum)
+                else if ($modname === 'forum' && $cm->instance) {
+                    $forum = $DB->get_record('forum', ['id' => $cm->instance], 'assesstimestart, assesstimefinish');
+                    if ($forum) {
+                        $duedate = $forum->assesstimefinish;
+                        $postcount = $DB->count_records_sql(
+                            "SELECT COUNT(*) FROM {forum_posts} fp
+                               JOIN {forum_discussions} fd ON fd.id = fp.discussion
+                              WHERE fd.forum = ? AND fp.userid = ?",
+                            [$cm->instance, $USER->id]
+                        );
+                        $submitted = $postcount > 0;
+                    }
+                }
 
                 // Si no hay duedate, usar startdate
                 if (!$duedate) {
@@ -617,8 +661,8 @@ class block_bloquecero extends block_base {
                     'icon' => $icon,
                     'modname' => $modname,
                     'modfullname' => format_string($cm->modfullname),
-                    'startdate' => $startdate,
-                    'duedate' => $duedate,
+                    'startdate' => (int)$startdate,
+                    'duedate' => (int)$duedate,
                     'submitted' => $submitted
                 ];
 
@@ -626,9 +670,17 @@ class block_bloquecero extends block_base {
                 if ($duedate && $duedate !== $startdate) {
                     $duedateHtml = ' · Fin: ' . userdate($duedate, '%d %b %Y');
                 }
-                $calendarActivities .= '<li data-timestamp="' . $startdate . '" style="margin-bottom: 6px;">' . $icon .
-                    ' <a href="' . $cm->url . '">' . format_string($cm->name) . '</a>' .
-                    '<br><span style="font-size:0.82em; color:#777; padding-left:4px;">Inicio: ' . $activitytime . $duedateHtml . '</span></li>';
+                $dateText = $activitytime ? 'Inicio: ' . $activitytime . $duedateHtml : '';
+                $secondLine = '<div style="display:flex;justify-content:space-between;align-items:center;padding-left:22px;margin-top:2px;">'
+                    . '<span style="font-size:0.78em;color:#999;">' . $dateText . '</span>'
+                    . '<span class="bloquecero-act-status"></span>'
+                    . '</div>';
+                $hasUserGrade = isset($usergraded[$cm->modname . '_' . $cm->instance]) ? '1' : '0';
+                $hasSubmitted = $submitted ? '1' : '0';
+                $calendarActivities .= '<li data-timestamp="' . (int)$startdate . '" data-duedate="' . (int)$duedate . '" data-graded="' . $hasUserGrade . '" data-submitted="' . $hasSubmitted . '" style="margin-bottom: 8px;">'
+                    . '<div>' . $icon . ' <a href="' . $cm->url . '">' . format_string($cm->name) . '</a></div>'
+                    . $secondLine
+                    . '</li>';
             }
         }
 
@@ -646,14 +698,9 @@ class block_bloquecero extends block_base {
         $blockinstanceid = $this->instance->id ?? 0;
 
         if ($blockinstanceid) {
-            $currentTime = time();
-            // Solo mostrar sesiones futuras o en curso (últimas 2 horas)
-            $twohourago = $currentTime - 7200;
-
-            $sessions = $DB->get_records_select(
+            $sessions = $DB->get_records(
                 'block_bloquecero_sessions',
-                'blockinstanceid = ? AND courseid = ? AND sessiondate >= ?',
-                [$blockinstanceid, $COURSE->id, $twohourago],
+                ['blockinstanceid' => $blockinstanceid, 'courseid' => $COURSE->id],
                 'sessiondate ASC'
             );
 
@@ -773,22 +820,64 @@ class block_bloquecero extends block_base {
                     const parser = new DOMParser();
                     const doc = parser.parseFromString(originalListHTML, "text/html");
                     const ul = doc.querySelector("ul");
-                    let anyVisible = false;
                     if (ul) {
+                        let weeklyNodes = [];
+                        let nodateItems = \'\';
                         ul.querySelectorAll("li").forEach(function(li){
                             const ts = parseInt(li.getAttribute("data-timestamp"), 10);
-                            if (!isNaN(ts) && ts >= weekStart && ts < weekEnd) {
-                                li.style.display = "list-item";
-                                anyVisible = true;
-                            } else {
-                                li.style.display = "none";
+                            if (ts === 0) {
+                                const graded = li.getAttribute("data-graded") === "1";
+                                if (graded) {
+                                    const clone = li.cloneNode(true);
+                                    clone.style.opacity = "0.55";
+                                    const check = document.createElement("span");
+                                    check.style.cssText = "margin-left:6px;color:#5cb85c;font-weight:600;font-size:0.85em;";
+                                    check.textContent = "✓ " + bloqueceroI18n.graded;
+                                    clone.appendChild(check);
+                                    nodateItems += clone.outerHTML;
+                                } else {
+                                    nodateItems += li.outerHTML;
+                                }
+                            } else if (!isNaN(ts)) {
+                                const dd = parseInt(li.getAttribute("data-duedate"), 10) || 0;
+                                const inStartWeek = ts >= weekStart && ts < weekEnd;
+                                const stillOpen = dd > 0 && ts < weekEnd && dd >= weekStart;
+                                if (inStartWeek || stillOpen) {
+                                    const isSubmitted = li.getAttribute("data-submitted") === "1";
+                                    const isGraded = li.getAttribute("data-graded") === "1";
+                                    const clone = li.cloneNode(true);
+                                    const statusEl = clone.querySelector(".bloquecero-act-status");
+                                    if (statusEl) {
+                                        if (isGraded) {
+                                            statusEl.style.cssText = "color:#5cb85c;font-weight:600;font-size:0.78em;white-space:nowrap;";
+                                            statusEl.textContent = "✓ " + bloqueceroI18n.graded;
+                                        } else if (isSubmitted) {
+                                            statusEl.style.cssText = "color:#5bc0de;font-weight:600;font-size:0.78em;white-space:nowrap;";
+                                            statusEl.textContent = "✓ " + bloqueceroI18n.submitted;
+                                        }
+                                    }
+                                    weeklyNodes.push({ts: ts, dd: dd, html: clone.outerHTML});
+                                }
                             }
                         });
-                        if(anyVisible) {
-                            contentContainer.innerHTML = "<ul>" + ul.innerHTML + "</ul>";
+                        weeklyNodes.sort(function(a, b) {
+                            if (a.ts !== b.ts) return a.ts - b.ts;
+                            const ddA = a.dd || Infinity;
+                            const ddB = b.dd || Infinity;
+                            return ddA - ddB;
+                        });
+                        const weeklyItems = weeklyNodes.map(function(n){ return n.html; }).join(\'\');
+                        let html = \'\';
+                        if (weeklyItems) {
+                            html += \'<ul style="margin:12px 0 0 0;padding-left:0;list-style:none;">\' + weeklyItems + \'</ul>\';
                         } else {
-                            contentContainer.innerHTML = \'<div style="margin-top:12px; color:#595959; font-size:0.95em; text-align:center;">No hay actividades para esta semana.</div>\';
+                            html += \'<div style="margin-top:12px;color:#595959;font-size:0.95em;text-align:center;">No hay actividades para esta semana.</div>\';
                         }
+                        if (nodateItems) {
+                            html += \'<hr style="border:none;border-top:1px solid #ddd;margin:12px 0 8px 0;">\';
+                            html += \'<ul style="margin:0;padding-left:0;list-style:none;">\' + nodateItems + \'</ul>\';
+                        }
+                        contentContainer.innerHTML = html;
                     } else {
                         // Si no hay actividades en absoluto
                         contentContainer.innerHTML = doc.body.innerHTML;
@@ -1176,6 +1265,12 @@ class block_bloquecero extends block_base {
             .drawer-toggler.drawer-left-toggle.open-nav.d-print-none {
                 display: none !important;
             }
+            #page-navbar {
+                display: none !important;
+            }
+            body:not(.editing) #section-0 {
+                display: none !important;
+            }
             .block_calendar_month.block.card.mb-3 {
                 display: block !important;
             }
@@ -1189,21 +1284,17 @@ class block_bloquecero extends block_base {
             }
         
             .bloquecero-section-badge {
-                position: static !important;
-                margin-left: 10px;
-                flex-shrink: 0;
-                top: auto;
-                right: auto;
-                top: 10px;
+                display: block;
+                margin: -18px -16px 14px -16px;
+                padding: 6px 16px;
                 background: #4E6A1E;
                 color: #fff;
                 font-weight: 600;
-                font-size: 1em;
-                border-radius: 16px;
-                padding: 2px 16px;
-                z-index: 4;
-                box-shadow: 0 2px 8px rgba(183,198,92,0.14);
-                letter-spacing: 0.01em;
+                font-size: 0.78em;
+                text-align: center;
+                border-radius: 3px 3px 0 0;
+                letter-spacing: 0.04em;
+                text-transform: uppercase;
             }
             .bloquecero-section-card {
                 position: relative;
@@ -1644,9 +1735,11 @@ class block_bloquecero extends block_base {
                     flex: none;
                     letter-spacing: 0.05em;
                     text-decoration: none;
+                    display: -webkit-box;
+                    -webkit-line-clamp: 2;
+                    -webkit-box-orient: vertical;
                     overflow: hidden;
-                    text-overflow: ellipsis;
-                    white-space: nowrap;
+                    white-space: normal;
                 }
                 .bloquecero-section-number:hover,
                 .bloquecero-section-number:focus {
@@ -2363,6 +2456,7 @@ class block_bloquecero extends block_base {
         'dueindays'   => get_string('dueindays', 'block_bloquecero'),
         'overduedays' => get_string('overduedays', 'block_bloquecero'),
         'submitted'   => get_string('submitted', 'block_bloquecero'),
+        'graded'      => get_string('graded', 'block_bloquecero'),
         'pending'     => get_string('pending', 'block_bloquecero'),
         'daynames'    => explode(',', get_string('daynames', 'block_bloquecero')),
     ];
@@ -2393,41 +2487,48 @@ class block_bloquecero extends block_base {
                     tabla += \'<tr><td colspan="4" style="padding:20px;text-align:center;color:#595959;">\' + bloqueceroI18n.noactivities + \'</td></tr>\';
                 } else {
                     filteredData.forEach(function(activity) {
-                        // Calcular días restantes
-                        var daysRemaining = Math.ceil((activity.duedate - now) / 86400);
                         var daysText = "";
                         var daysColor = "#555";
-
-                        if (daysRemaining < 0) {
-                            daysText = bloqueceroI18n.overduedays.replace("{n}",Math.abs(daysRemaining));
-                            daysColor = "#d9534f"; // Rojo
-                        } else if (daysRemaining === 0) {
-                            daysText = bloqueceroI18n.duetoday;
-                            daysColor = "#f0ad4e"; // Naranja
-                        } else if (daysRemaining === 1) {
-                            daysText = bloqueceroI18n.duetomorrow;
-                            daysColor = "#f0ad4e"; // Naranja
-                        } else if (daysRemaining <= 3) {
-                            daysText = bloqueceroI18n.dueindays.replace("{n}",daysRemaining);
-                            daysColor = "#f0ad4e"; // Naranja
-                        } else if (daysRemaining <= 7) {
-                            daysText = bloqueceroI18n.dueindays.replace("{n}",daysRemaining);
-                            daysColor = "#5bc0de"; // Azul
-                        } else {
-                            daysText = bloqueceroI18n.dueindays.replace("{n}",daysRemaining);
-                            daysColor = "#5cb85c"; // Verde
-                        }
-
-                        // Estado de entrega
-                        var estadoHTML = activity.submitted ?
-                            \'<span style="color:#5cb85c;font-weight:600;font-size:0.9em;">\' + bloqueceroI18n.submitted + \'</span>\' :
-                            \'<span style="color:#f0ad4e;font-weight:600;font-size:0.9em;">\' + bloqueceroI18n.pending + \'</span>\';
-
                         var dueDateStr = "";
+                        var estadoHTML = "";
+
                         if (activity.duedate) {
+                            // Calcular días restantes
+                            var daysRemaining = Math.ceil((activity.duedate - now) / 86400);
+
+                            if (daysRemaining < 0) {
+                                daysText = bloqueceroI18n.overduedays.replace("{n}",Math.abs(daysRemaining));
+                                daysColor = "#d9534f"; // Rojo
+                            } else if (daysRemaining === 0) {
+                                daysText = bloqueceroI18n.duetoday;
+                                daysColor = "#f0ad4e"; // Naranja
+                            } else if (daysRemaining === 1) {
+                                daysText = bloqueceroI18n.duetomorrow;
+                                daysColor = "#f0ad4e"; // Naranja
+                            } else if (daysRemaining <= 3) {
+                                daysText = bloqueceroI18n.dueindays.replace("{n}",daysRemaining);
+                                daysColor = "#f0ad4e"; // Naranja
+                            } else if (daysRemaining <= 7) {
+                                daysText = bloqueceroI18n.dueindays.replace("{n}",daysRemaining);
+                                daysColor = "#5bc0de"; // Azul
+                            } else {
+                                daysText = bloqueceroI18n.dueindays.replace("{n}",daysRemaining);
+                                daysColor = "#5cb85c"; // Verde
+                            }
+
                             var dd = new Date(activity.duedate * 1000);
                             var dayNames = bloqueceroI18n.daynames;
                             dueDateStr = \'<br><span style="font-size:0.85em;color:#888;">\' + dd.getDate() + \' \' + dayNames[dd.getMonth()] + \' \' + dd.getFullYear() + \'</span>\';
+
+                            // Estado de entrega (solo para actividades con fecha/seguimiento)
+                            estadoHTML = activity.submitted ?
+                                \'<span style="color:#5cb85c;font-weight:600;font-size:0.9em;">\' + bloqueceroI18n.submitted + \'</span>\' :
+                                \'<span style="color:#f0ad4e;font-weight:600;font-size:0.9em;">\' + bloqueceroI18n.pending + \'</span>\';
+                        } else {
+                            // Actividad calificable sin fecha
+                            daysText = \'—\';
+                            daysColor = "#888";
+                            estadoHTML = \'—\';
                         }
 
                         tabla += \'<tr style="border-bottom:1px solid #eee;transition:background 0.2s;">\' +
@@ -2733,8 +2834,7 @@ class block_bloquecero extends block_base {
         #activities-week-content li {
             margin-bottom: 8px;
             font-size: 1em;
-            display: flex;
-            align-items: center;
+            display: block;
             color: #222;
         }
         #activities-week-content li a {

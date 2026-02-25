@@ -100,5 +100,6 @@ $string['duetomorrow'] = 'Vence mañana';
 $string['dueindays'] = 'En {n} días';
 $string['overduedays'] = 'Vencida hace {n} días';
 $string['submitted'] = 'Entregada';
+$string['graded'] = 'Calificada';
 $string['monthnames'] = 'Ene,Feb,Mar,Abr,May,Jun,Jul,Ago,Sep,Oct,Nov,Dic';
 $string['daynames'] = 'ene,feb,mar,abr,may,jun,jul,ago,sep,oct,nov,dic';
