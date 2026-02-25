@@ -271,7 +271,7 @@ class block_bloquecero extends block_base {
                 $context->id, 'block_bloquecero', 'header_bg', 0, $file->get_filepath(), $file->get_filename()
             );
         } else {
-            $fondo_cabecera_img = new moodle_url('/path/to/default.jpg');
+            $fondo_cabecera_img = '';
         }
         // Generar botones de contacto para cada profesor (lista separada por comas).
         $teachersList = array();
@@ -314,8 +314,12 @@ class block_bloquecero extends block_base {
                 </div>';
         }
 
-        // Unir los botones con comas
-        $contactButtonsHtml = implode(', ', $teachersList);
+        // Unir los botones con comas, cada nombre envuelto en span nowrap para evitar
+        // que la coma quede en una línea separada en móvil
+        $contactButtonsHtml = implode(
+            '<span aria-hidden="true">, </span>',
+            array_map(fn($btn) => '<span style="white-space:nowrap">' . $btn . '</span>', $teachersList)
+        );
 
         // Inicializar completion_info para mostrar estado de finalización
         $completion = new completion_info($COURSE);
@@ -1052,7 +1056,7 @@ class block_bloquecero extends block_base {
             <div style="padding: 0 20px; font-family: Arial, sans-serif;">
             <!-- Resto del contenido del bloque -->
             <div class="bloquecero-header-responsive">
-                <img src="' . $fondo_cabecera_img . '" alt="" role="presentation" class="bloquecero-header-bg-img">
+                ' . ($fondo_cabecera_img ? '<img src="' . $fondo_cabecera_img . '" alt="" role="presentation" class="bloquecero-header-bg-img">' : '') . '
                 <div class="bloquecero-header-content">
                     <h2 class="bloquecero-header-title">' . format_string(trim(explode(' - ', $COURSE->fullname, 2)[0])) . '</h2>
                 </div>
@@ -1988,6 +1992,21 @@ class block_bloquecero extends block_base {
                 font-size: 1.2em;
                 color: black;
                 font-weight: 500;
+                line-height: 1.6;
+            }
+            @media (max-width: 600px) {
+                .bloquecero-info-row {
+                    padding: 0 8px;
+                    text-align: center;
+                }
+                .bloquecero-header-dates {
+                    font-size: 0.88em;
+                    text-align: center;
+                }
+                .bloquecero-header-teachers {
+                    font-size: 0.92em;
+                    text-align: center;
+                }
             }
 
             @media (max-width: 800px) {
