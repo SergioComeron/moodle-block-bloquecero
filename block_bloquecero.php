@@ -59,6 +59,173 @@ class block_bloquecero extends block_base {
         $this->title = get_string('pluginname', 'block_bloquecero');
     }
 
+    /**
+     * Ejecuta las acciones automáticas del Modo Septiembre al guardar la configuración.
+     */
+    public function instance_config_save($data, $nolongerused = false) {
+        global $DB, $CFG, $USER;
+
+        $enabling = !empty($data->show_september_notice);
+        $alreadydone = !empty($this->config->september_mode_setup_done);
+
+        if ($enabling && !$alreadydone) {
+            require_once($CFG->dirroot . '/mod/forum/lib.php');
+            require_once($CFG->dirroot . '/course/modlib.php');
+
+            // Obtener el curso.
+            $courseid = $this->page->course->id;
+            $course   = $DB->get_record('course', ['id' => $courseid], '*', MUST_EXIST);
+
+            // -------------------------------------------------------
+            // 1. Enviar anuncio al Tablón de Anuncios
+            // -------------------------------------------------------
+            $forumid = isset($data->forumid) ? (int)$data->forumid : 0;
+            if ($forumid) {
+                $forum = $DB->get_record('forum', ['id' => $forumid, 'course' => $course->id]);
+                if ($forum) {
+                    $discussion                = new stdClass();
+                    $discussion->course        = $course->id;
+                    $discussion->forum         = $forum->id;
+                    $discussion->name          = get_string('sept_announcement_subject', 'block_bloquecero');
+                    $discussion->message       = get_string('sept_announcement_body', 'block_bloquecero');
+                    $discussion->messageformat = FORMAT_HTML;
+                    $discussion->messagetrust  = 0;
+                    $discussion->mailnow       = 1;
+                    $discussion->groupid       = 0;
+                    $discussion->timestart     = 0;
+                    $discussion->timeend       = 0;
+                    forum_add_discussion($discussion);
+                }
+            }
+
+            // -------------------------------------------------------
+            // 2. Crear "Foro Convocatoria de Septiembre" en la misma
+            //    sección que los foros configurados en el bloque.
+            // -------------------------------------------------------
+            $septforumname = get_string('sept_forum_name', 'block_bloquecero');
+            $existingforum = $DB->get_record('forum', ['course' => $course->id, 'name' => $septforumname]);
+            if ($existingforum) {
+                // Ya existe: asegurarse de que está visible.
+                $septcm = get_coursemodule_from_instance('forum', $existingforum->id, $course->id);
+                if ($septcm && !$septcm->visible) {
+                    set_coursemodule_visible($septcm->id, 1);
+                }
+            }
+            if (!$existingforum) {
+                // Determinar la sección a partir de uno de los foros configurados.
+                $targetsection = 0;
+                $refforumids = array_filter([
+                    isset($data->forumid)            ? (int)$data->forumid            : 0,
+                    isset($data->forumtutoriasid)     ? (int)$data->forumtutoriasid    : 0,
+                    isset($data->forumestudiantesid)  ? (int)$data->forumestudiantesid : 0,
+                ]);
+                foreach ($refforumids as $refid) {
+                    $refcm = get_coursemodule_from_instance('forum', $refid, $course->id);
+                    if ($refcm) {
+                        $targetsection = $DB->get_field('course_sections', 'section',
+                            ['id' => $refcm->section]);
+                        break;
+                    }
+                }
+
+                $moduleinfo                   = new stdClass();
+                $moduleinfo->modulename       = 'forum';
+                $moduleinfo->module           = $DB->get_field('modules', 'id', ['name' => 'forum']);
+                $moduleinfo->name             = $septforumname;
+                $moduleinfo->course           = $course->id;
+                $moduleinfo->section          = $targetsection;
+                $moduleinfo->visible          = 1;
+                $moduleinfo->type             = 'general';
+                $moduleinfo->intro            = '';
+                $moduleinfo->introformat      = FORMAT_HTML;
+                $moduleinfo->forcesubscribe   = 1;
+                $moduleinfo->assessed         = 0;
+                $moduleinfo->scale            = 0;
+                $moduleinfo->assesstimestart  = 0;
+                $moduleinfo->assesstimefinish = 0;
+                add_moduleinfo($moduleinfo, $course);
+            }
+
+            // -------------------------------------------------------
+            // 3. Bloquear permisos de estudiante en todos los foros
+            // -------------------------------------------------------
+            $studentrole = $DB->get_record('role', ['shortname' => 'student']);
+            if ($studentrole) {
+                rebuild_course_cache($course->id, true);
+                $modinfo = get_fast_modinfo($course);
+                foreach ($modinfo->get_instances_of('forum') as $forumcm) {
+                    $fcontext = context_module::instance($forumcm->id);
+                    role_change_permission($studentrole->id, $fcontext, 'mod/forum:replypost', CAP_PREVENT);
+                    role_change_permission($studentrole->id, $fcontext, 'mod/forum:startdiscussion', CAP_PREVENT);
+                }
+            }
+
+            // -------------------------------------------------------
+            // 4. Ampliar plazos de actividades y controles al 31 de agosto
+            // -------------------------------------------------------
+            $aug31 = mktime(23, 59, 0, 8, 31, (int)date('Y'));
+
+            $assigns = $DB->get_records('assign', ['course' => $course->id]);
+            foreach ($assigns as $assign) {
+                if (!empty($assign->duedate)) {
+                    $DB->set_field('assign', 'duedate', $aug31, ['id' => $assign->id]);
+                }
+                if (!empty($assign->cutoffdate)) {
+                    $DB->set_field('assign', 'cutoffdate', $aug31, ['id' => $assign->id]);
+                }
+            }
+
+            $quizzes = $DB->get_records('quiz', ['course' => $course->id]);
+            foreach ($quizzes as $quiz) {
+                if (!empty($quiz->timeclose)) {
+                    $DB->set_field('quiz', 'timeclose', $aug31, ['id' => $quiz->id]);
+                }
+            }
+
+            // Marcar setup como completado para no repetirlo.
+            $data->september_mode_setup_done = 1;
+        }
+
+        // -------------------------------------------------------
+        // Desactivación del modo septiembre
+        // -------------------------------------------------------
+        $was_enabled = !empty($this->config->show_september_notice);
+        $is_disabling = empty($data->show_september_notice);
+
+        if ($was_enabled && $is_disabling) {
+            require_once($CFG->dirroot . '/mod/forum/lib.php');
+
+            $courseid = $this->page->course->id;
+            $course   = $DB->get_record('course', ['id' => $courseid], '*', MUST_EXIST);
+
+            $studentrole = $DB->get_record('role', ['shortname' => 'student']);
+
+            // Restaurar permisos de estudiante en todos los foros.
+            if ($studentrole) {
+                $modinfo = get_fast_modinfo($course);
+                foreach ($modinfo->get_instances_of('forum') as $forumcm) {
+                    $fcontext = context_module::instance($forumcm->id);
+                    role_change_permission($studentrole->id, $fcontext, 'mod/forum:replypost', CAP_INHERIT);
+                    role_change_permission($studentrole->id, $fcontext, 'mod/forum:startdiscussion', CAP_INHERIT);
+                }
+            }
+
+            // Ocultar el foro de convocatoria de septiembre.
+            $septforumname = get_string('sept_forum_name', 'block_bloquecero');
+            $septforum = $DB->get_record('forum', ['course' => $course->id, 'name' => $septforumname]);
+            if ($septforum) {
+                $septcm = get_coursemodule_from_instance('forum', $septforum->id, $course->id);
+                if ($septcm) {
+                    set_coursemodule_visible($septcm->id, 0);
+                }
+            }
+
+            $data->september_mode_setup_done = 0;
+        }
+
+        return parent::instance_config_save($data, $nolongerused);
+    }
+
     public function get_content() {
         global $COURSE, $DB, $USER, $CFG, $OUTPUT, $PAGE;
         $section = optional_param('section', 0, PARAM_INT);
@@ -86,6 +253,51 @@ class block_bloquecero extends block_base {
         }
     
         $this->content = new stdClass;
+
+        // -------------------------------------------------------
+        // Detección de metacurso: si este curso es hijo por metaenlace,
+        // mostrar solo el header y un mensaje con enlace al curso padre.
+        // -------------------------------------------------------
+        // Detectar si este curso es fuente de un metaenlace.
+        // Cursos de los que este curso recibe alumnos por metaenlace (este curso = destino).
+        $metachild_links = [];
+        $metachildenrols = $DB->get_records('enrol', [
+            'courseid' => $COURSE->id,
+            'enrol'    => 'meta',
+        ]);
+        foreach ($metachildenrols as $enrol) {
+            $sourcecourse = $DB->get_record('course', ['id' => $enrol->customint1]);
+            if ($sourcecourse) {
+                $metachild_links[] = format_string($sourcecourse->fullname);
+            }
+        }
+
+        $is_metacourse = false;
+        $metacourse_links = [];
+        if (!$is_editing) {
+            $metaenrols = $DB->get_records('enrol', [
+                'enrol'      => 'meta',
+                'customint1' => $COURSE->id,
+            ]);
+            if (!empty($metaenrols)) {
+                $is_metacourse = true;
+                foreach ($metaenrols as $enrol) {
+                    $linkedcourse = $DB->get_record('course', ['id' => $enrol->courseid]);
+                    if ($linkedcourse) {
+                        $linkedurl = new moodle_url('/course/view.php', ['id' => $linkedcourse->id]);
+                        $metacourse_links[] = '<a href="' . $linkedurl . '" class="bloquecero-meta-link">'
+                            . format_string($linkedcourse->fullname) . '</a>';
+                    }
+                }
+                // Ocultar el curso automáticamente si todavía está visible.
+                if ($COURSE->visible) {
+                    $coursedata = new stdClass();
+                    $coursedata->id = $COURSE->id;
+                    $coursedata->visible = 0;
+                    update_course($coursedata);
+                }
+            }
+        }
 
         $coursecontext = context_course::instance($COURSE->id);
         require_once($CFG->dirroot . '/user/lib.php');
@@ -207,6 +419,23 @@ class block_bloquecero extends block_base {
                 }
             }
         }
+        // Foro Convocatoria de Septiembre (solo si el modo septiembre está activo).
+        $forum_septiembre_url = '';
+        if (!empty($this->config->show_september_notice)) {
+            $septforumname = get_string('sept_forum_name', 'block_bloquecero');
+            $septforumrecord = $DB->get_record('forum', ['course' => $COURSE->id, 'name' => $septforumname]);
+            if ($septforumrecord) {
+                $cm_forum_septiembre = get_coursemodule_from_instance('forum', $septforumrecord->id, $COURSE->id);
+                if ($cm_forum_septiembre) {
+                    $cminfo_septiembre = \cm_info::create($cm_forum_septiembre);
+                    if ($cminfo_septiembre->uservisible) {
+                        $forum_septiembre_url = new moodle_url('/mod/forum/view.php', ['id' => $cm_forum_septiembre->id]);
+                        $count_septiembre = forum_get_discussions_unread($cm_forum_septiembre);
+                    }
+                }
+            }
+        }
+
         $guide_url = !empty($this->config->guide_url) ? $this->config->guide_url : '#';
         // $bibliography_url = !empty($this->config->bibliography_url) ? $this->config->bibliography_url : '#';
 
@@ -257,7 +486,25 @@ class block_bloquecero extends block_base {
             ");
         }
 
-
+        if ($is_metacourse) {
+            $PAGE->requires->js_init_code("
+                document.addEventListener('DOMContentLoaded', function() {
+                    var region = document.getElementById('region-main');
+                    if (region) region.style.display = 'none';
+                    [
+                        '.page-header','.page-context-header','.course-header',
+                        '.page-header-headings','.page-title','.course-title'
+                    ].forEach(function(selector){
+                        document.querySelectorAll(selector).forEach(function(e){ e.style.display = 'none'; });
+                    });
+                    [
+                        '.nav-tabs','.nav-tabs-line','.secondary-navigation','.secondary-nav'
+                    ].forEach(function(selector){
+                        document.querySelectorAll(selector).forEach(function(e){ e.style.display = 'none'; });
+                    });
+                });
+            ");
+        }
 
         /// URLs de las imágenes
         $context = context_system::instance();
@@ -309,8 +556,9 @@ class block_bloquecero extends block_base {
                 ">
                     <div style="margin-bottom: 10px;">' . $teacher->picturehtml . '</div>
                     <p><strong>E-mail:</strong> ' . $teacher->email . '</p>
+                    ' . (empty($this->config->show_september_notice) ? '
                     <p><strong>Teléfono:</strong> ' . $teacher->phone . '</p>
-                    <p><strong>Horario:</strong></p>' . $teacher->schedule . '
+                    <p><strong>Horario:</strong></p>' . $teacher->schedule : '') . '
                 </div>';
         }
 
@@ -1031,7 +1279,11 @@ class block_bloquecero extends block_base {
                 text-align: left !important;
             }
             </style>
-            <nav class="udima-menu-bar" aria-label="' . get_string('coursemenu', 'block_bloquecero') . '">
+            ';
+
+        $metaHide = $is_metacourse ? ' style="display:none"' : '';
+        $this->content->text .= '
+            <nav class="udima-menu-bar" aria-label="' . get_string('coursemenu', 'block_bloquecero') . '"' . $metaHide . '>
             <a href="' . new moodle_url('/grade/report/grader/index.php', array('id' => $COURSE->id)) . '" class="udima-menu-link">
                 ' . $OUTPUT->pix_icon('t/grades', '', 'moodle', ['class' => 'menu-icon']) . '
                 <span>' . get_string('grades', 'block_bloquecero') . '</span>
@@ -1055,23 +1307,40 @@ class block_bloquecero extends block_base {
             '</nav>
             <div class="bloquecero-main-wrapper" style="padding: 0 20px; font-family: Arial, sans-serif;">
             <!-- Resto del contenido del bloque -->
-            <div class="bloquecero-header-responsive">
-                ' . ($fondo_cabecera_img ? '<img src="' . $fondo_cabecera_img . '" alt="" role="presentation" class="bloquecero-header-bg-img">' : '') . '
-                <div class="bloquecero-header-content">
-                    <h2 class="bloquecero-header-title">' . format_string(trim(explode(' - ', $COURSE->fullname, 2)[0])) . '</h2>
+            <div class="bloquecero-header-wrapper">
+                <div class="bloquecero-header-responsive">
+                    ' . ($fondo_cabecera_img ? '<img src="' . $fondo_cabecera_img . '" alt="" role="presentation" class="bloquecero-header-bg-img">' : '') . '
+                    <div class="bloquecero-header-content">
+                        <h2 class="bloquecero-header-title">' . format_string(trim(explode(' - ', $COURSE->fullname, 2)[0])) . '</h2>
+                    </div>
                 </div>
+                ' . (!empty($metachild_links) ? '
+                <p class="bloquecero-metachild-notice">' . get_string('metachild_notice', 'block_bloquecero') . '<br>' . implode('<br>', $metachild_links) . '</p>' : '') . '
             </div>
+            ' . ($is_metacourse ? '
+            <!-- Aviso de metacurso -->
+            <div class="bloquecero-meta-notice" role="alert">
+                <strong>' . get_string('metacourse_notice_title', 'block_bloquecero') . '</strong>
+                <p>' . get_string('metacourse_notice', 'block_bloquecero') . '</p>
+                <p>' . implode('<br>', $metacourse_links) . '</p>
+            </div>' : '') . '
             <!-- Fechas y equipo docente fuera del header para evitar recorte -->
-            <div class="bloquecero-info-row">
+            <div class="bloquecero-info-row"' . $metaHide . '>
                 ' . ($courseDates ? '<p class="bloquecero-header-dates">' . $courseDates . '</p>' : '') . '
                 <p class="bloquecero-header-teachers">' . get_string('teachingteam', 'block_bloquecero') . ': ' . $contactButtonsHtml . '</p>
             </div>
+            ' . (!empty($this->config->show_september_notice) ? '
+            <!-- Aviso convocatoria de septiembre -->
+            <div class="bloquecero-september-notice" role="alert">
+                <strong>' . get_string('septembernotice_title', 'block_bloquecero') . '</strong>
+                <p>' . get_string('septembernotice_text', 'block_bloquecero') . '</p>
+            </div>' : '') . '
             <!-- Bloques de información de contacto de cada profesor -->
-            ' . $contactBlocksHtml . '
+            ' . (!$is_metacourse ? $contactBlocksHtml : '') . '
 
 
             <!-- Sección de foros y demás secciones -->
-            <div style="padding: 0 40px;">
+            <div class="bloquecero-forums-wrapper" style="padding: 0 40px;' . ($is_metacourse ? 'display:none;' : '') . '">
                 <nav class="bloquecero-tabs" aria-label="' . get_string('courseforums', 'block_bloquecero') . '">'
                     . (!empty($forum_anuncios_url) ? '
                     <a href="' . $forum_anuncios_url . '" class="bloquecero-tab">
@@ -1093,11 +1362,18 @@ class block_bloquecero extends block_base {
                         . (isset($count_estudiantes) && is_array($count_estudiantes) && array_sum($count_estudiantes) > 0
                             ? ' <span style="display:inline-block;min-width:22px;height:22px;line-height:22px;background:#4E6A1E;color:#fff;font-weight:600;font-size:0.98em;border-radius:50%;text-align:center;margin-left:7px;vertical-align:middle;" aria-label="' . array_sum($count_estudiantes) . ' ' . get_string('unreadposts', 'block_bloquecero') . '">' . array_sum($count_estudiantes) . '</span>'
                             : '') . '
+                    </a>' : '')
+                    . (!empty($forum_septiembre_url) ? '
+                    <a href="' . $forum_septiembre_url . '" class="bloquecero-tab bloquecero-tab-september">
+                        ' . get_string('sept_forum_name', 'block_bloquecero')
+                        . (isset($count_septiembre) && is_array($count_septiembre) && array_sum($count_septiembre) > 0
+                            ? ' <span style="display:inline-block;min-width:22px;height:22px;line-height:22px;background:#4E6A1E;color:#fff;font-weight:600;font-size:0.98em;border-radius:50%;text-align:center;margin-left:7px;vertical-align:middle;" aria-label="' . array_sum($count_septiembre) . ' ' . get_string('unreadposts', 'block_bloquecero') . '">' . array_sum($count_septiembre) . '</span>'
+                            : '') . '
                     </a>' : '') . '
                 </nav>
             </div>
             <!-- Bloques divididos en dos columnas -->
-            <div class="bloquecero-maincards-row">
+            <div class="bloquecero-maincards-row" style="' . ($is_metacourse ? 'display:none;' : '') . '">
                 <div style="width: 50%; box-sizing: border-box;">
                     ' . $sesionesDirecto . '
                 </div>
@@ -1106,10 +1382,10 @@ class block_bloquecero extends block_base {
                 </div>
             </div>
                     <!-- Carrusel de tarjetas de secciones -->
-                    <div style="text-align: left; padding: 0 40px; margin-bottom: 10px;">
+                    <div class="bloquecero-sections-title" style="text-align: left; padding: 0 40px; margin-bottom: 10px;' . ($is_metacourse ? 'display:none;' : '') . '">
             <h3 style="color: #004D35; margin-top: 0;">' . get_string('coursesections', 'block_bloquecero') . '</h3>
             </div>' .
-            $carouselContainer . '
+            (!$is_metacourse ? $carouselContainer : '') . '
 
 
                         <style>
@@ -1129,6 +1405,11 @@ class block_bloquecero extends block_base {
             }
             }
             @media (max-width: 660px) {
+            .bloquecero-forums-wrapper,
+            .bloquecero-sections-title {
+                padding-left: 0 !important;
+                padding-right: 0 !important;
+            }
             .bloquecero-maincards-row {
                 flex-direction: column !important;
                 gap: 10px !important;
@@ -1602,6 +1883,8 @@ class block_bloquecero extends block_base {
                     margin: 0 0 12px 0;
                     color: #0C3B2E !important;
                     letter-spacing: 0.01em;
+                    min-width: 0;
+                    overflow-wrap: break-word;
                 }
                 .udima-maincard:hover {
                     border-color: #B7C65C !important;
@@ -1611,7 +1894,7 @@ class block_bloquecero extends block_base {
                 .udima-menu-bar {
                     display: flex;
                     gap: 28px;
-                    justify-content: flex-end;
+                    justify-content: flex-start;
                     align-items: center;
                     padding: 8px 24px 0 24px;
                     background: none;
@@ -1669,6 +1952,31 @@ class block_bloquecero extends block_base {
                 }
                 .udima-menu-link:active {
                     color: #004D35;
+                }
+                @media (max-width: 800px) {
+                    .udima-menu-bar {
+                        gap: 4px;
+                        justify-content: flex-start;
+                        overflow-x: visible;
+                        white-space: normal;
+                        padding: 4px 8px;
+                    }
+                    .udima-menu-link {
+                        height: 36px;
+                        width: 40px;
+                        justify-content: center;
+                        padding: 0;
+                        gap: 0;
+                    }
+                    .udima-menu-link span {
+                        display: none;
+                    }
+                    .udima-menu-link .menu-icon {
+                        width: 20px;
+                        height: 20px;
+                        font-size: 1.15em;
+                        margin-right: 0;
+                    }
                 }
 
                 .moodle-toggle-centering {
@@ -1832,7 +2140,6 @@ class block_bloquecero extends block_base {
                 font-weight: 600;
                 color: #0C3B2E;
                 letter-spacing: 0.01em;
-                white-space: nowrap;
                 min-width: 0;
             }
             /* .week-selector y .sesiones-directo-selector: regla conjunta arriba */
@@ -1861,7 +2168,6 @@ class block_bloquecero extends block_base {
                 font-weight: 600;
                 color: #0C3B2E;
                 letter-spacing: 0.01em;
-                white-space: nowrap;
                 min-width: 0;
             }
             /* .week-selector y .sesiones-directo-selector: regla conjunta arriba */
@@ -1998,7 +2304,7 @@ class block_bloquecero extends block_base {
             .bloquecero-header-title {
                 font-family: \'Inter\', Arial, sans-serif !important;
                 font-weight: 400 !important;
-                font-size: 2.5em !important;
+                font-size: clamp(2rem, 5.5vw, 2.5rem) !important;
                 color: #222 !important;
                 letter-spacing: -0.02em !important;
                 line-height: 1.05;
@@ -2021,21 +2327,84 @@ class block_bloquecero extends block_base {
                 font-weight: 500;
                 line-height: 1.6;
             }
+            .bloquecero-september-notice {
+                margin: 10px 20px 10px 20px;
+                padding: 14px 18px;
+                background-color: #fff3cd;
+                border: 2px solid #e6a817;
+                border-radius: 6px;
+                color: #6b4c00;
+            }
+            .bloquecero-september-notice strong {
+                display: block;
+                font-size: 1.05em;
+                margin-bottom: 6px;
+                text-transform: uppercase;
+                letter-spacing: 0.03em;
+            }
+            .bloquecero-september-notice p {
+                margin: 0;
+                font-size: 0.95em;
+                line-height: 1.5;
+            }
+            .bloquecero-header-wrapper {
+                position: relative;
+                margin-bottom: 20px;
+            }
+            .bloquecero-header-wrapper .bloquecero-header-responsive {
+                margin-bottom: 0;
+            }
+            .bloquecero-metachild-notice {
+                position: absolute;
+                right: 30px;
+                top: calc(30px + 1.1 * clamp(2rem, 5.5vw, 2.5rem));
+                margin: 0;
+                padding: 0;
+                font-size: 0.8em;
+                color: rgba(0,0,0,0.55);
+                z-index: 3;
+                pointer-events: none;
+            }
+            .bloquecero-meta-notice {
+                margin: 14px 20px 0;
+                padding: 16px 20px;
+                background: #1655A0;
+                border-radius: 6px;
+                font-size: 1em;
+                color: #fff;
+                line-height: 1.6;
+            }
+            .bloquecero-meta-notice strong {
+                display: block;
+                font-size: 1.05em;
+                margin-bottom: 6px;
+                text-transform: uppercase;
+                letter-spacing: 0.04em;
+            }
+            .bloquecero-meta-notice p { margin: 0 0 8px; }
+            .bloquecero-meta-notice p:last-child { margin: 0; }
+            .bloquecero-meta-link {
+                font-weight: 700;
+                color: #fff;
+                text-decoration: underline;
+                font-size: 1.05em;
+            }
+            .bloquecero-meta-link:hover { color: #cce0ff; }
             @media (max-width: 600px) {
                 .bloquecero-main-wrapper {
                     padding: 0 6px !important;
                 }
                 .bloquecero-info-row {
                     padding: 0 4px;
-                    text-align: center;
+                    text-align: right;
                 }
                 .bloquecero-header-dates {
                     font-size: 0.88em;
-                    text-align: center;
+                    text-align: right;
                 }
                 .bloquecero-header-teachers {
                     font-size: 0.92em;
-                    text-align: center;
+                    text-align: right;
                 }
                 .carousel-container {
                     padding: 0 22px !important;
@@ -2047,14 +2416,25 @@ class block_bloquecero extends block_base {
             }
 
             @media (max-width: 800px) {
+                .bloquecero-header-bg-img {
+                    display: none;
+                }
+                .bloquecero-header-responsive {
+                    aspect-ratio: unset;
+                    min-height: auto;
+                }
                 .bloquecero-header-content {
+                    position: relative;
+                    top: auto; left: auto;
+                    width: 100%;
+                    height: auto;
                     align-items: flex-start;
-                    padding: 12px 10px 10px 10px;
+                    padding: 8px 0 4px 0;
                 }
                 .bloquecero-header-title {
-                    font-size: 1.35em !important;
                     line-height: 1.18;
                     margin-bottom: 5px;
+                    text-shadow: none;
                 }
                 .bloquecero-header-dates {
                     font-size: 0.92em;
@@ -2063,22 +2443,6 @@ class block_bloquecero extends block_base {
                 .bloquecero-header-teachers {
                     font-size: 1em;
                     margin-bottom: 5px;
-                }
-                .bloquecero-header-responsive {
-                    aspect-ratio: 2.2 / 1;
-                    min-height: 84px;
-                }
-            }
-
-            @media (max-width: 540px) {
-                .bloquecero-header-title {
-                    font-size: 1em !important;
-                }
-                .bloquecero-header-content {
-                    padding: 6px 4px;
-                }
-                .bloquecero-header-responsive {
-                    min-height: 48px;
                 }
             }
 
@@ -2787,7 +3151,9 @@ class block_bloquecero extends block_base {
         <style>
         .bloquecero-section-card { cursor: pointer; }
         .bloquecero-vermas { color: #3D7A1C; font-weight: 500; cursor: pointer; }
-        .bloquecero-card-title-row { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; width: 100%; gap: 8px; margin-bottom: 8px; }
+        .bloquecero-card-title-row { display: flex; align-items: flex-start; justify-content: space-between; flex-wrap: nowrap; width: 100%; gap: 8px; margin-bottom: 8px; min-width: 0; }
+        .bloquecero-card-title-row h3 { flex: 1; min-width: 0; overflow-wrap: break-word; }
+        .bloquecero-card-title-row button { flex-shrink: 0; margin-top: 2px; }
         .bloquecero-card-line { height: 3px; width: 100%; background: #B7C65C; border-radius: 2px; margin-bottom: 10px; }
         .bloquecero-completion-icon { margin-left: 6px; font-size: 0.85em; }
         .bloquecero-completion-done { color: #4CAF50; }

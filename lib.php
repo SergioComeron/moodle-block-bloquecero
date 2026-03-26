@@ -50,12 +50,14 @@ function block_bloquecero_before_standard_top_of_body_html() {
         #courseindex-drawer,
         .courseindex,
         .drawer-toggler.drawer-left-toggle { display: none !important; }
-        .drawer-left {
-            display: block !important;
-            transform: translateX(0) !important;
-            visibility: visible !important;
+        @media (min-width: 768px) {
+            .drawer-left {
+                display: block !important;
+                transform: translateX(0) !important;
+                visibility: visible !important;
+            }
+            .drawers-backdrop { display: none !important; }
         }
-        .drawers-backdrop { display: none !important; }
     </style>';
 }
 

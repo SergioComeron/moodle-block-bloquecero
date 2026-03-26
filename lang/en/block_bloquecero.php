@@ -81,6 +81,18 @@ $string['invalidurl'] = 'The URL entered is not valid';
 $string['managebibliography'] = 'Manage bibliography';
 $string['nobibliographyyet'] = 'No bibliography has been added yet';
 
+$string['metachild_notice'] = 'This course shares enrolment with:';
+$string['metacourse_notice_title'] = 'META-LINKED CLASSROOM';
+$string['metacourse_notice'] = 'Students enrolled in this classroom have access to the following course, where all the content is located:';
+$string['sept_forum_name'] = 'September Call Forum';
+$string['sept_announcement_subject'] = 'Classroom configured for the September Call';
+$string['sept_announcement_body'] = '<p>All students are informed that this classroom has been enabled for the <strong>September Call</strong>.</p><p>From this moment until August 30th, only the evaluation activities associated with this call established by the teacher can be carried out. All official communications will be sent exclusively through the <strong>September Call Forum</strong>.</p>';
+$string['septembernotice_header'] = 'September mode';
+$string['septembernotice_enable'] = 'Enable September mode';
+$string['septembernotice_enable_help'] = 'If enabled, an informational notice about the September call will be shown just below the course name.';
+$string['septembernotice_title'] = 'CLASSROOM ENABLED FOR THE SEPTEMBER CALL';
+$string['septembernotice_text'] = 'In this classroom, from this moment until August 30th, only the evaluation activities associated with the September call established by the teacher can be carried out. The teacher will only send communications to students through the September Call Forum.';
+
 // Accessibility strings.
 $string['close'] = 'Close';
 $string['completed'] = 'Completed';

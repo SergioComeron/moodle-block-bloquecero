@@ -142,6 +142,12 @@ class block_bloquecero_edit_form extends block_edit_form {
                 get_string('saveblockfirst', 'block_bloquecero'));
         }
 
+        // --- Modo septiembre ---
+        $mform->addElement('header', 'septembergheader', get_string('septembernotice_header', 'block_bloquecero'));
+        $mform->addElement('advcheckbox', 'config_show_september_notice', get_string('septembernotice_enable', 'block_bloquecero'));
+        $mform->setDefault('config_show_september_notice', 0);
+        $mform->addHelpButton('config_show_september_notice', 'septembernotice_enable', 'block_bloquecero');
+
         // Selector para el número máximo de actividades a mostrar en cada ficha de sección.
         $mform->addElement('header', 'blokconfig', get_string('blocksconfig', 'block_bloquecero'));
         $maxactivitiesoptions = [];

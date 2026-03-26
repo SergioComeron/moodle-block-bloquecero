@@ -59,6 +59,18 @@ $string['invalidurl'] = 'La URL introducida no es válida';
 $string['managebibliography'] = 'Gestionar bibliografía';
 $string['nobibliographyyet'] = 'No se ha añadido bibliografía todavía';
 
+$string['metachild_notice'] = 'Curso compartido con:';
+$string['metacourse_notice_title'] = 'AULA METAENLAZADA';
+$string['metacourse_notice'] = 'Los alumnos matriculados en este aula tienen acceso al siguiente curso, donde se encuentra todo el contenido:';
+$string['sept_forum_name'] = 'Foro Convocatoria de Septiembre';
+$string['sept_announcement_subject'] = 'Aula configurada para la Convocatoria de Septiembre';
+$string['sept_announcement_body'] = '<p>Se informa a todos los alumnos que este aula queda habilitada para la <strong>Convocatoria de Septiembre</strong>.</p><p>Desde este momento y hasta el próximo 30 de agosto solo se podrán realizar las actividades de evaluación asociadas a esta convocatoria establecidas por el profesor. Cualquier comunicación oficial se realizará exclusivamente a través del <strong>Foro Convocatoria de Septiembre</strong>.</p>';
+$string['septembernotice_header'] = 'Modo septiembre';
+$string['septembernotice_enable'] = 'Activar modo septiembre';
+$string['septembernotice_enable_help'] = 'Si se activa, se mostrará un aviso informativo justo debajo del nombre del curso indicando que el aula está habilitada para la convocatoria de septiembre.';
+$string['septembernotice_title'] = 'AULA HABILITADA PARA LA CONVOCATORIA DE SEPTIEMBRE';
+$string['septembernotice_text'] = 'En esta aula, desde este momento y hasta el próximo 30 de agosto solo se podrán realizar las actividades de evaluación asociadas a la convocatoria de septiembre establecidas por el profesor. El profesor solo enviará comunicados a los alumnos a través del Foro Convocatoria de Septiembre';
+
 // Cadenas de accesibilidad.
 $string['close'] = 'Cerrar';
 $string['completed'] = 'Completada';
