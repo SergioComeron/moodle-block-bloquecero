@@ -83,6 +83,7 @@ if (empty($sessions)) {
         get_string('sessionname', 'block_bloquecero'),
         get_string('sessiondate', 'block_bloquecero'),
         get_string('duration', 'block_bloquecero'),
+        get_string('bookdescription', 'block_bloquecero'),
         get_string('syncedwithcalendar', 'block_bloquecero'),
         get_string('actions')
     ];
@@ -113,10 +114,13 @@ if (empty($sessions)) {
             'onclick' => 'return confirm("' . get_string('confirmdeletesession', 'block_bloquecero') . '");'
         ]);
 
+        $descriptionstr = !empty($session->description) ? shorten_text(strip_tags($session->description), 80) : '—';
+
         $table->data[] = [
             format_string($session->name),
             $datestr,
             $durationstr,
+            $descriptionstr,
             $synced,
             $actions
         ];

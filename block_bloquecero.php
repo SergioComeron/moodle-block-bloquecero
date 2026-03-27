@@ -57,6 +57,7 @@ function get_cm_start_date($cm) {
 class block_bloquecero extends block_base {
     public function init() {
         $this->title = get_string('pluginname', 'block_bloquecero');
+        $this->instance_allow_multiple = false;
     }
 
     /**
@@ -300,6 +301,7 @@ class block_bloquecero extends block_base {
         }
 
         $coursecontext = context_course::instance($COURSE->id);
+        $can_view_hidden = has_capability('moodle/course:update', $coursecontext);
         require_once($CFG->dirroot . '/user/lib.php');
         $teachersraw = get_enrolled_users($coursecontext, 'moodle/course:update');
 
@@ -530,7 +532,7 @@ class block_bloquecero extends block_base {
                     onclick="toggleContactInfo(\'' . $uniqueId . '\')"
                     aria-expanded="false"
                     aria-controls="' . $uniqueId . '">
-                    <span>' . format_string($teacher->fullname) . '</span>
+                    <span>' . format_string($teacher->fullname) . '</span><span class="bloquecero-teacher-infoicon" aria-hidden="true">i</span>
                 </button>';
 
             // Bloque de información de contacto para este profesor (oculto por defecto).
@@ -562,10 +564,8 @@ class block_bloquecero extends block_base {
                 </div>';
         }
 
-        // Unir los botones con comas, cada nombre envuelto en span nowrap para evitar
-        // que la coma quede en una línea separada en móvil
         $contactButtonsHtml = implode(
-            '<span aria-hidden="true">, </span>',
+            '<span aria-hidden="true" style="margin: 0 4px; color: #888;">·</span>',
             array_map(fn($btn) => '<span style="white-space:nowrap">' . $btn . '</span>', $teachersList)
         );
 
@@ -664,7 +664,11 @@ class block_bloquecero extends block_base {
                                 $completionhtml .= '<div class="bloquecero-completion-conditions">' . implode(' &middot; ', array_map('htmlspecialchars', $condition_parts)) . '</div>';
                             }
                         }
-                        $all_activities_array[] = '<li>' . $icon . ' <a href="' . $cm->url . '">' . format_string($cm->name) . '</a>' . $completionhtml . '</li>';
+                        $cm_hidden_html = (!$cm->visible && $can_view_hidden)
+                            ? ' <span class="bloquecero-activity-hidden">' . get_string('hiddenfromstudents', 'moodle') . '</span>'
+                            : '';
+                        $cm_li_class = (!$cm->visible && $can_view_hidden) ? ' class="bloquecero-item-hidden"' : '';
+                        $all_activities_array[] = '<li' . $cm_li_class . '>' . $icon . ' <a href="' . $cm->url . '">' . format_string($cm->name) . '</a>' . $cm_hidden_html . $completionhtml . '</li>';
                         $visibleactivities++;
                         $totalactivities++;
                     } else {
@@ -760,7 +764,11 @@ class block_bloquecero extends block_base {
             }
 
             // Construir la tarjeta como string (con badge si corresponde)
-            $card_html = '<div class="bloquecero-section-card" style="background: '.$bg_color.'">';
+            $hidden_class = (!$section->visible && $can_view_hidden) ? ' bloquecero-item-hidden' : '';
+            $card_html = '<div class="bloquecero-section-card' . $hidden_class . '" style="background: '.$bg_color.'">';
+            if ($hidden_class) {
+                $card_html .= '<span class="bloquecero-hidden-badge">' . get_string('hiddenfromstudents', 'moodle') . '</span>';
+            }
             if ($badge) {
                 $card_html .= '<span class="bloquecero-section-badge">' . $badge . '</span>';
             }
@@ -915,7 +923,8 @@ class block_bloquecero extends block_base {
                     'modfullname' => format_string($cm->modfullname),
                     'startdate' => (int)$startdate,
                     'duedate' => (int)$duedate,
-                    'submitted' => $submitted
+                    'submitted' => $submitted,
+                    'hidden' => (!$cm->visible && $can_view_hidden)
                 ];
 
                 $duedateHtml = '';
@@ -929,8 +938,11 @@ class block_bloquecero extends block_base {
                     . '</div>';
                 $hasUserGrade = isset($usergraded[$cm->modname . '_' . $cm->instance]) ? '1' : '0';
                 $hasSubmitted = $submitted ? '1' : '0';
-                $calendarActivities .= '<li data-timestamp="' . (int)$startdate . '" data-duedate="' . (int)$duedate . '" data-graded="' . $hasUserGrade . '" data-submitted="' . $hasSubmitted . '" style="margin-bottom: 8px;">'
-                    . '<div>' . $icon . ' <a href="' . $cm->url . '">' . format_string($cm->name) . '</a></div>'
+                $cal_hidden = (!$cm->visible && $can_view_hidden);
+                $cal_li_class = $cal_hidden ? ' class="bloquecero-item-hidden"' : '';
+                $cal_hidden_html = $cal_hidden ? ' <span class="bloquecero-activity-hidden">' . get_string('hiddenfromstudents', 'moodle') . '</span>' : '';
+                $calendarActivities .= '<li data-timestamp="' . (int)$startdate . '" data-duedate="' . (int)$duedate . '" data-graded="' . $hasUserGrade . '" data-submitted="' . $hasSubmitted . '"' . $cal_li_class . ' style="margin-bottom: 8px;">'
+                    . '<div>' . $icon . ' <a href="' . $cm->url . '">' . format_string($cm->name) . '</a>' . $cal_hidden_html . '</div>'
                     . $secondLine
                     . '</li>';
             }
@@ -959,50 +971,50 @@ class block_bloquecero extends block_base {
             foreach ($sessions as $session) {
                 $sesionesZoom[] = [
                     'titulo' => $session->name,
-                    'fecha' => $session->sessiondate
+                    'fecha' => $session->sessiondate,
+                    'duracion' => (int)($session->duration ?? 0),
+                    'descripcion' => !empty($session->description) ? format_text($session->description, FORMAT_HTML) : ''
                 ];
             }
         }
 
-        // --- Calcular el selector de semanas ---
-        // Recopilar todas las fechas de actividades y sesiones para calcular el rango real
-        $allDates = [];
-
-        // Agregar fechas de actividades
+        // --- Calcular semanas para la tarjeta de ACTIVIDADES ---
+        $activityDates = [];
         foreach ($modinfo->cms as $cm) {
             if (!$cm->uservisible) continue;
             $startdate = get_cm_start_date($cm);
             if ($startdate) {
-                $allDates[] = $startdate;
+                $activityDates[] = $startdate;
             }
         }
-
-        // Agregar fechas de sesiones
-        foreach ($sesionesZoom as $sesion) {
-            $allDates[] = $sesion['fecha'];
-        }
-
-        // Calcular rango de fechas basado en contenido real
-        if (!empty($allDates)) {
-            $minDate = min($allDates);
-            $maxDate = max($allDates);
-            // Agregar margen: empezar el lunes de la semana de la primera fecha
-            $courseStart = strtotime('last monday', $minDate + 86400); // +1 día para que si es lunes no retroceda
-            if ($courseStart > $minDate) {
-                $courseStart = strtotime('last monday', $minDate);
+        if (!empty($activityDates)) {
+            $minActDate = min($activityDates);
+            $maxActDate = max($activityDates);
+            $activitiesStart = strtotime('last monday', $minActDate + 86400);
+            if ($activitiesStart > $minActDate) {
+                $activitiesStart = strtotime('last monday', $minActDate);
             }
-            // Terminar el domingo de la semana de la última fecha
-            $courseEnd = strtotime('next sunday', $maxDate);
+            $activitiesEnd = strtotime('next sunday', $maxActDate);
         } else {
-            // Si no hay actividades ni sesiones, usar fechas del curso
-            $courseStart = $COURSE->startdate;
-            $courseEnd = !empty($COURSE->enddate) ? $COURSE->enddate : time();
+            $activitiesStart = $COURSE->startdate ?: time();
+            $activitiesEnd = !empty($COURSE->enddate) ? $COURSE->enddate : time();
         }
+        $activitiesWeeks = max(1, (int)ceil(($activitiesEnd - $activitiesStart) / (7 * 24 * 60 * 60)));
 
-        $weeks = ceil(($courseEnd - $courseStart) / (7 * 24 * 60 * 60));
-        $options = '';
-        for ($i = 1; $i <= $weeks; $i++) {
-            $options .= '<option value="' . $i . '">Semana ' . $i . '</option>';
+        // --- Calcular semanas para la tarjeta de SESIONES ---
+        if (!empty($sesionesZoom)) {
+            $allSesionDates = array_column($sesionesZoom, 'fecha');
+            $minSesDate = min($allSesionDates);
+            $maxSesDate = max($allSesionDates);
+            $sessionsStart = strtotime('last monday', $minSesDate + 86400);
+            if ($sessionsStart > $minSesDate) {
+                $sessionsStart = strtotime('last monday', $minSesDate);
+            }
+            $sessionsEnd = strtotime('next sunday', $maxSesDate);
+            $sessionsWeeks = max(1, (int)ceil(($sessionsEnd - $sessionsStart) / (7 * 24 * 60 * 60)));
+        } else {
+            $sessionsStart = $COURSE->startdate ?: time();
+            $sessionsWeeks = 1;
         }
 
         $sesionesZoomList = '';
@@ -1044,8 +1056,8 @@ class block_bloquecero extends block_base {
             </div>
             <script>
             document.addEventListener("DOMContentLoaded", function(){
-                const courseStart = ' . $courseStart . ';
-                const totalWeeks = ' . $weeks . ';
+                const courseStart = ' . $activitiesStart . ';
+                const totalWeeks = ' . $activitiesWeeks . ';
                 const now = Math.floor(Date.now() / 1000);
                 let currentWeek = Math.floor((now - courseStart) / (7 * 24 * 60 * 60)) + 1;
                 if (currentWeek < 1) {
@@ -1157,16 +1169,6 @@ class block_bloquecero extends block_base {
 
         // --- SESIONES EN DIRECTO: genera el bloque con selector de semana ---
         // Calcular semanas para las sesiones (solo si hay sesiones)
-        $sesionesStart = 0;
-        $sesionesEnd = 0;
-        $sesionesWeeks = 1;
-        if (!empty($sesionesZoom)) {
-            $sesionesStart = $sesionesZoom[0]['fecha'];
-            $sesionesEnd = $sesionesZoom[count($sesionesZoom) - 1]['fecha'];
-            $sesionesWeeks = ceil(($sesionesEnd - $courseStart) / (7 * 24 * 60 * 60));
-            if ($sesionesWeeks < 1) $sesionesWeeks = 1;
-        }
-        // Usar el mismo rango de semanas que el curso para coherencia
         $sesionesDirecto = '
         <div class="udima-maincard sesiones-directo-maincard">
             <div class="sesiones-directo-header">
@@ -1190,8 +1192,8 @@ class block_bloquecero extends block_base {
         </div>
         <script>
         document.addEventListener("DOMContentLoaded", function(){
-            const courseStart = ' . $courseStart . ';
-            const totalWeeks = ' . $weeks . ';
+            const courseStart = ' . $sessionsStart . ';
+            const totalWeeks = ' . $sessionsWeeks . ';
             const now = Math.floor(Date.now() / 1000);
             let currentWeek = Math.floor((now - courseStart) / (7 * 24 * 60 * 60)) + 1;
             if (currentWeek < 1) {
@@ -1307,15 +1309,11 @@ class block_bloquecero extends block_base {
             '</nav>
             <div class="bloquecero-main-wrapper" style="padding: 0 20px; font-family: Arial, sans-serif;">
             <!-- Resto del contenido del bloque -->
-            <div class="bloquecero-header-wrapper">
-                <div class="bloquecero-header-responsive">
-                    ' . ($fondo_cabecera_img ? '<img src="' . $fondo_cabecera_img . '" alt="" role="presentation" class="bloquecero-header-bg-img">' : '') . '
-                    <div class="bloquecero-header-content">
-                        <h2 class="bloquecero-header-title">' . format_string(trim(explode(' - ', $COURSE->fullname, 2)[0])) . '</h2>
-                    </div>
+            <div class="bloquecero-header-responsive">
+                ' . ($fondo_cabecera_img ? '<img src="' . $fondo_cabecera_img . '" alt="" role="presentation" class="bloquecero-header-bg-img">' : '') . '
+                <div class="bloquecero-header-content">
+                    <h2 class="bloquecero-header-title">' . format_string(trim(explode(' - ', $COURSE->fullname, 2)[0])) . '</h2>
                 </div>
-                ' . (!empty($metachild_links) ? '
-                <p class="bloquecero-metachild-notice">' . get_string('metachild_notice', 'block_bloquecero') . '<br>' . implode('<br>', $metachild_links) . '</p>' : '') . '
             </div>
             ' . ($is_metacourse ? '
             <!-- Aviso de metacurso -->
@@ -1326,6 +1324,7 @@ class block_bloquecero extends block_base {
             </div>' : '') . '
             <!-- Fechas y equipo docente fuera del header para evitar recorte -->
             <div class="bloquecero-info-row"' . $metaHide . '>
+                ' . (!empty($metachild_links) ? '<p class="bloquecero-metachild-notice">' . get_string('metachild_notice', 'block_bloquecero') . '<br>' . implode('<br>', $metachild_links) . '</p>' : '') . '
                 ' . ($courseDates ? '<p class="bloquecero-header-dates">' . $courseDates . '</p>' : '') . '
                 <p class="bloquecero-header-teachers">' . get_string('teachingteam', 'block_bloquecero') . ': ' . $contactButtonsHtml . '</p>
             </div>
@@ -2347,23 +2346,39 @@ class block_bloquecero extends block_base {
                 font-size: 0.95em;
                 line-height: 1.5;
             }
-            .bloquecero-header-wrapper {
-                position: relative;
-                margin-bottom: 20px;
+            .bloquecero-item-hidden {
+                opacity: 0.55;
             }
-            .bloquecero-header-wrapper .bloquecero-header-responsive {
-                margin-bottom: 0;
+            .bloquecero-hidden-badge {
+                display: inline-block;
+                font-size: 0.7em;
+                font-weight: 600;
+                background: rgba(0,0,0,0.35);
+                color: #fff;
+                padding: 2px 7px;
+                border-radius: 3px;
+                margin: 6px 6px 2px;
+                letter-spacing: 0.03em;
+                text-transform: uppercase;
+            }
+            .bloquecero-activity-hidden {
+                font-size: 0.72em;
+                font-weight: 600;
+                background: #e0e0e0;
+                color: #555;
+                padding: 1px 5px;
+                border-radius: 3px;
+                margin-left: 5px;
+                text-transform: uppercase;
+                letter-spacing: 0.03em;
+                vertical-align: middle;
             }
             .bloquecero-metachild-notice {
-                position: absolute;
-                right: 30px;
-                top: calc(30px + 1.1 * clamp(2rem, 5.5vw, 2.5rem));
-                margin: 0;
+                margin: 0 0 6px;
                 padding: 0;
                 font-size: 0.8em;
-                color: rgba(0,0,0,0.55);
-                z-index: 3;
-                pointer-events: none;
+                color: #888;
+                line-height: 1.6;
             }
             .bloquecero-meta-notice {
                 margin: 14px 20px 0;
@@ -2459,11 +2474,36 @@ class block_bloquecero extends block_base {
                 transition: color 0.18s;
                 font-family: inherit;
                 outline: none;
+                text-decoration: underline;
+                text-decoration-style: dotted;
+                text-underline-offset: 3px;
             }
             .bloquecero-teacher-btn:hover,
             .bloquecero-teacher-btn:focus {
                 color: #6B7D2E;
-                text-decoration: underline;
+                text-decoration-style: solid;
+            }
+            .bloquecero-teacher-infoicon {
+                display: inline-flex;
+                align-items: center;
+                justify-content: center;
+                width: 14px;
+                height: 14px;
+                border-radius: 50%;
+                background: #004D35;
+                color: #fff;
+                font-size: 0.65em;
+                font-style: italic;
+                font-weight: 700;
+                margin-left: 5px;
+                vertical-align: middle;
+                transition: background 0.18s;
+                line-height: 1;
+            }
+            .bloquecero-teacher-btn:hover .bloquecero-teacher-infoicon,
+            .bloquecero-teacher-btn:focus .bloquecero-teacher-infoicon,
+            .bloquecero-teacher-btn[aria-expanded="true"] .bloquecero-teacher-infoicon {
+                background: #6B7D2E;
             }
             </style>
             <style>
@@ -2876,6 +2916,7 @@ class block_bloquecero extends block_base {
         'graded'      => get_string('graded', 'block_bloquecero'),
         'pending'     => get_string('pending', 'block_bloquecero'),
         'daynames'    => explode(',', get_string('daynames', 'block_bloquecero')),
+        'hiddenfromstudents' => get_string('hiddenfromstudents', 'moodle'),
     ];
 
     // Añade el script JS para el modal de sesiones fuera de cualquier echo PHP (como HTML, después del modal y antes del cierre del div)
@@ -2948,11 +2989,13 @@ class block_bloquecero extends block_base {
                             estadoHTML = \'—\';
                         }
 
-                        tabla += \'<tr style="border-bottom:1px solid #eee;transition:background 0.2s;">\' +
+                        var hiddenBadge = activity.hidden ? \' <span style="font-size:0.75em;font-weight:600;background:#aaa;color:#fff;border-radius:3px;padding:1px 6px;margin-left:4px;">\' + bloqueceroI18n.hiddenfromstudents + \'</span>\' : \'\';
+                        tabla += \'<tr style="border-bottom:1px solid #eee;transition:background 0.2s;\' + (activity.hidden ? \'opacity:0.6;\' : \'\') + \'">\' +
                             \'<td style="padding:12px;">\' +
                             \'<div style="display:flex;align-items:center;gap:8px;">\' +
                             activity.icon +
                             \'<a href="\' + activity.url + \'" style="color:#004D35;font-weight:600;text-decoration:none;">\' + activity.name + \'</a>\' +
+                            hiddenBadge +
                             \'</div></td>\' +
                             \'<td style="padding:12px;color:#555;font-size:0.9em;">\' + activity.modfullname + \'</td>\' +
                             \'<td style="padding:12px;color:\' + daysColor + \';font-weight:500;font-size:0.88em;">\' + daysText + dueDateStr + \'</td>\' +
@@ -3039,17 +3082,29 @@ class block_bloquecero extends block_base {
                     tabla += \'<tr><td colspan="2" style="padding:20px;text-align:center;color:#595959;">No hay sesiones programadas</td></tr>\';
                 } else {
                     for(var i=0; i<sesiones.length; i++) {
-                        var fecha = new Date(sesiones[i].fecha*1000);
-                        var dateString = fecha.toLocaleDateString("es-ES", {day: "2-digit", month: "2-digit", year: "numeric"});
+                        var s = sesiones[i];
+                        var fecha = new Date(s.fecha*1000);
+                        var dateString = fecha.toLocaleDateString("es-ES", {weekday:"long", day: "2-digit", month: "long", year: "numeric"});
                         var timeString = fecha.toLocaleTimeString("es-ES", {hour: "2-digit", minute: "2-digit"});
+                        var durStr = \'\';
+                        if (s.duracion > 0) {
+                            var h = Math.floor(s.duracion / 3600);
+                            var m = Math.floor((s.duracion % 3600) / 60);
+                            durStr = h > 0 ? h + \'h\' : \'\';
+                            durStr += m > 0 ? (durStr ? \' \' : \'\') + m + \'min\' : \'\';
+                        }
+                        var descHtml = s.descripcion ? \'<div style="margin-top:8px;font-size:0.9em;color:#444;line-height:1.5;">\' + s.descripcion + \'</div>\' : \'\';
 
                         tabla += \'<tr style="border-bottom:1px solid #eee;transition:background 0.2s;">\' +
                             \'<td style="padding:12px;">\' +
-                            \'<div style="display:flex;align-items:center;gap:8px;">\' +
-                            \'<svg width="16" height="16" viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="16" rx="3" fill="#B7C65C"/><rect x="7" y="9" width="2.5" height="2.5" rx="1" fill="#fff"/><rect x="11" y="9" width="2.5" height="2.5" rx="1" fill="#fff"/><rect x="15" y="9" width="2.5" height="2.5" rx="1" fill="#fff"/><rect x="7" y="13" width="2.5" height="2.5" rx="1" fill="#fff"/><rect x="11" y="13" width="2.5" height="2.5" rx="1" fill="#fff"/><rect x="15" y="13" width="2.5" height="2.5" rx="1" fill="#fff"/></svg>\' +
-                            \'<span style="color:#004D35;font-weight:600;">\' + sesiones[i].titulo + \'</span>\' +
+                            \'<div style="display:flex;align-items:flex-start;gap:10px;">\' +
+                            \'<svg style="flex-shrink:0;margin-top:2px;" width="18" height="18" viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="16" rx="3" fill="#B7C65C"/><rect x="7" y="9" width="2.5" height="2.5" rx="1" fill="#fff"/><rect x="11" y="9" width="2.5" height="2.5" rx="1" fill="#fff"/><rect x="15" y="9" width="2.5" height="2.5" rx="1" fill="#fff"/><rect x="7" y="13" width="2.5" height="2.5" rx="1" fill="#fff"/><rect x="11" y="13" width="2.5" height="2.5" rx="1" fill="#fff"/><rect x="15" y="13" width="2.5" height="2.5" rx="1" fill="#fff"/></svg>\' +
+                            \'<div><span style="color:#004D35;font-weight:600;font-size:1em;">\' + s.titulo + \'</span>\' + descHtml + \'</div>\' +
                             \'</div></td>\' +
-                            \'<td style="padding:12px;color:#555;">\' + dateString + \' - \' + timeString + \'</td>\' +
+                            \'<td style="padding:12px;color:#555;white-space:nowrap;vertical-align:top;">\' +
+                            \'<div style="font-weight:500;color:#333;">\' + dateString + \'</div>\' +
+                            \'<div style="font-size:0.9em;color:#666;margin-top:3px;">&#128336; \' + timeString + (durStr ? \' &nbsp;·&nbsp; &#9201; \' + durStr : \'\') + \'</div>\' +
+                            \'</td>\' +
                             \'</tr>\';
                     }
                 }
@@ -3149,7 +3204,9 @@ class block_bloquecero extends block_base {
                 $this->content->text .= '
 
         <style>
-        .bloquecero-section-card { cursor: pointer; }
+        .bloquecero-section-card { cursor: default; }
+        .bloquecero-section-card li a { cursor: pointer; }
+        .bloquecero-section-number { cursor: pointer; }
         .bloquecero-vermas { color: #3D7A1C; font-weight: 500; cursor: pointer; }
         .bloquecero-card-title-row { display: flex; align-items: flex-start; justify-content: space-between; flex-wrap: nowrap; width: 100%; gap: 8px; margin-bottom: 8px; min-width: 0; }
         .bloquecero-card-title-row h3 { flex: 1; min-width: 0; overflow-wrap: break-word; }

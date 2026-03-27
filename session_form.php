@@ -67,13 +67,6 @@ class session_form extends moodleform {
     }
 
     public function validation($data, $files) {
-        $errors = parent::validation($data, $files);
-
-        // Validate that session date is not in the past (optional, you can remove this).
-        if ($data['sessiondate'] < time() - 3600) { // Allow 1 hour in the past.
-            $errors['sessiondate'] = get_string('sessiondateinthepast', 'block_bloquecero');
-        }
-
-        return $errors;
+        return parent::validation($data, $files);
     }
 }

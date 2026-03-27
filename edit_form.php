@@ -82,18 +82,50 @@ class block_bloquecero_edit_form extends block_edit_form {
             $mform->setDefault($fieldname, 1);
         }
 
-        // Si el usuario actual es profesor, permitirle introducir su horario y teléfono
-        if (array_key_exists($USER->id, $teachers)) {
-            $mform->addElement('header', 'teachercustom', get_string('teachercustom', 'block_bloquecero'));
-            $mform->addElement('text', 'config_userphone_' . $USER->id, get_string('userphone', 'block_bloquecero'));
-            $mform->setType('config_userphone_' . $USER->id, PARAM_TEXT);
-            $mform->setDefault('config_userphone_' . $USER->id, '');
-            $mform->addHelpButton('config_userphone_' . $USER->id, 'userphone', 'block_bloquecero');
+        // Determinar si el usuario actual puede editar los datos de todos los profesores
+        $is_manager = has_capability('moodle/role:assign', $context) || is_siteadmin();
 
-            $mform->addElement('editor', 'config_userschedule_' . $USER->id, get_string('userschedule', 'block_bloquecero'));
-            $mform->setType('config_userschedule_' . $USER->id, PARAM_RAW);
-            $mform->setDefault('config_userschedule_' . $USER->id, '');
-            $mform->addHelpButton('config_userschedule_' . $USER->id, 'userschedule', 'block_bloquecero');
+        // Si es manager/admin: mostrar campos de todos los profesores
+        // Si es profesor: mostrar solo sus propios campos
+        $teachers_to_edit = [];
+        if ($is_manager) {
+            $teachers_to_edit = $teachers;
+        } else if (array_key_exists($USER->id, $teachers)) {
+            $teachers_to_edit = [$USER->id => $teachers[$USER->id]];
+        }
+
+        if (!empty($teachers_to_edit)) {
+            if (!$is_manager || count($teachers_to_edit) === 1) {
+                // Profesor editando sus propios datos: un único header
+                $mform->addElement('header', 'teachercustom', get_string('teachercustom', 'block_bloquecero'));
+                $teacher = reset($teachers_to_edit);
+                $mform->addElement('text', 'config_userphone_' . $teacher->id, get_string('userphone', 'block_bloquecero'));
+                $mform->setType('config_userphone_' . $teacher->id, PARAM_TEXT);
+                $mform->setDefault('config_userphone_' . $teacher->id, '');
+                $mform->addHelpButton('config_userphone_' . $teacher->id, 'userphone', 'block_bloquecero');
+
+                $mform->addElement('editor', 'config_userschedule_' . $teacher->id, get_string('userschedule', 'block_bloquecero'));
+                $mform->setType('config_userschedule_' . $teacher->id, PARAM_RAW);
+                $mform->setDefault('config_userschedule_' . $teacher->id, '');
+                $mform->addHelpButton('config_userschedule_' . $teacher->id, 'userschedule', 'block_bloquecero');
+            } else {
+                // Manager: un header colapsable por profesor, cerrados por defecto
+                foreach ($teachers_to_edit as $teacher) {
+                    $headerid = 'teachercustom_' . $teacher->id;
+                    $mform->addElement('header', $headerid, get_string('teachercustom', 'block_bloquecero') . ': ' . fullname($teacher));
+                    $mform->setExpanded($headerid, false);
+
+                    $mform->addElement('text', 'config_userphone_' . $teacher->id, get_string('userphone', 'block_bloquecero'));
+                    $mform->setType('config_userphone_' . $teacher->id, PARAM_TEXT);
+                    $mform->setDefault('config_userphone_' . $teacher->id, '');
+                    $mform->addHelpButton('config_userphone_' . $teacher->id, 'userphone', 'block_bloquecero');
+
+                    $mform->addElement('editor', 'config_userschedule_' . $teacher->id, get_string('userschedule', 'block_bloquecero'));
+                    $mform->setType('config_userschedule_' . $teacher->id, PARAM_RAW);
+                    $mform->setDefault('config_userschedule_' . $teacher->id, '');
+                    $mform->addHelpButton('config_userschedule_' . $teacher->id, 'userschedule', 'block_bloquecero');
+                }
+            }
         }
 
         // --- Configuración de bibliografía ---
@@ -163,30 +195,33 @@ class block_bloquecero_edit_form extends block_edit_form {
      * Set form data (load existing configuration)
      */
     public function set_data($defaults) {
-        global $USER;
-
-        error_log('=== SET_DATA EN EDIT_FORM ===');
+        global $USER, $COURSE;
 
         if (!empty($this->block->config)) {
-            error_log('Config existe: ' . print_r($this->block->config, true));
+            $context = context_course::instance($COURSE->id);
+            $teachers = get_role_users(3, $context);
+            $is_manager = has_capability('moodle/role:assign', $context) || is_siteadmin();
 
-            // Cargar datos del profesor actual
-            $scheduleKey = 'userschedule_' . $USER->id;
-            if (!empty($this->block->config->$scheduleKey)) {
-                // Si es un array (datos del editor), asignarlo directamente
-                if (is_array($this->block->config->$scheduleKey)) {
-                    $defaults->{"config_userschedule_" . $USER->id} = $this->block->config->$scheduleKey;
-                } else {
-                    // Si es texto plano, convertirlo a formato editor
-                    $defaults->{"config_userschedule_" . $USER->id} = [
-                        'text' => $this->block->config->$scheduleKey,
-                        'format' => FORMAT_HTML
-                    ];
-                }
+            $teachers_to_load = [];
+            if ($is_manager) {
+                $teachers_to_load = $teachers;
+            } else if (array_key_exists($USER->id, $teachers)) {
+                $teachers_to_load = [$USER->id => $teachers[$USER->id]];
             }
 
-        } else {
-            error_log('Config NO existe o está vacío');
+            foreach ($teachers_to_load as $teacher) {
+                $scheduleKey = 'userschedule_' . $teacher->id;
+                if (!empty($this->block->config->$scheduleKey)) {
+                    if (is_array($this->block->config->$scheduleKey)) {
+                        $defaults->{"config_" . $scheduleKey} = $this->block->config->$scheduleKey;
+                    } else {
+                        $defaults->{"config_" . $scheduleKey} = [
+                            'text' => $this->block->config->$scheduleKey,
+                            'format' => FORMAT_HTML
+                        ];
+                    }
+                }
+            }
         }
 
         parent::set_data($defaults);
