@@ -8,18 +8,19 @@ This is a Moodle block plugin (`block_bloquecero`) that provides a customized co
 
 **Key characteristics:**
 - Designed for Moodle 3.11+ (version.php:6)
-- Single large monolithic block class (~2300+ lines in block_bloquecero.php)
+- Single large monolithic block class (~3300+ lines in block_bloquecero.php)
 - Heavy inline JavaScript and CSS within PHP
 - Spanish-primary codebase with English translations
 - Complex DOM manipulation for hiding/showing course elements
+- **Only one instance allowed per course** (`$this->instance_allow_multiple = false`)
 
 ## Architecture
 
 ### Core Files
 
-**block_bloquecero.php** (main block class - ~110KB)
+**block_bloquecero.php** (main block class - ~120KB)
 - `class block_bloquecero extends block_base` with two main methods:
-  - `init()`: Sets block title
+  - `init()`: Sets block title and `$this->instance_allow_multiple = false`
   - `get_content()`: Generates all block HTML, JavaScript, and CSS (main rendering method)
 - `get_cm_start_date($cm)`: Helper function to extract activity start dates based on module type (assign, quiz). For assign: uses `allowsubmissionsfromdate` or `duedate` as fallback. For quiz: uses `timeopen` or `timeclose` as fallback (so quizzes without open date but with close date still appear).
 - Contains extensive inline HTML generation with embedded JavaScript for UI interactions
@@ -32,16 +33,18 @@ This is a Moodle block plugin (`block_bloquecero`) that provides a customized co
 - Configuration fields:
   - Guide URL (course guide link)
   - Forum selectors (announcements, tutorials, students)
-  - Per-teacher settings (phone, office hours) - only visible to teacher users
+  - Per-teacher settings (phone, office hours) - with role-based visibility:
+    - **Professors** see and edit only their own fields
+    - **Managers/admins** (`moodle/role:assign` capability or `is_siteadmin()`) see all teachers with one collapsible header per teacher (`setExpanded(false)`), avoiding excessive scroll
   - Teacher selection checkboxes (`config_teacher_selected_{userid}`) - select which teachers to display
   - Bibliography management - Link to dedicated management page
   - Live sessions management - Link to dedicated management page
   - Max activities per section (1-10, default 4)
-- Custom data loading in `set_data()` for editor fields
+- Custom data loading in `set_data()` for editor fields — loads `userschedule_` for all editable teachers based on role
 
 **manage_sessions.php** (live sessions management page)
 - Dedicated interface for managing live sessions
-- Table display of all sessions with edit/delete actions
+- Table display of all sessions with edit/delete actions (columns: name, date, duration, description, calendar sync, actions)
 - Requires `block/bloquecero:managesessions` capability
 - Shows session sync status with calendar
 - Links to edit_session.php for adding/editing
@@ -58,6 +61,7 @@ This is a Moodle block plugin (`block_bloquecero`) that provides a customized co
   - Duration (duration selector, default 1 hour)
   - Description (textarea, optional)
   - Sync with calendar (checkbox, default enabled)
+- No past-date validation — sessions with past dates can be edited freely
 
 **manage_bibliography.php** (bibliography management page)
 - Dedicated interface for managing bibliography entries
@@ -150,8 +154,10 @@ The block extensively hides/shows Moodle UI elements:
   - If no selection config exists (retrocompatibility), all teachers are shown
   - If selection exists, only teachers with `teacher_selected_{id} = 1` are displayed
 - Stores per-teacher config as `userphone_{userid}` and `userschedule_{userid}`
-- Teachers can only edit their own phone/schedule in edit_form.php
-- Displays teacher cards with photo, contact info (toggleable)
+- **Role-based editing**: Teachers edit only their own data; managers/admins can edit all teachers
+- Displays teacher cards with photo, contact info (toggleable via `.bloquecero-teacher-btn`)
+- Teacher name buttons have a dotted underline and a circular `i` info icon (`.bloquecero-teacher-infoicon`) to signal interactivity
+- Teachers separated by `·` middle dot instead of comma
 - Teacher names and course dates are rendered **outside** the header image container (`.bloquecero-info-row`) to prevent clipping on smaller windows
 
 ### Section/Activity Navigation
@@ -160,6 +166,8 @@ The block extensively hides/shows Moodle UI elements:
 - Filters activities per section based on `maxactivitiespersection` config
 - Shows activity icons, types, dates (start/end)
 - Groups activities by section with expand/collapse functionality
+- **Section cards**: only the title link and individual activity links are clickable — the card container itself has `cursor: default` (`.bloquecero-section-card { cursor: default }`)
+- **Hidden activity indicators**: teachers/managers with `moodle/course:update` see a "Hidden from students" badge on hidden activities in section cards, the weekly activities card, and the activities modal. Checked via `$can_view_hidden = has_capability('moodle/course:update', $coursecontext)`
 
 ### Bibliography Management (v0.3+)
 **Database-driven with dedicated management interface:**
@@ -251,7 +259,6 @@ Block instance config stored as object properties:
 - Config keys: underscore_separated (e.g., `userphone_`, `userschedule_`)
 
 ### Debugging
-- Uses `error_log()` for debugging (edit_form.php:146, 149, etc.)
 - fetch_sessions.php includes timing instrumentation via `microtime(true)`
 - Check browser console for JavaScript errors
 - Check Moodle debug output: Site administration > Development > Debugging
@@ -317,6 +324,14 @@ Block instance config stored as object properties:
 - Event type: 'course', visible to all course participants
 - Duration calculated from session duration field
 - Event ID stored in session.calendarid for updates/deletes
+- Three scenarios covered automatically:
+  1. Sync enabled + event exists → updates name, description, date, duration
+  2. Sync enabled + no event → creates new event
+  3. Sync disabled + event exists → deletes event, sets calendarid = null
+
+**Sessions modal:**
+- Shows description below session title (formatted HTML)
+- Shows weekday name + full date + time + duration
 
 ### Managing Bibliography (v0.3+)
 **Access Management Page:**
@@ -404,6 +419,9 @@ When creating pull requests, target the `dev` branch, not `main`/`master`.
 
 ### Current Priority Issues
 See GitHub issues for full list. Key technical debt:
-1. [#1] Refactor: Separate inline CSS/JS to external files (~2300 lines in one file)
+1. [#1] Refactor: Separate inline CSS/JS to external files (~3300 lines in one file)
 2. [#2] Refactor: Review block_zoom_udima dependency in fetch_sessions.php
 3. [#3] Feature: Add PHPUnit and Behat automated tests
+
+### Planned Features
+- **Welcome message**: Field in block config for a teacher welcome message, displayed persistently in the block and auto-sent by email to each student at enrolment time via `\core\event\user_enrolment_created` observer + `email_to_user()`
