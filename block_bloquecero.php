@@ -1011,11 +1011,19 @@ class block_bloquecero extends block_base {
             );
 
             foreach ($sessions as $session) {
+                $calendarurl = '';
+                if (!empty($session->calendarid)) {
+                    $calendarurl = (new moodle_url('/calendar/event.php', [
+                        'action' => 'view',
+                        'id' => $session->calendarid,
+                    ]))->out(false);
+                }
                 $sesioneszoom[] = [
                     'titulo' => $session->name,
                     'fecha' => $session->sessiondate,
                     'duracion' => (int)($session->duration ?? 0),
                     'descripcion' => !empty($session->description) ? format_text($session->description, FORMAT_HTML) : '',
+                    'calendarurl' => $calendarurl,
                 ];
             }
         }
@@ -1065,9 +1073,13 @@ class block_bloquecero extends block_base {
         if (!empty($sesioneszoom)) {
             foreach ($sesioneszoom as $sesion) {
                 $fecha = userdate($sesion['fecha'], get_string('strftimedaydatetime', 'langconfig'));
+                $titulo = format_string($sesion['titulo']);
+                if (!empty($sesion['calendarurl'])) {
+                    $titulo = '<a href="' . $sesion['calendarurl'] . '" style="color:#004D35;text-decoration:none;">' . $titulo . '</a>';
+                }
                 $sesioneszoomlist .= '<li data-timestamp="' . $sesion['fecha'] . '" style="margin-bottom: 6px;">' .
                     $OUTPUT->pix_icon('i/calendar', '', '', ['class' => 'activityicon']) .
-                    ' <strong>' . format_string($sesion['titulo']) . '</strong> <span style="font-size:0.93em; color:#555;">(' . $fecha . ')</span></li>';
+                    ' <strong>' . $titulo . '</strong> <span style="font-size:0.93em; color:#555;">(' . $fecha . ')</span></li>';
             }
             $sesioneszoomlist = '<ul id="sesiones-list" style="margin: 12px 0 0 0; padding-left: 18px; list-style: none;">' . $sesioneszoomlist . '</ul>';
         } else {
@@ -3190,7 +3202,7 @@ class block_bloquecero extends block_base {
                             \'<td style="padding:12px;">\' +
                             \'<div style="display:flex;align-items:flex-start;gap:10px;">\' +
                             \'<svg style="flex-shrink:0;margin-top:2px;" width="18" height="18" viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="16" rx="3" fill="#B7C65C"/><rect x="7" y="9" width="2.5" height="2.5" rx="1" fill="#fff"/><rect x="11" y="9" width="2.5" height="2.5" rx="1" fill="#fff"/><rect x="15" y="9" width="2.5" height="2.5" rx="1" fill="#fff"/><rect x="7" y="13" width="2.5" height="2.5" rx="1" fill="#fff"/><rect x="11" y="13" width="2.5" height="2.5" rx="1" fill="#fff"/><rect x="15" y="13" width="2.5" height="2.5" rx="1" fill="#fff"/></svg>\' +
-                            \'<div><span style="color:#004D35;font-weight:600;font-size:1em;">\' + s.titulo + \'</span>\' + descHtml + \'</div>\' +
+                            \'<div>\' + (s.calendarurl ? \'<a href="\' + s.calendarurl + \'" style="color:#004D35;font-weight:600;font-size:1em;text-decoration:none;">\' + s.titulo + \'</a>\' : \'<span style="color:#004D35;font-weight:600;font-size:1em;">\' + s.titulo + \'</span>\') + descHtml + \'</div>\' +
                             \'</div></td>\' +
                             \'<td style="padding:12px;color:#555;white-space:nowrap;vertical-align:top;">\' +
                             \'<div style="font-weight:500;color:#333;">\' + dateString + \'</div>\' +
