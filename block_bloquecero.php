@@ -1088,9 +1088,9 @@ class block_bloquecero extends block_base {
                     </div>
                     <div class="bloquecero-card-line"></div>
                     <div class="week-selector">
-                        <button id="prev-week" aria-label="' . get_string('previousweek', 'block_bloquecero') . '">&lt;</button>
+                        <button id="prev-week" aria-label="' . get_string('previousweek', 'block_bloquecero') . '">&#10094;</button>
                         <span id="week-label" aria-live="polite"></span>
-                        <button id="next-week" aria-label="' . get_string('nextweek', 'block_bloquecero') . '">&gt;</button>
+                        <button id="next-week" aria-label="' . get_string('nextweek', 'block_bloquecero') . '">&#10095;</button>
                     </div>
                 </div>
 
@@ -1225,9 +1225,9 @@ class block_bloquecero extends block_base {
                 </div>
                 <div class="bloquecero-card-line"></div>
                 <div class="sesiones-directo-selector">
-                    <button id="prev-sesion" aria-label="' . get_string('previousweek', 'block_bloquecero') . '">&lt;</button>
+                    <button id="prev-sesion" aria-label="' . get_string('previousweek', 'block_bloquecero') . '">&#10094;</button>
                     <span id="sesion-label" aria-live="polite"></span>
-                    <button id="next-sesion" aria-label="' . get_string('nextweek', 'block_bloquecero') . '">&gt;</button>
+                    <button id="next-sesion" aria-label="' . get_string('nextweek', 'block_bloquecero') . '">&#10095;</button>
                 </div>
             </div>
             <div class="sesiones-directo-container">
@@ -2247,19 +2247,27 @@ class block_bloquecero extends block_base {
             /* .week-selector y .sesiones-directo-selector: regla conjunta arriba */
             .sesiones-directo-selector button,
             .week-selector button {
-                background: none;
+                width: 28px;
+                height: 28px;
+                border-radius: 50%;
                 border: none;
-                font-size: 1.2em;
-                cursor: pointer;
+                background: #fff;
                 color: #004D35;
-                padding: 2px 10px;
-                border-radius: 5px;
-                transition: background 0.18s, color 0.13s;
+                font-size: 0.95em;
+                font-weight: 700;
+                cursor: pointer;
+                display: inline-flex;
+                align-items: center;
+                justify-content: center;
+                box-shadow: 0 2px 6px rgba(0,0,0,0.15);
+                transition: box-shadow 0.2s, transform 0.2s;
+                padding: 0;
+                flex-shrink: 0;
             }
             .sesiones-directo-selector button:hover,
             .week-selector button:hover {
-                background: #B7C65C;
-                color: #fff;
+                box-shadow: 0 4px 12px rgba(0,0,0,0.25);
+                transform: scale(1.1);
             }
             #sesion-label {
                 white-space: nowrap;
@@ -2336,13 +2344,9 @@ class block_bloquecero extends block_base {
             #sesiones-list-content li:hover a {
                 text-decoration: none !important;
             }
-            /* Forzar tamaño de fuente en spans y botones de week-selector y sesiones-directo-selector */
+            /* Forzar tamaño de fuente en spans de week-selector y sesiones-directo-selector */
             .week-selector span,
             .sesiones-directo-selector span {
-                font-size: 0.93em !important;
-            }
-            .week-selector button,
-            .sesiones-directo-selector button {
                 font-size: 0.93em !important;
             }
             </style>
@@ -3353,18 +3357,26 @@ class block_bloquecero extends block_base {
             font-weight: 500;
         }
         .week-selector button {
-            background: none;
+            width: 28px;
+            height: 28px;
+            border-radius: 50%;
             border: none;
-            font-size: 1.2em;
-            cursor: pointer;
+            background: #fff;
             color: #004D35;
-            padding: 2px 10px;
-            border-radius: 5px;
-            transition: background 0.18s, color 0.13s;
+            font-size: 0.95em;
+            font-weight: 700;
+            cursor: pointer;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            box-shadow: 0 2px 6px rgba(0,0,0,0.15);
+            transition: box-shadow 0.2s, transform 0.2s;
+            padding: 0;
+            flex-shrink: 0;
         }
         .week-selector button:hover {
-            background: #4E6A1E;
-            color: #fff;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.25);
+            transform: scale(1.1);
         }
         #week-label {
             min-width: 90px;
