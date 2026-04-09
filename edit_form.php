@@ -239,9 +239,4 @@ class block_bloquecero_edit_form extends block_edit_form {
 
         parent::set_data($defaults);
     }
-
-    /**
-     * Perform some moodle validation.
-     * Procesa los datos antes de guardarlos.
-     */
 }

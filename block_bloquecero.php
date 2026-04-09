@@ -254,6 +254,7 @@ class block_bloquecero extends block_base {
      * @return stdClass Block content object.
      */
     public function get_content() {
+        // phpcs:disable moodle.Files.LineLength.MaxExceeded
         global $COURSE, $DB, $USER, $CFG, $OUTPUT;
         $section = optional_param('section', 0, PARAM_INT);
         if ($section > 0) {
@@ -533,7 +534,7 @@ class block_bloquecero extends block_base {
             ");
         }
 
-        /// URLs de las imágenes
+        // URLs de las imágenes
         $context = context_system::instance();
         $fs = get_file_storage();
         $files = $fs->get_area_files($context->id, 'block_bloquecero', 'header_bg', 0, 'itemid, filepath, filename', false);
@@ -923,9 +924,8 @@ class block_bloquecero extends block_base {
                         ]);
                         $submitted = $submission && $submission->status === 'submitted';
                     }
-                }
-                // Para cuestionarios (quiz)
-                else if ($modname === 'quiz' && $cm->instance) {
+                } else if ($modname === 'quiz' && $cm->instance) {
+                    // Para cuestionarios (quiz)
                     $quiz = $DB->get_record('quiz', ['id' => $cm->instance]);
                     if ($quiz) {
                         $duedate = $quiz->timeclose;
@@ -936,9 +936,8 @@ class block_bloquecero extends block_base {
                         ]);
                         $submitted = $attempts > 0;
                     }
-                }
-                // Para foros (forum)
-                else if ($modname === 'forum' && $cm->instance) {
+                } else if ($modname === 'forum' && $cm->instance) {
+                    // Para foros (forum)
                     $forum = $DB->get_record('forum', ['id' => $cm->instance], 'assesstimestart, assesstimefinish');
                     if ($forum) {
                         $duedate = $forum->assesstimefinish;
@@ -1617,7 +1616,7 @@ class block_bloquecero extends block_base {
                 gap: 12px;
                 margin-bottom: 8px;
             }
-        
+
             .bloquecero-section-badge {
                 display: block;
                 margin: -18px -16px 14px -16px;
@@ -1693,7 +1692,7 @@ class block_bloquecero extends block_base {
                 .sections-carousel::-webkit-scrollbar {
                     display: none;
                 }
-                    
+
                 /* Calculamos el ancho para que siempre quepan 4 tarjetas dejando 3 gaps de 18px (54px total) */
                 .section-card {
                     flex: 1 1 0;
@@ -2605,7 +2604,7 @@ class block_bloquecero extends block_base {
                     border-bottom: none;
                 }
             </style>
-            
+
             <script>
                 // Datos con las actividades de cada sección (clave: id de la sección)
                 const sectionsActivitiesData = ' . $sectionsactivitiesjson . ';
@@ -3096,11 +3095,11 @@ class block_bloquecero extends block_base {
             var btn = document.getElementById("bloquecero-bibliografia-btn");
             var modal = document.getElementById("bloquecero-bibliografia-modal");
             var content = document.getElementById("bibliografia-content");
-            
+
             if(btn && modal && content) {
                 // Insertar el contenido de bibliografía
                 content.innerHTML = ' . json_encode($bibliografiahtml) . ';
-                
+
                 btn.addEventListener("click", function(e){
                     e.preventDefault();
                     bloqueceroModal.open("bloquecero-bibliografia-modal");
@@ -3445,6 +3444,7 @@ class block_bloquecero extends block_base {
         ';
         }
 
+        // phpcs:enable moodle.Files.LineLength.MaxExceeded
         return $this->content;
     }
 
