@@ -1225,9 +1225,9 @@ class block_bloquecero extends block_base {
                 </div>
                 <div class="bloquecero-card-line"></div>
                 <div class="sesiones-directo-selector">
-                    <button id="prev-sesion" aria-label="' . get_string('previousweek', 'block_bloquecero') . '">&#10094;</button>
+                    <button id="prev-sesion" aria-label="' . get_string('previoussession', 'block_bloquecero') . '">&#10094;</button>
                     <span id="sesion-label" aria-live="polite"></span>
-                    <button id="next-sesion" aria-label="' . get_string('nextweek', 'block_bloquecero') . '">&#10095;</button>
+                    <button id="next-sesion" aria-label="' . get_string('nextsession', 'block_bloquecero') . '">&#10095;</button>
                 </div>
             </div>
             <div class="sesiones-directo-container">
@@ -1700,6 +1700,10 @@ class block_bloquecero extends block_base {
                 .carousel-btn:hover {
                     box-shadow: 0 4px 14px rgba(0,0,0,0.28);
                     transform: translateY(-50%) scale(1.1);
+                }
+                .carousel-btn:focus-visible {
+                    outline: 3px solid #004D35;
+                    outline-offset: 2px;
                 }
                 .carousel-btn-left {
                     left: 0;
@@ -2268,6 +2272,11 @@ class block_bloquecero extends block_base {
             .week-selector button:hover {
                 box-shadow: 0 4px 12px rgba(0,0,0,0.25);
                 transform: scale(1.1);
+            }
+            .sesiones-directo-selector button:focus-visible,
+            .week-selector button:focus-visible {
+                outline: 3px solid #004D35;
+                outline-offset: 2px;
             }
             #sesion-label {
                 white-space: nowrap;
@@ -3377,6 +3386,10 @@ class block_bloquecero extends block_base {
         .week-selector button:hover {
             box-shadow: 0 4px 12px rgba(0,0,0,0.25);
             transform: scale(1.1);
+        }
+        .week-selector button:focus-visible {
+            outline: 3px solid #004D35;
+            outline-offset: 2px;
         }
         #week-label {
             min-width: 90px;
