@@ -849,9 +849,9 @@ class block_bloquecero extends block_base {
         // Envolver el carrusel en un contenedor con botones laterales
         $carouselcontainer = '
             <div class="carousel-container" role="region" aria-label="' . get_string('coursesections', 'block_bloquecero') . '" aria-roledescription="carousel" style="position: relative; display: flex; align-items: center; margin-bottom: 20px; padding: 0 40px;">
-                 <button class="carousel-btn carousel-btn-left" onclick="scrollCarousel(-1)" aria-label="' . get_string('previoussection', 'block_bloquecero') . '" style="background: transparent; border: none; color: #004D35; font-size: 1.5em; padding: 0; cursor: pointer; position: absolute; left: 0; z-index: 2; height: 100%;">&#8249;</button>
+                 <button class="carousel-btn carousel-btn-left" onclick="scrollCarousel(-1)" aria-label="' . get_string('previoussection', 'block_bloquecero') . '">&#10094;</button>
                  ' . $sectionscarousel . '
-                 <button class="carousel-btn carousel-btn-right" onclick="scrollCarousel(1)" aria-label="' . get_string('nextsection', 'block_bloquecero') . '" style="background: transparent; border: none; color: #004D35; font-size: 1.5em; padding: 0; cursor: pointer; position: absolute; right: 0; z-index: 2; height: 100%;">&#8250;</button>
+                 <button class="carousel-btn carousel-btn-right" onclick="scrollCarousel(1)" aria-label="' . get_string('nextsection', 'block_bloquecero') . '">&#10095;</button>
             </div>
         ';
 
@@ -1676,6 +1676,37 @@ class block_bloquecero extends block_base {
                     padding: 0 40px;
                     box-sizing: border-box;
                 }
+                .carousel-btn {
+                    position: absolute;
+                    z-index: 2;
+                    top: 50%;
+                    transform: translateY(-50%);
+                    width: 36px;
+                    height: 36px;
+                    border-radius: 50%;
+                    border: none;
+                    background: #fff;
+                    color: #004D35;
+                    font-size: 1.1em;
+                    font-weight: 700;
+                    cursor: pointer;
+                    display: flex;
+                    align-items: center;
+                    justify-content: center;
+                    box-shadow: 0 2px 8px rgba(0,0,0,0.18);
+                    transition: box-shadow 0.2s, transform 0.2s;
+                    padding: 0;
+                }
+                .carousel-btn:hover {
+                    box-shadow: 0 4px 14px rgba(0,0,0,0.28);
+                    transform: translateY(-50%) scale(1.1);
+                }
+                .carousel-btn-left {
+                    left: 0;
+                }
+                .carousel-btn-right {
+                    right: 0;
+                }
                 .sections-carousel {
                     display: flex;
                     gap: 18px;
@@ -2468,9 +2499,10 @@ class block_bloquecero extends block_base {
                 .carousel-container {
                     padding: 0 22px !important;
                 }
-                .carousel-btn-left,
-                .carousel-btn-right {
-                    font-size: 1.2em !important;
+                .carousel-btn {
+                    width: 30px !important;
+                    height: 30px !important;
+                    font-size: 1em !important;
                 }
             }
 
