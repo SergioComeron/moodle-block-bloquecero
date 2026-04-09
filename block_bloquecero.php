@@ -1013,9 +1013,9 @@ class block_bloquecero extends block_base {
             foreach ($sessions as $session) {
                 $calendarurl = '';
                 if (!empty($session->calendarid)) {
-                    $calendarurl = (new moodle_url('/calendar/event.php', [
-                        'action' => 'view',
-                        'id' => $session->calendarid,
+                    $calendarurl = (new moodle_url('/calendar/view.php', [
+                        'view' => 'day',
+                        'time' => $session->sessiondate,
                     ]))->out(false);
                 }
                 $sesioneszoom[] = [
