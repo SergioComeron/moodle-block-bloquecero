@@ -42,9 +42,20 @@ jobs:
           zip -r bloquecero-${{ steps.version.outputs.VERSION }}.zip bloquecero
           mv /tmp/bloquecero-${{ steps.version.outputs.VERSION }}.zip $GITHUB_WORKSPACE/
 
+      - name: Extract changelog for this version
+        id: changelog
+        run: |
+          VERSION=${{ steps.version.outputs.VERSION }}
+          # Extract section for this version from CHANGELOG.md
+          NOTES=$(awk "/^## \[${VERSION}\]/{found=1; next} found && /^## \[/{exit} found{print}" CHANGELOG.md)
+          # Fallback if not found
+          [ -z "$NOTES" ] && NOTES="Ver CHANGELOG.md para detalles."
+          # Write to file to preserve multiline
+          echo "$NOTES" > release_notes.txt
+
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
         with:
           files: bloquecero-${{ steps.version.outputs.VERSION }}.zip
-          generate_release_notes: true
+          body_path: release_notes.txt
           name: "bloquecero ${{ steps.version.outputs.VERSION }}"

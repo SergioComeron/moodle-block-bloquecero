@@ -1,0 +1,125 @@
+name: Auto Release on Version Bump
+
+on:
+  push:
+    branches: [master]
+    paths:
+      - 'version.php'
+
+jobs:
+  auto-release:
+    name: Tag and update changelog
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Extract version from version.php
+        id: version
+        run: |
+          VERSION=$(grep "\$plugin->release" version.php | grep -oP "'\K[^']+")
+          echo "VERSION=v${VERSION}" >> $GITHUB_OUTPUT
+          echo "Detected version: v${VERSION}"
+
+      - name: Check if tag already exists
+        id: tagcheck
+        run: |
+          if git rev-parse "${{ steps.version.outputs.VERSION }}" >/dev/null 2>&1; then
+            echo "EXISTS=true" >> $GITHUB_OUTPUT
+            echo "Tag ${{ steps.version.outputs.VERSION }} already exists, skipping."
+          else
+            echo "EXISTS=false" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Generate CHANGELOG entry
+        if: steps.tagcheck.outputs.EXISTS == 'false'
+        run: |
+          python3 << 'PYEOF'
+          import subprocess, re, os
+          from datetime import date
+
+          version = os.environ.get('VERSION', '')
+          today = date.today().strftime('%Y-%m-%d')
+
+          # Get previous tag
+          result = subprocess.run(['git', 'tag', '--sort=-version:refname'], capture_output=True, text=True)
+          tags = [t.strip() for t in result.stdout.strip().split('\n') if t.strip()]
+          prev_tag = tags[0] if tags else None
+
+          # Get commits since previous tag (or all commits)
+          if prev_tag:
+              log_cmd = ['git', 'log', f'{prev_tag}..HEAD', '--pretty=format:%s', '--no-merges']
+          else:
+              log_cmd = ['git', 'log', '--pretty=format:%s', '--no-merges']
+          result = subprocess.run(log_cmd, capture_output=True, text=True)
+          commits = [c.strip() for c in result.stdout.strip().split('\n') if c.strip()]
+
+          # Group by type
+          groups = {
+              'Nuevas funcionalidades': [],
+              'Correcciones': [],
+              'Documentación': [],
+              'Otros cambios': [],
+          }
+          for msg in commits:
+              low = msg.lower()
+              if low.startswith('feat:') or low.startswith('feat('):
+                  groups['Nuevas funcionalidades'].append(re.sub(r'^[Ff]eat\S*\s*', '', msg))
+              elif low.startswith('fix:') or low.startswith('fix('):
+                  groups['Correcciones'].append(re.sub(r'^[Ff]ix\S*\s*', '', msg))
+              elif low.startswith('docs:') or low.startswith('docs('):
+                  groups['Documentación'].append(re.sub(r'^[Dd]ocs\S*\s*', '', msg))
+              else:
+                  groups['Otros cambios'].append(msg)
+
+          # Build new section
+          section = f'## [{version}] - {today}\n\n'
+          for title, items in groups.items():
+              if items:
+                  section += f'### {title}\n'
+                  for item in items:
+                      section += f'- {item}\n'
+                  section += '\n'
+
+          # Update CHANGELOG.md
+          if os.path.exists('CHANGELOG.md'):
+              with open('CHANGELOG.md', 'r') as f:
+                  content = f.read()
+              # Insert after the first heading line
+              lines = content.split('\n')
+              insert_at = 0
+              for i, line in enumerate(lines):
+                  if line.startswith('## '):
+                      insert_at = i
+                      break
+              new_lines = lines[:insert_at] + section.split('\n') + lines[insert_at:]
+              new_content = '\n'.join(new_lines)
+          else:
+              new_content = f'# Changelog\n\n{section}'
+
+          with open('CHANGELOG.md', 'w') as f:
+              f.write(new_content)
+          print(f"CHANGELOG updated for {version}")
+          PYEOF
+        env:
+          VERSION: ${{ steps.version.outputs.VERSION }}
+
+      - name: Commit CHANGELOG
+        if: steps.tagcheck.outputs.EXISTS == 'false'
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add CHANGELOG.md
+          git diff --staged --quiet || git commit -m "Docs: actualizar CHANGELOG para ${{ steps.version.outputs.VERSION }} [skip ci]"
+          git push
+
+      - name: Create and push tag
+        if: steps.tagcheck.outputs.EXISTS == 'false'
+        run: |
+          git tag ${{ steps.version.outputs.VERSION }}
+          git push origin ${{ steps.version.outputs.VERSION }}
+          echo "Created tag ${{ steps.version.outputs.VERSION }} — release.yml will now build the zip"
