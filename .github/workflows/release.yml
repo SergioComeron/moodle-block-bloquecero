@@ -26,15 +26,16 @@ jobs:
 
       - name: Create plugin zip
         run: |
-          cd ..
-          zip -r bloquecero-${{ steps.version.outputs.VERSION }}.zip bloquecero \
-            --exclude "bloquecero/.git/*" \
-            --exclude "bloquecero/.github/*" \
-            --exclude "bloquecero/.claude/*" \
-            --exclude "bloquecero/CLAUDE.md" \
-            --exclude "bloquecero/CONTRIBUTING.md" \
-            --exclude "bloquecero/.gitignore"
-          mv bloquecero-${{ steps.version.outputs.VERSION }}.zip bloquecero/
+          cp -r $GITHUB_WORKSPACE /tmp/bloquecero
+          rm -rf /tmp/bloquecero/.git
+          rm -rf /tmp/bloquecero/.github
+          rm -rf /tmp/bloquecero/.claude
+          rm -f /tmp/bloquecero/CLAUDE.md
+          rm -f /tmp/bloquecero/CONTRIBUTING.md
+          rm -f /tmp/bloquecero/.gitignore
+          cd /tmp
+          zip -r bloquecero-${{ steps.version.outputs.VERSION }}.zip bloquecero
+          mv /tmp/bloquecero-${{ steps.version.outputs.VERSION }}.zip $GITHUB_WORKSPACE/
 
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
