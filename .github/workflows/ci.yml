@@ -6,6 +6,9 @@ on:
   pull_request:
     branches: [master]
 
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+
 jobs:
   php-syntax:
     name: PHP Syntax Check
@@ -16,7 +19,34 @@ jobs:
       - name: Setup PHP
         uses: shivammathur/setup-php@v2
         with:
-          php-version: '8.1'
+          php-version: '8.2'
 
       - name: Check PHP syntax
-        run: find . -name "*.php" -not -path "./.git/*" | xargs -I{} php -l {}
+        run: find . -name "*.php" -not -path "./.git/*" -not -path "./vendor/*" | xargs -I{} php -l {}
+
+  codestyle:
+    name: Moodle Code Style
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.2'
+          tools: composer
+
+      - name: Install moodle-cs
+        run: composer install --no-interaction --prefer-dist
+
+      - name: Show moodle-cs version
+        run: composer show moodlehq/moodle-cs
+
+      - name: Run PHP_CodeSniffer
+        run: |
+          vendor/bin/phpcs \
+            --standard=moodle \
+            --extensions=php \
+            --ignore=vendor \
+            --warning-severity=0 \
+            .

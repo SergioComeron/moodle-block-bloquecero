@@ -1,2 +1,3 @@
 # Claude Code local settings (permisos específicos de cada máquina)
 .claude/settings.local.json
+vendor/

@@ -1,0 +1,12 @@
+{
+    "name": "sergiocomeron/moodle-block_bloquecero",
+    "description": "Moodle bloquecero block - dev dependencies",
+    "require-dev": {
+        "moodlehq/moodle-cs": "*"
+    },
+    "config": {
+        "allow-plugins": {
+            "dealerdirect/phpcodesniffer-composer-installer": true
+        }
+    }
+}

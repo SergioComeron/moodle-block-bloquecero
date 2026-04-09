@@ -32,9 +32,12 @@ jobs:
           rm -rf /tmp/bloquecero/.git
           rm -rf /tmp/bloquecero/.github
           rm -rf /tmp/bloquecero/.claude
+          rm -rf /tmp/bloquecero/vendor
           rm -f /tmp/bloquecero/CLAUDE.md
           rm -f /tmp/bloquecero/CONTRIBUTING.md
           rm -f /tmp/bloquecero/.gitignore
+          rm -f /tmp/bloquecero/composer.json
+          rm -f /tmp/bloquecero/composer.lock
           cd /tmp
           zip -r bloquecero-${{ steps.version.outputs.VERSION }}.zip bloquecero
           mv /tmp/bloquecero-${{ steps.version.outputs.VERSION }}.zip $GITHUB_WORKSPACE/
