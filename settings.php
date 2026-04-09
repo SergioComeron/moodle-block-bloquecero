@@ -15,7 +15,7 @@
 // along with Moodle.  If not, see <http://www.gnu.org/licenses/>.
 
 /**
- * 
+ *
  * Settings for validador block
  * @package   block_bloquecero
  * @copyright  2025 Sergio Comerón (info@sergiocomeron.com)
@@ -31,6 +31,6 @@ if ($ADMIN->fulltree) {
         get_string('header_bg_img_desc', 'block_bloquecero'),
         'header_bg',
         0,
-        array('accepted_types' => array('.png', '.jpg', '.jpeg', '.gif'))
+        ['accepted_types' => ['.png', '.jpg', '.jpeg', '.gif']]
     ));
 }

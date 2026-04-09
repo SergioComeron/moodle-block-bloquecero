@@ -101,7 +101,6 @@ if ($mform->is_cancelled()) {
             }
             $DB->set_field('block_bloquecero_sessions', 'calendarid', null, ['id' => $sessionid]);
         }
-
     } else {
         // Create new session.
         $data->blockinstanceid = $blockid;

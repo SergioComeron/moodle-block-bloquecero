@@ -24,6 +24,12 @@
 
 defined('MOODLE_INTERNAL') || die();
 
+/**
+ * Upgrade block_bloquecero database structures.
+ *
+ * @param int $oldversion Previous plugin version.
+ * @return bool True on success.
+ */
 function xmldb_block_bloquecero_upgrade($oldversion) {
     global $DB;
     $dbman = $DB->get_manager();

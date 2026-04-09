@@ -1,20 +1,48 @@
 <?php
+// This file is part of Moodle - https://moodle.org/
+//
+// Moodle is free software: you can redistribute it and/or modify
+// it under the terms of the GNU General Public License as published by
+// the Free Software Foundation, either version 3 of the License, or
+// (at your option) any later version.
+//
+// Moodle is distributed in the hope that it will be useful,
+// but WITHOUT ANY WARRANTY; without even the implied warranty of
+// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+// GNU General Public License for more details.
+//
+// You should have received a copy of the GNU General Public License
+// along with Moodle.  If not, see <https://www.gnu.org/licenses/>.
+
+/**
+ * Spanish language strings for block_bloquecero.
+ *
+ * @package    block_bloquecero
+ * @copyright  2025 Sergio Comerón <info@sergiocomeron.com>
+ * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
+ */
+
 $string['abrirseccion'] = 'Abrir sección';
+$string['addbibliography'] = 'Añadir entrada de bibliografía';
 $string['addbook'] = 'Añadir otro libro';
 $string['addsession'] = 'Añadir otra sesión';
 $string['bibliography'] = 'Bibliografía';
 $string['blocksconfig'] = 'Configuración del bloque';
 $string['bloquecero:addinstance'] = 'Añadir un nuevo bloque cero';
+$string['bloquecero:managebibliography'] = 'Gestionar bibliografía';
 $string['bloquecero:managesessions'] = 'Gestionar sesiones en directo';
 $string['bloquecero:myaddinstance'] = 'Añadir un nuevo bloque cero a la página Mi Moodle';
 $string['bloquecero:viewcourse'] = 'Permite ver el botón de "mostrar curso"';
-$string['confirmdeletesession'] = '¿Estás seguro de que quieres eliminar esta sesión?';
-$string['duration'] = 'Duración';
-$string['duration_help'] = 'Duración de la sesión en horas y minutos';
-$string['editsession'] = 'Editar sesión';
 $string['bookdescription'] = 'Descripción';
 $string['bookname'] = 'Nombre del libro';
 $string['bookurl'] = 'URL del libro';
+$string['bookurl_help'] = 'Introduzca la URL del libro o recurso (opcional). Si no incluye http:// o https://, se añadirá automáticamente https://';
+$string['confirmdeletebibliography'] = '¿Estás seguro de que quieres eliminar esta entrada de bibliografía?';
+$string['confirmdeletesession'] = '¿Estás seguro de que quieres eliminar esta sesión?';
+$string['duration'] = 'Duración';
+$string['duration_help'] = 'Duración de la sesión en horas y minutos';
+$string['editbibliography'] = 'Editar bibliografía';
+$string['editsession'] = 'Editar sesión';
 $string['forum_announcement'] = 'Foro de anuncios';
 $string['forum_announcement_help'] = 'Seleccione el foro que se utilizará para anuncios del curso en este bloque.';
 $string['forum_estudiantes'] = 'Foro de estudiantes';
@@ -25,17 +53,31 @@ $string['guide_url'] = 'URL de la guía';
 $string['guide_url_help'] = 'Introduzca la URL de la guía docente. Este enlace estará disponible para los usuarios en el bloque.';
 $string['header_bg_img'] = 'Imagen de fondo de cabecera';
 $string['header_bg_img_desc'] = 'Descripción de la imagen de fondo de cabecera';
+$string['invalidurl'] = 'La URL introducida no es válida';
 $string['livesessions'] = 'Sesiones en directo';
+$string['managebibliography'] = 'Gestionar bibliografía';
 $string['managesessions'] = 'Gestionar sesiones';
 $string['maxactivitiespersection'] = 'Máximo de actividades por sección';
 $string['maxactivitiespersection_help'] = 'Número de actividades mostradas en una sección; el resto se colapsará';
-$string['selectedteachers'] = 'Profesores visibles';
-$string['selectedteachers_help'] = 'Seleccione qué profesores deben mostrarse en el bloque. Si no se selecciona ninguno, se mostrarán todos.';
+$string['metachild_notice'] = 'Curso compartido con:';
+$string['metacourse_notice'] = 'Los alumnos matriculados en este aula tienen acceso al siguiente curso, donde se encuentra todo el contenido:';
+$string['metacourse_notice_title'] = 'AULA METAENLAZADA';
 $string['noactivities'] = 'Sin actividades';
+$string['nobibliographyyet'] = 'No se ha añadido bibliografía todavía';
 $string['nosessionsscheduled'] = 'No hay sesiones programadas';
 $string['nosessionsyet'] = 'No se han creado sesiones todavía';
 $string['pluginname'] = 'Bloque cero';
 $string['saveblockfirst'] = 'Por favor guarde la configuración del bloque primero, luego podrá gestionar las sesiones';
+$string['selectedteachers'] = 'Profesores visibles';
+$string['selectedteachers_help'] = 'Seleccione qué profesores deben mostrarse en el bloque. Si no se selecciona ninguno, se mostrarán todos.';
+$string['sept_announcement_body'] = '<p>Se informa a todos los alumnos que este aula queda habilitada para la <strong>Convocatoria de Septiembre</strong>.</p><p>Desde este momento y hasta el próximo 30 de agosto solo se podrán realizar las actividades de evaluación asociadas a esta convocatoria establecidas por el profesor. Cualquier comunicación oficial se realizará exclusivamente a través del <strong>Foro Convocatoria de Septiembre</strong>.</p>';
+$string['sept_announcement_subject'] = 'Aula configurada para la Convocatoria de Septiembre';
+$string['sept_forum_name'] = 'Foro Convocatoria de Septiembre';
+$string['septembernotice_enable'] = 'Activar modo septiembre';
+$string['septembernotice_enable_help'] = 'Si se activa, se mostrará un aviso informativo justo debajo del nombre del curso indicando que el aula está habilitada para la convocatoria de septiembre.';
+$string['septembernotice_header'] = 'Modo septiembre';
+$string['septembernotice_text'] = 'En esta aula, desde este momento y hasta el próximo 30 de agosto solo se podrán realizar las actividades de evaluación asociadas a la convocatoria de septiembre establecidas por el profesor. El profesor solo enviará comunicados a los alumnos a través del Foro Convocatoria de Septiembre';
+$string['septembernotice_title'] = 'AULA HABILITADA PARA LA CONVOCATORIA DE SEPTIEMBRE';
 $string['sessionadded'] = 'Sesión añadida correctamente';
 $string['sessiondate'] = 'Fecha de la sesión';
 $string['sessiondateinthepast'] = 'La fecha de la sesión no puede estar muy en el pasado';
@@ -50,26 +92,7 @@ $string['userphone'] = 'Teléfono del profesor';
 $string['userphone_help'] = 'Introduzca su número de teléfono para mostrarlo en el perfil del profesor.';
 $string['userschedule'] = 'Horario de atención';
 $string['userschedule_help'] = 'Introduzca su horario de atención para mostrarlo en el perfil del profesor.';
-$string['addbibliography'] = 'Añadir entrada de bibliografía';
-$string['bloquecero:managebibliography'] = 'Gestionar bibliografía';
-$string['bookurl_help'] = 'Introduzca la URL del libro o recurso (opcional). Si no incluye http:// o https://, se añadirá automáticamente https://';
-$string['confirmdeletebibliography'] = '¿Estás seguro de que quieres eliminar esta entrada de bibliografía?';
-$string['editbibliography'] = 'Editar bibliografía';
-$string['invalidurl'] = 'La URL introducida no es válida';
-$string['managebibliography'] = 'Gestionar bibliografía';
-$string['nobibliographyyet'] = 'No se ha añadido bibliografía todavía';
 
-$string['metachild_notice'] = 'Curso compartido con:';
-$string['metacourse_notice_title'] = 'AULA METAENLAZADA';
-$string['metacourse_notice'] = 'Los alumnos matriculados en este aula tienen acceso al siguiente curso, donde se encuentra todo el contenido:';
-$string['sept_forum_name'] = 'Foro Convocatoria de Septiembre';
-$string['sept_announcement_subject'] = 'Aula configurada para la Convocatoria de Septiembre';
-$string['sept_announcement_body'] = '<p>Se informa a todos los alumnos que este aula queda habilitada para la <strong>Convocatoria de Septiembre</strong>.</p><p>Desde este momento y hasta el próximo 30 de agosto solo se podrán realizar las actividades de evaluación asociadas a esta convocatoria establecidas por el profesor. Cualquier comunicación oficial se realizará exclusivamente a través del <strong>Foro Convocatoria de Septiembre</strong>.</p>';
-$string['septembernotice_header'] = 'Modo septiembre';
-$string['septembernotice_enable'] = 'Activar modo septiembre';
-$string['septembernotice_enable_help'] = 'Si se activa, se mostrará un aviso informativo justo debajo del nombre del curso indicando que el aula está habilitada para la convocatoria de septiembre.';
-$string['septembernotice_title'] = 'AULA HABILITADA PARA LA CONVOCATORIA DE SEPTIEMBRE';
-$string['septembernotice_text'] = 'En esta aula, desde este momento y hasta el próximo 30 de agosto solo se podrán realizar las actividades de evaluación asociadas a la convocatoria de septiembre establecidas por el profesor. El profesor solo enviará comunicados a los alumnos a través del Foro Convocatoria de Septiembre';
 
 // Cadenas de accesibilidad.
 $string['close'] = 'Cerrar';

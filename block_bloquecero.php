@@ -15,34 +15,42 @@
 // along with Moodle.  If not, see <http://www.gnu.org/licenses/>.
 
 /**
- * TODO describe file block_bloquecero
+ * Block bloquecero — customized course header for Moodle courses.
  *
  * @package    block_bloquecero
  * @copyright  2025 Sergio Comerón <info@sergiocomeron.com>
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
-require_once($CFG->dirroot.'/course/format/weeks/lib.php');
+
+defined('MOODLE_INTERNAL') || die();
+
+require_once($CFG->dirroot . '/course/format/weeks/lib.php');
 require_once($CFG->dirroot . '/mod/forum/lib.php');
 
 
-// Función para obtener la fecha de inicio de un cm según su tipo
+/**
+ * Returns the start date timestamp for a course module based on its type.
+ *
+ * @param cm_info $cm Course module info object.
+ * @return int Unix timestamp of start date, or 0 if not applicable.
+ */
 function get_cm_start_date($cm) {
     global $DB;
     $time = 0;
     switch ($cm->modname) {
         case 'assign':
             // En asignaciones, se usa allowsubmissionsfromdate o duedate como fallback
-            $assignment = $DB->get_record('assign', array('id' => $cm->instance), 'allowsubmissionsfromdate, duedate', MUST_EXIST);
+            $assignment = $DB->get_record('assign', ['id' => $cm->instance], 'allowsubmissionsfromdate, duedate', MUST_EXIST);
             $time = $assignment->allowsubmissionsfromdate ? $assignment->allowsubmissionsfromdate : $assignment->duedate;
             break;
         case 'quiz':
             // En cuestionarios, se usa timeopen o timeclose como fallback
-            $quiz = $DB->get_record('quiz', array('id' => $cm->instance), 'timeopen, timeclose', MUST_EXIST);
+            $quiz = $DB->get_record('quiz', ['id' => $cm->instance], 'timeopen, timeclose', MUST_EXIST);
             $time = $quiz->timeopen ? $quiz->timeopen : $quiz->timeclose;
             break;
         case 'forum':
             // En foros, se usa assesstimestart (fecha de inicio del rango de calificación)
-            $forum = $DB->get_record('forum', array('id' => $cm->instance), 'assesstimestart, assesstimefinish');
+            $forum = $DB->get_record('forum', ['id' => $cm->instance], 'assesstimestart, assesstimefinish');
             $time = $forum ? $forum->assesstimestart : 0;
             break;
         // Agregar otros casos según el tipo de actividad
@@ -54,7 +62,17 @@ function get_cm_start_date($cm) {
     return (int)$time;
 }
 
+/**
+ * Block bloquecero class.
+ *
+ * @package    block_bloquecero
+ * @copyright  2025 Sergio Comerón <info@sergiocomeron.com>
+ * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
+ */
 class block_bloquecero extends block_base {
+    /**
+     * Initialise the block.
+     */
     public function init() {
         $this->title = get_string('pluginname', 'block_bloquecero');
         $this->instance_allow_multiple = false;
@@ -101,7 +119,7 @@ class block_bloquecero extends block_base {
 
             // -------------------------------------------------------
             // 2. Crear "Foro Convocatoria de Septiembre" en la misma
-            //    sección que los foros configurados en el bloque.
+            // sección que los foros configurados en el bloque.
             // -------------------------------------------------------
             $septforumname = get_string('sept_forum_name', 'block_bloquecero');
             $existingforum = $DB->get_record('forum', ['course' => $course->id, 'name' => $septforumname]);
@@ -116,15 +134,18 @@ class block_bloquecero extends block_base {
                 // Determinar la sección a partir de uno de los foros configurados.
                 $targetsection = 0;
                 $refforumids = array_filter([
-                    isset($data->forumid)            ? (int)$data->forumid            : 0,
-                    isset($data->forumtutoriasid)     ? (int)$data->forumtutoriasid    : 0,
-                    isset($data->forumestudiantesid)  ? (int)$data->forumestudiantesid : 0,
+                    isset($data->forumid) ? (int)$data->forumid : 0,
+                    isset($data->forumtutoriasid) ? (int)$data->forumtutoriasid : 0,
+                    isset($data->forumestudiantesid) ? (int)$data->forumestudiantesid : 0,
                 ]);
                 foreach ($refforumids as $refid) {
                     $refcm = get_coursemodule_from_instance('forum', $refid, $course->id);
                     if ($refcm) {
-                        $targetsection = $DB->get_field('course_sections', 'section',
-                            ['id' => $refcm->section]);
+                        $targetsection = $DB->get_field(
+                            'course_sections',
+                            'section',
+                            ['id' => $refcm->section]
+                        );
                         break;
                     }
                 }
@@ -190,10 +211,10 @@ class block_bloquecero extends block_base {
         // -------------------------------------------------------
         // Desactivación del modo septiembre
         // -------------------------------------------------------
-        $was_enabled = !empty($this->config->show_september_notice);
-        $is_disabling = empty($data->show_september_notice);
+        $wasenabled = !empty($this->config->show_september_notice);
+        $isdisabling = empty($data->show_september_notice);
 
-        if ($was_enabled && $is_disabling) {
+        if ($wasenabled && $isdisabling) {
             require_once($CFG->dirroot . '/mod/forum/lib.php');
 
             $courseid = $this->page->course->id;
@@ -227,15 +248,20 @@ class block_bloquecero extends block_base {
         return parent::instance_config_save($data, $nolongerused);
     }
 
+    /**
+     * Return the block content.
+     *
+     * @return stdClass Block content object.
+     */
     public function get_content() {
-        global $COURSE, $DB, $USER, $CFG, $OUTPUT, $PAGE;
+        global $COURSE, $DB, $USER, $CFG, $OUTPUT;
         $section = optional_param('section', 0, PARAM_INT);
         if ($section > 0) {
             // Estamos en una sección, no mostrar el bloque
             return null;
         }
         // Oculta el bloque si no estamos en la página principal del curso (ni en weeks ni en topics)
-        $pagetype = $PAGE->pagetype;
+        $pagetype = $this->page->pagetype;
         if ($pagetype !== 'course-view-weeks' && $pagetype !== 'course-view-topics' && $pagetype !== 'course-view') {
             return null;
         }
@@ -246,14 +272,13 @@ class block_bloquecero extends block_base {
             return null;
         }
 
-        
-        $is_editing = $PAGE->user_is_editing();
+        $isediting = $this->page->user_is_editing();
 
         if ($this->content !== null) {
             return $this->content;
         }
-    
-        $this->content = new stdClass;
+
+        $this->content = new stdClass();
 
         // -------------------------------------------------------
         // Detección de metacurso: si este curso es hijo por metaenlace,
@@ -261,7 +286,7 @@ class block_bloquecero extends block_base {
         // -------------------------------------------------------
         // Detectar si este curso es fuente de un metaenlace.
         // Cursos de los que este curso recibe alumnos por metaenlace (este curso = destino).
-        $metachild_links = [];
+        $metachildlinks = [];
         $metachildenrols = $DB->get_records('enrol', [
             'courseid' => $COURSE->id,
             'enrol'    => 'meta',
@@ -269,24 +294,24 @@ class block_bloquecero extends block_base {
         foreach ($metachildenrols as $enrol) {
             $sourcecourse = $DB->get_record('course', ['id' => $enrol->customint1]);
             if ($sourcecourse) {
-                $metachild_links[] = format_string($sourcecourse->fullname);
+                $metachildlinks[] = format_string($sourcecourse->fullname);
             }
         }
 
-        $is_metacourse = false;
-        $metacourse_links = [];
-        if (!$is_editing) {
+        $ismetacourse = false;
+        $metacourselinks = [];
+        if (!$isediting) {
             $metaenrols = $DB->get_records('enrol', [
                 'enrol'      => 'meta',
                 'customint1' => $COURSE->id,
             ]);
             if (!empty($metaenrols)) {
-                $is_metacourse = true;
+                $ismetacourse = true;
                 foreach ($metaenrols as $enrol) {
                     $linkedcourse = $DB->get_record('course', ['id' => $enrol->courseid]);
                     if ($linkedcourse) {
                         $linkedurl = new moodle_url('/course/view.php', ['id' => $linkedcourse->id]);
-                        $metacourse_links[] = '<a href="' . $linkedurl . '" class="bloquecero-meta-link">'
+                        $metacourselinks[] = '<a href="' . $linkedurl . '" class="bloquecero-meta-link">'
                             . format_string($linkedcourse->fullname) . '</a>';
                     }
                 }
@@ -301,7 +326,7 @@ class block_bloquecero extends block_base {
         }
 
         $coursecontext = context_course::instance($COURSE->id);
-        $can_view_hidden = has_capability('moodle/course:update', $coursecontext);
+        $canviewhidden = has_capability('moodle/course:update', $coursecontext);
         require_once($CFG->dirroot . '/user/lib.php');
         $teachersraw = get_enrolled_users($coursecontext, 'moodle/course:update');
 
@@ -316,39 +341,39 @@ class block_bloquecero extends block_base {
         }
 
         global $OUTPUT;
-        $teachersP = array();
-        $teachersP = array();
+        $teachersp = [];
+        $teachersp = [];
         foreach ($teachersraw as $teacher) {
             $userpic = $OUTPUT->user_picture($teacher, ['size' => 80, 'class' => 'teacher-photo']);
-            
+
             // Obtener teléfono y horario guardados en la configuración del bloque
             $phone = '';
             $schedule = '';
-            
+
             // Buscar el teléfono guardado para este profesor
-            $phoneKey = 'userphone_' . $teacher->id;
-            if (!empty($this->config->$phoneKey)) {
-                $phone = $this->config->$phoneKey;
+            $phonekey = 'userphone_' . $teacher->id;
+            if (!empty($this->config->$phonekey)) {
+                $phone = $this->config->$phonekey;
             }
-            
+
             // Buscar el horario guardado para este profesor
-            $scheduleKey = 'userschedule_' . $teacher->id;
-            if (!empty($this->config->$scheduleKey)) {
-                if (is_array($this->config->$scheduleKey)) {
+            $schedulekey = 'userschedule_' . $teacher->id;
+            if (!empty($this->config->$schedulekey)) {
+                if (is_array($this->config->$schedulekey)) {
                     // Es un editor, tiene formato array con 'text' y 'format'
-                    $schedule = $this->config->$scheduleKey['text'];
+                    $schedule = $this->config->$schedulekey['text'];
                 } else {
-                    $schedule = $this->config->$scheduleKey;
+                    $schedule = $this->config->$schedulekey;
                 }
             }
-            
-            $teachersP[] = (object)[
+
+            $teachersp[] = (object)[
                 'id'          => $teacher->id,
                 'fullname'    => fullname($teacher),
                 'email'       => $teacher->email,
                 'phone'       => $phone,
                 'schedule'    => $schedule,
-                'picturehtml' => $userpic  // Cambiado de 'userpic' a 'picturehtml'
+                'picturehtml' => $userpic, // Cambiado de 'userpic' a 'picturehtml'
             ];
         }
 
@@ -363,92 +388,92 @@ class block_bloquecero extends block_base {
             }
         }
         if ($hasselection) {
-            $teachersP = array_filter($teachersP, function($t) {
+            $teachersp = array_filter($teachersp, function ($t) {
                 $key = 'teacher_selected_' . $t->id;
                 return !empty($this->config->$key);
             });
-            $teachersP = array_values($teachersP);
+            $teachersp = array_values($teachersp);
         }
 
         // URLs de los foros y demás secciones
-        $forum_anuncios_url = '';
+        $forumanunciosurl = '';
         if (!empty($this->config->forumid)) {
-            $id_forum_anuncios = $this->config->forumid;
+            $idforumanuncios = $this->config->forumid;
             // Verificar que el foro existe antes de acceder
-            if ($DB->record_exists('forum', ['id' => $id_forum_anuncios])) {
-                $cm_forum_anuncios = get_coursemodule_from_instance('forum', $id_forum_anuncios);
-                if ($cm_forum_anuncios) {
+            if ($DB->record_exists('forum', ['id' => $idforumanuncios])) {
+                $cmforumanuncios = get_coursemodule_from_instance('forum', $idforumanuncios);
+                if ($cmforumanuncios) {
                     // Usar cm_info para verificar visibilidad respetando permisos del usuario
-                    $cminfo_anuncios = \cm_info::create($cm_forum_anuncios);
-                    if ($cminfo_anuncios->uservisible) {
-                        $forum_anuncios_url = new moodle_url('/mod/forum/view.php', array('id' => $cm_forum_anuncios->id));
-                        $count_anuncios = forum_get_discussions_unread($cm_forum_anuncios);
+                    $cminfoanuncios = \cm_info::create($cmforumanuncios);
+                    if ($cminfoanuncios->uservisible) {
+                        $forumanunciosurl = new moodle_url('/mod/forum/view.php', ['id' => $cmforumanuncios->id]);
+                        $countanuncios = forum_get_discussions_unread($cmforumanuncios);
                     }
                 }
             }
         }
 
-        $forum_tutorias_url = '';
+        $forumtutoriasurl = '';
         if (!empty($this->config->forumtutoriasid)) {
-            $id_forum_tutorias = $this->config->forumtutoriasid;
+            $idforumtutorias = $this->config->forumtutoriasid;
             // Verificar que el foro existe antes de acceder
-            if ($DB->record_exists('forum', ['id' => $id_forum_tutorias])) {
-                $cm_forum_tutorias = get_coursemodule_from_instance('forum', $id_forum_tutorias);
-                if ($cm_forum_tutorias) {
+            if ($DB->record_exists('forum', ['id' => $idforumtutorias])) {
+                $cmforumtutorias = get_coursemodule_from_instance('forum', $idforumtutorias);
+                if ($cmforumtutorias) {
                     // Usar cm_info para verificar visibilidad respetando permisos del usuario
-                    $cminfo_tutorias = \cm_info::create($cm_forum_tutorias);
-                    if ($cminfo_tutorias->uservisible) {
-                        $forum_tutorias_url = new moodle_url('/mod/forum/view.php', array('id' => $cm_forum_tutorias->id));
-                        $count_tutorias = forum_get_discussions_unread($cm_forum_tutorias);
+                    $cminfotutorias = \cm_info::create($cmforumtutorias);
+                    if ($cminfotutorias->uservisible) {
+                        $forumtutoriasurl = new moodle_url('/mod/forum/view.php', ['id' => $cmforumtutorias->id]);
+                        $counttutorias = forum_get_discussions_unread($cmforumtutorias);
                     }
                 }
             }
         }
 
-        $forum_estudiantes_url = '';
+        $forumestudiantesurl = '';
         if (!empty($this->config->forumestudiantesid)) {
-            $id_forum_estudiantes = $this->config->forumestudiantesid;
+            $idforumestudiantes = $this->config->forumestudiantesid;
             // Verificar que el foro existe antes de acceder
-            if ($DB->record_exists('forum', ['id' => $id_forum_estudiantes])) {
-                $cm_forum_estudiantes = get_coursemodule_from_instance('forum', $id_forum_estudiantes);
-                if ($cm_forum_estudiantes) {
+            if ($DB->record_exists('forum', ['id' => $idforumestudiantes])) {
+                $cmforumestudiantes = get_coursemodule_from_instance('forum', $idforumestudiantes);
+                if ($cmforumestudiantes) {
                     // Usar cm_info para verificar visibilidad respetando permisos del usuario
-                    $cminfo_estudiantes = \cm_info::create($cm_forum_estudiantes);
-                    if ($cminfo_estudiantes->uservisible) {
-                        $forum_estudiantes_url = new moodle_url('/mod/forum/view.php', array('id' => $cm_forum_estudiantes->id));
-                        $count_estudiantes = forum_get_discussions_unread($cm_forum_estudiantes);
+                    $cminfoestudiantes = \cm_info::create($cmforumestudiantes);
+                    if ($cminfoestudiantes->uservisible) {
+                        $forumestudiantesurl = new moodle_url('/mod/forum/view.php', ['id' => $cmforumestudiantes->id]);
+                        $countestudiantes = forum_get_discussions_unread($cmforumestudiantes);
                     }
                 }
             }
         }
         // Foro Convocatoria de Septiembre (solo si el modo septiembre está activo).
-        $forum_septiembre_url = '';
+        $forumseptiembreurl = '';
         if (!empty($this->config->show_september_notice)) {
             $septforumname = get_string('sept_forum_name', 'block_bloquecero');
             $septforumrecord = $DB->get_record('forum', ['course' => $COURSE->id, 'name' => $septforumname]);
             if ($septforumrecord) {
-                $cm_forum_septiembre = get_coursemodule_from_instance('forum', $septforumrecord->id, $COURSE->id);
-                if ($cm_forum_septiembre) {
-                    $cminfo_septiembre = \cm_info::create($cm_forum_septiembre);
-                    if ($cminfo_septiembre->uservisible) {
-                        $forum_septiembre_url = new moodle_url('/mod/forum/view.php', ['id' => $cm_forum_septiembre->id]);
-                        $count_septiembre = forum_get_discussions_unread($cm_forum_septiembre);
+                $cmforumseptiembre = get_coursemodule_from_instance('forum', $septforumrecord->id, $COURSE->id);
+                if ($cmforumseptiembre) {
+                    $cminfoseptiembre = \cm_info::create($cmforumseptiembre);
+                    if ($cminfoseptiembre->uservisible) {
+                        $forumseptiembreurl = new moodle_url('/mod/forum/view.php', ['id' => $cmforumseptiembre->id]);
+                        $countseptiembre = forum_get_discussions_unread($cmforumseptiembre);
                     }
                 }
             }
         }
 
-        $guide_url = !empty($this->config->guide_url) ? $this->config->guide_url : '#';
+        $guideurl = !empty($this->config->guide_url) ? $this->config->guide_url : '#';
         // $bibliography_url = !empty($this->config->bibliography_url) ? $this->config->bibliography_url : '#';
 
-        $zoom_url = new moodle_url('/path/to/zoom');
-        $tasks_url = new moodle_url('/path/to/tasks');
+        $zoomurl = new moodle_url('/path/to/zoom');
+        $tasksurl = new moodle_url('/path/to/tasks');
 
-        $strShowCourse = get_string('showcourse', 'block_bloquecero');
-        $strHideCourse = get_string('hidecourse', 'block_bloquecero');
+        $strshowcourse = get_string('showcourse', 'block_bloquecero');
+        $strhidecourse = get_string('hidecourse', 'block_bloquecero');
 
         $togglebuttonhtml = '';
-        if (!$is_editing) {
+        if (!$isediting) {
             $togglebuttonhtml = '
                 <div class="moodle-toggle-centering">
                     <button id="bloquecero-mostrarcurso-btn"
@@ -463,13 +488,13 @@ class block_bloquecero extends block_base {
                                 <polyline points="9 6 15 12 9 18" fill="none" stroke="#1655A0" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round"/>
                             </svg>
                         </span>
-                        <span id="bloquecero-mostrarcurso-text" class="moodle-toggle-label">' . $strShowCourse . '</span>
+                        <span id="bloquecero-mostrarcurso-text" class="moodle-toggle-label">' . $strshowcourse . '</span>
                     </button>
                     </div>';
         }
-        
-        if ($is_editing) {
-            $PAGE->requires->js_init_code("
+
+        if ($isediting) {
+            $this->page->requires->js_init_code("
                 document.addEventListener('DOMContentLoaded', function() {
                     var region = document.getElementById('region-main');
                     if (region) region.style.display = '';
@@ -488,8 +513,8 @@ class block_bloquecero extends block_base {
             ");
         }
 
-        if ($is_metacourse) {
-            $PAGE->requires->js_init_code("
+        if ($ismetacourse) {
+            $this->page->requires->js_init_code("
                 document.addEventListener('DOMContentLoaded', function() {
                     var region = document.getElementById('region-main');
                     if (region) region.style.display = 'none';
@@ -516,28 +541,33 @@ class block_bloquecero extends block_base {
         // Si hay archivos, usa el primero como imagen de fondo.
         if (!empty($files)) {
             $file = reset($files);
-            $fondo_cabecera_img = moodle_url::make_pluginfile_url(
-                $context->id, 'block_bloquecero', 'header_bg', 0, $file->get_filepath(), $file->get_filename()
+            $fondocabeceraimg = moodle_url::make_pluginfile_url(
+                $context->id,
+                'block_bloquecero',
+                'header_bg',
+                0,
+                $file->get_filepath(),
+                $file->get_filename()
             );
         } else {
-            $fondo_cabecera_img = '';
+            $fondocabeceraimg = '';
         }
         // Generar botones de contacto para cada profesor (lista separada por comas).
-        $teachersList = array();
-        $contactBlocksHtml = '';
-        foreach ($teachersP as $teacher) {
-            $uniqueId = 'contact-info-' . $teacher->id;
-            $teachersList[] = '
+        $teacherslist = [];
+        $contactblockshtml = '';
+        foreach ($teachersp as $teacher) {
+            $uniqueid = 'contact-info-' . $teacher->id;
+            $teacherslist[] = '
                 <button class="bloquecero-teacher-btn" type="button"
-                    onclick="toggleContactInfo(\'' . $uniqueId . '\')"
+                    onclick="toggleContactInfo(\'' . $uniqueid . '\')"
                     aria-expanded="false"
-                    aria-controls="' . $uniqueId . '">
+                    aria-controls="' . $uniqueid . '">
                     <span>' . format_string($teacher->fullname) . '</span><span class="bloquecero-teacher-infoicon" aria-hidden="true">i</span>
                 </button>';
 
             // Bloque de información de contacto para este profesor (oculto por defecto).
-            $contactBlocksHtml .= '
-                <div id="' . $uniqueId . '" role="region"
+            $contactblockshtml .= '
+                <div id="' . $uniqueid . '" role="region"
                     aria-hidden="true"
                     aria-label="' . get_string('contactinfo', 'block_bloquecero', format_string($teacher->fullname)) . '"
                     style="
@@ -564,9 +594,9 @@ class block_bloquecero extends block_base {
                 </div>';
         }
 
-        $contactButtonsHtml = implode(
+        $contactbuttonshtml = implode(
             '<span aria-hidden="true" style="margin: 0 4px; color: #888;">·</span>',
-            array_map(fn($btn) => '<span style="white-space:nowrap">' . $btn . '</span>', $teachersList)
+            array_map(fn($btn) => '<span style="white-space:nowrap">' . $btn . '</span>', $teacherslist)
         );
 
         // Inicializar completion_info para mostrar estado de finalización
@@ -575,7 +605,7 @@ class block_bloquecero extends block_base {
         $currentuserid = $USER->id;
 
         // Inicializar array para almacenar las actividades de cada sección (clave: id de la sección)
-        $sectionsActivitiesData = array();
+        $sectionsactivitiesdata = [];
 
         // Carrusel de tarjetas de secciones (sin mostrar las actividades inline)
         $sectionscarousel = '<div class="sections-carousel">';
@@ -590,15 +620,23 @@ class block_bloquecero extends block_base {
             $now = time();
             $weekduration = 7 * 24 * 60 * 60;
             $todaysection = floor(($now - $startdate) / $weekduration) + 1;
-            if ($todaysection < 1) $todaysection = 1;
+            if ($todaysection < 1) {
+                $todaysection = 1;
+            }
         }
 
-        $section_cards = [];
+        $sectioncards = [];
         $sectioncount = 0;
         foreach ($modinfo->get_section_info_all() as $section) {
-            if ($section->section == 0) continue;
-            if (!$section->uservisible) continue;
-            if (!empty($section->component) && $section->component === 'mod_subsection') continue;
+            if ($section->section == 0) {
+                continue;
+            }
+            if (!$section->uservisible) {
+                continue;
+            }
+            if (!empty($section->component) && $section->component === 'mod_subsection') {
+                continue;
+            }
             $sectionurl = new moodle_url('/course/section.php', ['id' => $section->id]);
             $course = $modinfo->get_course();
             if ($course->format == 'weeks' && empty($section->name)) {
@@ -620,22 +658,26 @@ class block_bloquecero extends block_base {
                 : 3; // Valor por defecto si no está configurado
             $visibleactivities = 0;
             $totalactivities = 0;
-            $all_activities_array = [];
-            $section_completed = 0;
-            $section_total_with_completion = 0;
+            $allactivitiesarray = [];
+            $sectioncompleted = 0;
+            $sectiontotalwithcompletion = 0;
             // print_r($modinfo);
             if (!empty($modinfo->sections[$section->section])) {
                 // Crear un mapa de secciones por ID usando get_section_info_all()
-                $section_map = [];
-                foreach ($modinfo->get_section_info_all() as $section_info) {
-                    $section_map[$section_info->id] = $section_info;
+                $sectionmap = [];
+                foreach ($modinfo->get_section_info_all() as $sectioninfo) {
+                    $sectionmap[$sectioninfo->id] = $sectioninfo;
                 }
 
                 foreach ($modinfo->sections[$section->section] as $cmid) {
                     $cm = $modinfo->cms[$cmid];
 
-                    if (!$cm->uservisible) continue; // Saltar módulos no visibles para el usuario
-                    if ($cm->modname === 'label') continue; // Saltar actividades de texto y media
+                    if (!$cm->uservisible) {
+                        continue; // Saltar módulos no visibles para el usuario
+                    }
+                    if ($cm->modname === 'label') {
+                        continue; // Saltar actividades de texto y media
+                    }
 
                     if ($cm->modname !== 'subsection') {
                         // Actividad normal (no subsección)
@@ -643,79 +685,81 @@ class block_bloquecero extends block_base {
                         $completionhtml = '';
                         if ($completionenabled && $completion->is_enabled($cm)) {
                             $completiondata = $completion->get_data($cm);
-                            $section_total_with_completion++;
+                            $sectiontotalwithcompletion++;
                             // Obtener condiciones de finalización
                             $cmdetails = \core_completion\cm_completion_details::get_instance($cm, $currentuserid);
-                            $condition_parts = [];
+                            $conditionparts = [];
                             if ($cmdetails->is_automatic()) {
                                 foreach ($cmdetails->get_details() as $detail) {
-                                    $condition_parts[] = $detail->description;
+                                    $conditionparts[] = $detail->description;
                                 }
                             }
                             if ($completiondata->completionstate == COMPLETION_COMPLETE || $completiondata->completionstate == COMPLETION_COMPLETE_PASS) {
                                 $completionhtml = '<span class="bloquecero-completion-icon bloquecero-completion-done" aria-label="' . get_string('completed', 'block_bloquecero') . '">&#10003;</span>';
-                                $section_completed++;
+                                $sectioncompleted++;
                             } else if ($completiondata->completionstate == COMPLETION_COMPLETE_FAIL) {
                                 $completionhtml = '<span class="bloquecero-completion-icon bloquecero-completion-fail" aria-label="' . get_string('failed', 'block_bloquecero') . '">&#10007;</span>';
                             } else {
                                 $completionhtml = '<span class="bloquecero-completion-icon bloquecero-completion-pending" aria-label="' . get_string('pending', 'block_bloquecero') . '">&#9675;</span>';
                             }
-                            if (!empty($condition_parts)) {
-                                $completionhtml .= '<div class="bloquecero-completion-conditions">' . implode(' &middot; ', array_map('htmlspecialchars', $condition_parts)) . '</div>';
+                            if (!empty($conditionparts)) {
+                                $completionhtml .= '<div class="bloquecero-completion-conditions">' . implode(' &middot; ', array_map('htmlspecialchars', $conditionparts)) . '</div>';
                             }
                         }
-                        $cm_hidden_html = (!$cm->visible && $can_view_hidden)
+                        $cmhiddenhtml = (!$cm->visible && $canviewhidden)
                             ? ' <span class="bloquecero-activity-hidden">' . get_string('hiddenfromstudents', 'moodle') . '</span>'
                             : '';
-                        $cm_li_class = (!$cm->visible && $can_view_hidden) ? ' class="bloquecero-item-hidden"' : '';
-                        $all_activities_array[] = '<li' . $cm_li_class . '>' . $icon . ' <a href="' . $cm->url . '">' . format_string($cm->name) . '</a>' . $cm_hidden_html . $completionhtml . '</li>';
+                        $cmliclass = (!$cm->visible && $canviewhidden) ? ' class="bloquecero-item-hidden"' : '';
+                        $allactivitiesarray[] = '<li' . $cmliclass . '>' . $icon . ' <a href="' . $cm->url . '">' . format_string($cm->name) . '</a>' . $cmhiddenhtml . $completionhtml . '</li>';
                         $visibleactivities++;
                         $totalactivities++;
                     } else {
                         // Subsección encontrada
                         if (!empty($cm->name)) {
                             // Añadir el nombre de la subsección con estilo
-                            $all_activities_array[] = '<li class="bloquecero-subsection-name" style="font-weight:600; color:#004D35; margin:8px 0 4px 0;">' . format_string($cm->name) . '</li>';
+                            $allactivitiesarray[] = '<li class="bloquecero-subsection-name" style="font-weight:600; color:#004D35; margin:8px 0 4px 0;">' . format_string($cm->name) . '</li>';
 
                             // Obtener la sección vinculada a la subsección
-                            $subsection_id = $cm->customdata['sectionid'] ?? null;
-                            if ($subsection_id && isset($section_map[$subsection_id])) {
-                                $subsection = $section_map[$subsection_id];
+                            $subsectionid = $cm->customdata['sectionid'] ?? null;
+                            if ($subsectionid && isset($sectionmap[$subsectionid])) {
+                                $subsection = $sectionmap[$subsectionid];
 
                                 // Listar las actividades dentro de la subsección con sangría
                                 if (!empty($modinfo->sections[$subsection->section])) {
-                                    foreach ($modinfo->sections[$subsection->section] as $sub_cmid) {
-                                        $sub_cm = $modinfo->cms[$sub_cmid];
-                                        if (!$sub_cm->uservisible) continue; // Saltar actividades no visibles
+                                    foreach ($modinfo->sections[$subsection->section] as $subcmid) {
+                                        $subcm = $modinfo->cms[$subcmid];
+                                        if (!$subcm->uservisible) {
+                                            continue; // Saltar actividades no visibles
+                                        }
 
                                         // Generar el icono y el enlace para la actividad de la subsección
-                                        $sub_icon = $OUTPUT->pix_icon('icon', $sub_cm->modfullname, $sub_cm->modname, ['class' => 'activityicon']);
-                                        $sub_completionhtml = '';
-                                        if ($completionenabled && $completion->is_enabled($sub_cm)) {
-                                            $sub_completiondata = $completion->get_data($sub_cm);
-                                            $section_total_with_completion++;
+                                        $subicon = $OUTPUT->pix_icon('icon', $subcm->modfullname, $subcm->modname, ['class' => 'activityicon']);
+                                        $subcompletionhtml = '';
+                                        if ($completionenabled && $completion->is_enabled($subcm)) {
+                                            $subcompletiondata = $completion->get_data($subcm);
+                                            $sectiontotalwithcompletion++;
                                             // Obtener condiciones de finalización
-                                            $sub_cmdetails = \core_completion\cm_completion_details::get_instance($sub_cm, $currentuserid);
-                                            $sub_condition_parts = [];
-                                            if ($sub_cmdetails->is_automatic()) {
-                                                foreach ($sub_cmdetails->get_details() as $detail) {
-                                                    $sub_condition_parts[] = $detail->description;
+                                            $subcmdetails = \core_completion\cm_completion_details::get_instance($subcm, $currentuserid);
+                                            $subconditionparts = [];
+                                            if ($subcmdetails->is_automatic()) {
+                                                foreach ($subcmdetails->get_details() as $detail) {
+                                                    $subconditionparts[] = $detail->description;
                                                 }
                                             }
-                                            if ($sub_completiondata->completionstate == COMPLETION_COMPLETE || $sub_completiondata->completionstate == COMPLETION_COMPLETE_PASS) {
-                                                $sub_completionhtml = '<span class="bloquecero-completion-icon bloquecero-completion-done" aria-label="' . get_string('completed', 'block_bloquecero') . '">&#10003;</span>';
-                                                $section_completed++;
-                                            } else if ($sub_completiondata->completionstate == COMPLETION_COMPLETE_FAIL) {
-                                                $sub_completionhtml = '<span class="bloquecero-completion-icon bloquecero-completion-fail" aria-label="' . get_string('failed', 'block_bloquecero') . '">&#10007;</span>';
+                                            if ($subcompletiondata->completionstate == COMPLETION_COMPLETE || $subcompletiondata->completionstate == COMPLETION_COMPLETE_PASS) {
+                                                $subcompletionhtml = '<span class="bloquecero-completion-icon bloquecero-completion-done" aria-label="' . get_string('completed', 'block_bloquecero') . '">&#10003;</span>';
+                                                $sectioncompleted++;
+                                            } else if ($subcompletiondata->completionstate == COMPLETION_COMPLETE_FAIL) {
+                                                $subcompletionhtml = '<span class="bloquecero-completion-icon bloquecero-completion-fail" aria-label="' . get_string('failed', 'block_bloquecero') . '">&#10007;</span>';
                                             } else {
-                                                $sub_completionhtml = '<span class="bloquecero-completion-icon bloquecero-completion-pending" aria-label="' . get_string('pending', 'block_bloquecero') . '">&#9675;</span>';
+                                                $subcompletionhtml = '<span class="bloquecero-completion-icon bloquecero-completion-pending" aria-label="' . get_string('pending', 'block_bloquecero') . '">&#9675;</span>';
                                             }
-                                            if (!empty($sub_condition_parts)) {
-                                                $sub_completionhtml .= '<div class="bloquecero-completion-conditions">' . implode(' &middot; ', array_map('htmlspecialchars', $sub_condition_parts)) . '</div>';
+                                            if (!empty($subconditionparts)) {
+                                                $subcompletionhtml .= '<div class="bloquecero-completion-conditions">' . implode(' &middot; ', array_map('htmlspecialchars', $subconditionparts)) . '</div>';
                                             }
                                         }
                                         // Añadir sangría con una clase CSS
-                                        $all_activities_array[] = '<li class="bloquecero-subsection-activity" style="margin-left: 20px;">' . $sub_icon . ' <a href="' . $sub_cm->url . '">' . format_string($sub_cm->name) . '</a>' . $sub_completionhtml . '</li>';
+                                        $allactivitiesarray[] = '<li class="bloquecero-subsection-activity" style="margin-left: 20px;">' . $subicon . ' <a href="' . $subcm->url . '">' . format_string($subcm->name) . '</a>' . $subcompletionhtml . '</li>';
                                         $visibleactivities++;
                                         $totalactivities++;
                                     }
@@ -726,34 +770,33 @@ class block_bloquecero extends block_base {
                 }
             }
             // Generar previews y full lists
-            $activities_preview = array_slice($all_activities_array, 0, $maxactivities);
-            $remaining = count($all_activities_array) - $maxactivities;
+            $activitiespreview = array_slice($allactivitiesarray, 0, $maxactivities);
+            $remaining = count($allactivitiesarray) - $maxactivities;
             if ($remaining > 0) {
-                // $activities_preview[] = '<li class="bloquecero-vermas">+' . $remaining . ' más</li>';
-                    $activities_preview[] = '<li class="bloquecero-vermas"><button type="button" class="bloquecero-vermas-btn" onclick="toggleSectionCard(this)" aria-expanded="false">+' . $remaining . ' ' . get_string('more', 'block_bloquecero') . '</button></li>';
-                $all_activities_array[] = '<li class="bloquecero-vermas"><button type="button" class="bloquecero-vermas-btn" onclick="toggleSectionCard(this)" aria-expanded="true">' . get_string('showless', 'block_bloquecero') . '</button></li>';
-
+                // $activitiespreview[] = '<li class="bloquecero-vermas">+' . $remaining . ' más</li>';
+                    $activitiespreview[] = '<li class="bloquecero-vermas"><button type="button" class="bloquecero-vermas-btn" onclick="toggleSectionCard(this)" aria-expanded="false">+' . $remaining . ' ' . get_string('more', 'block_bloquecero') . '</button></li>';
+                $allactivitiesarray[] = '<li class="bloquecero-vermas"><button type="button" class="bloquecero-vermas-btn" onclick="toggleSectionCard(this)" aria-expanded="true">' . get_string('showless', 'block_bloquecero') . '</button></li>';
             }
-            $activitieslist = '<ul class="bloquecero-section-activities" data-preview="1" style="margin: 12px 0 0 0; padding-left: 0; list-style: none;">' . implode('', $activities_preview) . '</ul>';
-            $activitieslist_full = '<ul class="bloquecero-section-activities" data-full="1" style="margin: 12px 0 0 0; padding-left: 0; list-style: none; display:none;">' . implode('', $all_activities_array) . '</ul>';
-            if (!$all_activities_array) {
+            $activitieslist = '<ul class="bloquecero-section-activities" data-preview="1" style="margin: 12px 0 0 0; padding-left: 0; list-style: none;">' . implode('', $activitiespreview) . '</ul>';
+            $activitieslistfull = '<ul class="bloquecero-section-activities" data-full="1" style="margin: 12px 0 0 0; padding-left: 0; list-style: none; display:none;">' . implode('', $allactivitiesarray) . '</ul>';
+            if (!$allactivitiesarray) {
                 $activitieslist = '<div style="margin-top:12px; color:#595959; font-size:0.95em;" class="bloquecero-section-activities" data-preview="1">' . get_string('noactivities', 'block_bloquecero') . '</div>';
-                $activitieslist_full = '<div style="margin-top:12px; color:#595959; font-size:0.95em; display:none;" class="bloquecero-section-activities" data-full="1">' . get_string('noactivities', 'block_bloquecero') . '</div>';
+                $activitieslistfull = '<div style="margin-top:12px; color:#595959; font-size:0.95em; display:none;" class="bloquecero-section-activities" data-full="1">' . get_string('noactivities', 'block_bloquecero') . '</div>';
             }
-            // print_r($all_activities_array);
+            // print_r($allactivitiesarray);
             // Guardar el contenido HTML de las actividades para esta sección con un id único
             $sectionid = 'section-activities-' . $sectioncount;
-            $sectionsActivitiesData[$sectionid] = $activitieslist_full;
-            // print_r($sectionsActivitiesData);
+            $sectionsactivitiesdata[$sectionid] = $activitieslistfull;
+            // print_r($sectionsactivitiesdata);
             // Colores alternos por índice de tarjeta
-            $tarjeta_colores = [
+            $tarjetacolores = [
                 ['bg' => '#F2F5F3', 'linea' => '#B7C65C'], // gris verdoso claro
                 ['bg' => '#F8FBED', 'linea' => '#B7C65C'], // verde clarito
                 ['bg' => '#FAFAFA', 'linea' => '#B7C65C'], // blanco-gris
             ];
-            $tarjeta_idx = $sectioncount % count($tarjeta_colores);
-            $bg_color = $tarjeta_colores[$tarjeta_idx]['bg'];
-            $line_color = $tarjeta_colores[$tarjeta_idx]['linea'];
+            $tarjetaidx = $sectioncount % count($tarjetacolores);
+            $bgcolor = $tarjetacolores[$tarjetaidx]['bg'];
+            $linecolor = $tarjetacolores[$tarjetaidx]['linea'];
 
             // Badge destacado si corresponde
             $badge = null;
@@ -764,46 +807,46 @@ class block_bloquecero extends block_base {
             }
 
             // Construir la tarjeta como string (con badge si corresponde)
-            $hidden_class = (!$section->visible && $can_view_hidden) ? ' bloquecero-item-hidden' : '';
-            $card_html = '<div class="bloquecero-section-card' . $hidden_class . '" style="background: '.$bg_color.'">';
-            if ($hidden_class) {
-                $card_html .= '<span class="bloquecero-hidden-badge">' . get_string('hiddenfromstudents', 'moodle') . '</span>';
+            $hiddenclass = (!$section->visible && $canviewhidden) ? ' bloquecero-item-hidden' : '';
+            $cardhtml = '<div class="bloquecero-section-card' . $hiddenclass . '" style="background: ' . $bgcolor . '">';
+            if ($hiddenclass) {
+                $cardhtml .= '<span class="bloquecero-hidden-badge">' . get_string('hiddenfromstudents', 'moodle') . '</span>';
             }
             if ($badge) {
-                $card_html .= '<span class="bloquecero-section-badge">' . $badge . '</span>';
+                $cardhtml .= '<span class="bloquecero-section-badge">' . $badge . '</span>';
             }
-            $card_html .= '
+            $cardhtml .= '
                 <div class="bloquecero-section-header-flex" style="display:flex;flex-direction:column;width:100%;gap:4px;margin-bottom:8px;">
-                    <div style="min-width:0;overflow:hidden;"><a href="'. $sectionurl .'" class="bloquecero-section-number" title="'. htmlspecialchars(strip_tags($sectiontitle)) .'">'. $sectiontitle .'</a></div>
+                    <div style="min-width:0;overflow:hidden;"><a href="' . $sectionurl . '" class="bloquecero-section-number" title="' . htmlspecialchars(strip_tags($sectiontitle)) . '">' . $sectiontitle . '</a></div>
                 </div>
-                <div class="bloquecero-section-line" style="background: '.$line_color.'; margin-bottom:12px;"></div>
+                <div class="bloquecero-section-line" style="background: ' . $linecolor . '; margin-bottom:12px;"></div>
                 <div class="bloquecero-section-content">
-                    '.$activitieslist.'
-                    '.$activitieslist_full.'
+                    ' . $activitieslist . '
+                    ' . $activitieslistfull . '
                 </div>';
             // Barra de progreso de completion
-            if ($completionenabled && $section_total_with_completion > 0) {
-                $progress_pct = round(($section_completed / $section_total_with_completion) * 100);
-                $card_html .= '
+            if ($completionenabled && $sectiontotalwithcompletion > 0) {
+                $progresspct = round(($sectioncompleted / $sectiontotalwithcompletion) * 100);
+                $cardhtml .= '
                 <div class="bloquecero-progress-wrapper">
-                    <div class="bloquecero-progress-bar" role="progressbar" aria-valuenow="'.$progress_pct.'" aria-valuemin="0" aria-valuemax="100" aria-label="' . get_string('completionprogress', 'block_bloquecero') . '">
-                        <div class="bloquecero-progress-fill" style="width: '.$progress_pct.'%"></div>
+                    <div class="bloquecero-progress-bar" role="progressbar" aria-valuenow="' . $progresspct . '" aria-valuemin="0" aria-valuemax="100" aria-label="' . get_string('completionprogress', 'block_bloquecero') . '">
+                        <div class="bloquecero-progress-fill" style="width: ' . $progresspct . '%"></div>
                     </div>
-                    <span class="bloquecero-progress-text">'.$section_completed.'/'.$section_total_with_completion.' completadas</span>
+                    <span class="bloquecero-progress-text">' . $sectioncompleted . '/' . $sectiontotalwithcompletion . ' completadas</span>
                 </div>';
             }
-            $card_html .= '
+            $cardhtml .= '
             </div>';
-            
+
             // Añadir todas las tarjetas al mismo array, sin separar.
-            $section_cards[] = $card_html;
+            $sectioncards[] = $cardhtml;
             $sectioncount++;
         }
-        $sectionscarousel .= implode('', $section_cards);
+        $sectionscarousel .= implode('', $sectioncards);
         $sectionscarousel .= '</div>';
 
         // Envolver el carrusel en un contenedor con botones laterales
-        $carouselContainer = '
+        $carouselcontainer = '
             <div class="carousel-container" role="region" aria-label="' . get_string('coursesections', 'block_bloquecero') . '" aria-roledescription="carousel" style="position: relative; display: flex; align-items: center; margin-bottom: 20px; padding: 0 40px;">
                  <button class="carousel-btn carousel-btn-left" onclick="scrollCarousel(-1)" aria-label="' . get_string('previoussection', 'block_bloquecero') . '" style="background: transparent; border: none; color: #004D35; font-size: 1.5em; padding: 0; cursor: pointer; position: absolute; left: 0; z-index: 2; height: 100%;">&#8249;</button>
                  ' . $sectionscarousel . '
@@ -815,20 +858,20 @@ class block_bloquecero extends block_base {
         // $activitiesBlockHtml = '<div id="section-activities-container" style="margin: 20px 40px; text-align: left; font-size: 0.9em; color: #333; border: 1px solid #ddd; border-radius: 3px; padding: 15px; background-color: #f9f9f9; box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1); display: none;"></div>';
 
         // Inyectar la definición del array de actividades en JavaScript
-        $sectionsActivitiesJson = json_encode($sectionsActivitiesData);
-        // print_r($sectionsActivitiesData);
+        $sectionsactivitiesjson = json_encode($sectionsactivitiesdata);
+        // print_r($sectionsactivitiesdata);
 
-        $courseDates = '';
+        $coursedates = '';
         if (!empty($COURSE->startdate)) {
-            $courseDates = userdate($COURSE->startdate, '%d %b %Y');
+            $coursedates = userdate($COURSE->startdate, '%d %b %Y');
             if (!empty($COURSE->enddate)) {
-                $courseDates .= ' - ' . userdate($COURSE->enddate, '%d %b %Y');
+                $coursedates .= ' - ' . userdate($COURSE->enddate, '%d %b %Y');
             }
         }
 
         // Bloque para mostrar el Calendario de actividades (mismo ancho que el carrusel)
-        $calendarActivities = '';
-        $activitiesData = []; // Array para pasar a JavaScript con información completa
+        $calendaractivities = '';
+        $activitiesdata = []; // Array para pasar a JavaScript con información completa
 
         // Precargar actividades calificables del curso y notas del usuario (2 consultas)
         $gradedmodules = [];
@@ -838,7 +881,7 @@ class block_bloquecero extends block_base {
         }
         $usergraded = [];
         if (!empty($gradedmodules)) {
-            list($insql, $inparams) = $DB->get_in_or_equal(array_values($gradedmodules));
+            [$insql, $inparams] = $DB->get_in_or_equal(array_values($gradedmodules));
             $inparams[] = $USER->id;
             $usergraderows = $DB->get_records_sql(
                 "SELECT gi.itemmodule, gi.iteminstance
@@ -876,7 +919,7 @@ class block_bloquecero extends block_base {
                         $submission = $DB->get_record('assign_submission', [
                             'assignment' => $cm->instance,
                             'userid' => $USER->id,
-                            'latest' => 1
+                            'latest' => 1,
                         ]);
                         $submitted = $submission && $submission->status === 'submitted';
                     }
@@ -889,7 +932,7 @@ class block_bloquecero extends block_base {
                         // Verificar si tiene intentos
                         $attempts = $DB->count_records('quiz_attempts', [
                             'quiz' => $cm->instance,
-                            'userid' => $USER->id
+                            'userid' => $USER->id,
                         ]);
                         $submitted = $attempts > 0;
                     }
@@ -915,7 +958,7 @@ class block_bloquecero extends block_base {
                 }
 
                 // Construir objeto de actividad para JavaScript
-                $activitiesData[] = [
+                $activitiesdata[] = [
                     'name' => format_string($cm->name),
                     'url' => $cm->url->out(),
                     'icon' => $icon,
@@ -924,41 +967,41 @@ class block_bloquecero extends block_base {
                     'startdate' => (int)$startdate,
                     'duedate' => (int)$duedate,
                     'submitted' => $submitted,
-                    'hidden' => (!$cm->visible && $can_view_hidden)
+                    'hidden' => (!$cm->visible && $canviewhidden),
                 ];
 
-                $duedateHtml = '';
+                $duedatehtml = '';
                 if ($duedate && $duedate !== $startdate) {
-                    $duedateHtml = ' · Fin: ' . userdate($duedate, '%d %b %Y');
+                    $duedatehtml = ' · Fin: ' . userdate($duedate, '%d %b %Y');
                 }
-                $dateText = $activitytime ? 'Inicio: ' . $activitytime . $duedateHtml : '';
-                $secondLine = '<div style="display:flex;justify-content:space-between;align-items:center;padding-left:22px;margin-top:2px;">'
-                    . '<span style="font-size:0.78em;color:#999;">' . $dateText . '</span>'
+                $datetext = $activitytime ? 'Inicio: ' . $activitytime . $duedatehtml : '';
+                $secondline = '<div style="display:flex;justify-content:space-between;align-items:center;padding-left:22px;margin-top:2px;">'
+                    . '<span style="font-size:0.78em;color:#999;">' . $datetext . '</span>'
                     . '<span class="bloquecero-act-status"></span>'
                     . '</div>';
-                $hasUserGrade = isset($usergraded[$cm->modname . '_' . $cm->instance]) ? '1' : '0';
-                $hasSubmitted = $submitted ? '1' : '0';
-                $cal_hidden = (!$cm->visible && $can_view_hidden);
-                $cal_li_class = $cal_hidden ? ' class="bloquecero-item-hidden"' : '';
-                $cal_hidden_html = $cal_hidden ? ' <span class="bloquecero-activity-hidden">' . get_string('hiddenfromstudents', 'moodle') . '</span>' : '';
-                $calendarActivities .= '<li data-timestamp="' . (int)$startdate . '" data-duedate="' . (int)$duedate . '" data-graded="' . $hasUserGrade . '" data-submitted="' . $hasSubmitted . '"' . $cal_li_class . ' style="margin-bottom: 8px;">'
-                    . '<div>' . $icon . ' <a href="' . $cm->url . '">' . format_string($cm->name) . '</a>' . $cal_hidden_html . '</div>'
-                    . $secondLine
+                $hasusergrade = isset($usergraded[$cm->modname . '_' . $cm->instance]) ? '1' : '0';
+                $hassubmitted = $submitted ? '1' : '0';
+                $calhidden = (!$cm->visible && $canviewhidden);
+                $calliclass = $calhidden ? ' class="bloquecero-item-hidden"' : '';
+                $calhiddenhtml = $calhidden ? ' <span class="bloquecero-activity-hidden">' . get_string('hiddenfromstudents', 'moodle') . '</span>' : '';
+                $calendaractivities .= '<li data-timestamp="' . (int)$startdate . '" data-duedate="' . (int)$duedate . '" data-graded="' . $hasusergrade . '" data-submitted="' . $hassubmitted . '"' . $calliclass . ' style="margin-bottom: 8px;">'
+                    . '<div>' . $icon . ' <a href="' . $cm->url . '">' . format_string($cm->name) . '</a>' . $calhiddenhtml . '</div>'
+                    . $secondline
                     . '</li>';
             }
         }
 
-        if ($calendarActivities) {
-            $calendarActivities = '<ul id="activities-list" style="margin: 12px 0 0 0; padding-left: 18px; list-style: none;">'
-                . $calendarActivities . '</ul>';
+        if ($calendaractivities) {
+            $calendaractivities = '<ul id="activities-list" style="margin: 12px 0 0 0; padding-left: 18px; list-style: none;">'
+                . $calendaractivities . '</ul>';
         } else {
-            $calendarActivities = '<div style="margin-top:12px; color:#595959; font-size:0.95em;">' .
+            $calendaractivities = '<div style="margin-top:12px; color:#595959; font-size:0.95em;">' .
                 get_string('noactivities', 'block_bloquecero') . '</div>';
         }
 
         // --- SESIONES EN DIRECTO ---
         // Preparar sesiones en directo desde la base de datos (PRIMERO, antes de calcular semanas)
-        $sesionesZoom = [];
+        $sesioneszoom = [];
         $blockinstanceid = $this->instance->id ?? 0;
 
         if ($blockinstanceid) {
@@ -969,70 +1012,72 @@ class block_bloquecero extends block_base {
             );
 
             foreach ($sessions as $session) {
-                $sesionesZoom[] = [
+                $sesioneszoom[] = [
                     'titulo' => $session->name,
                     'fecha' => $session->sessiondate,
                     'duracion' => (int)($session->duration ?? 0),
-                    'descripcion' => !empty($session->description) ? format_text($session->description, FORMAT_HTML) : ''
+                    'descripcion' => !empty($session->description) ? format_text($session->description, FORMAT_HTML) : '',
                 ];
             }
         }
 
         // --- Calcular semanas para la tarjeta de ACTIVIDADES ---
-        $activityDates = [];
+        $activitydates = [];
         foreach ($modinfo->cms as $cm) {
-            if (!$cm->uservisible) continue;
+            if (!$cm->uservisible) {
+                continue;
+            }
             $startdate = get_cm_start_date($cm);
             if ($startdate) {
-                $activityDates[] = $startdate;
+                $activitydates[] = $startdate;
             }
         }
-        if (!empty($activityDates)) {
-            $minActDate = min($activityDates);
-            $maxActDate = max($activityDates);
-            $activitiesStart = strtotime('last monday', $minActDate + 86400);
-            if ($activitiesStart > $minActDate) {
-                $activitiesStart = strtotime('last monday', $minActDate);
+        if (!empty($activitydates)) {
+            $minactdate = min($activitydates);
+            $maxactdate = max($activitydates);
+            $activitiesstart = strtotime('last monday', $minactdate + 86400);
+            if ($activitiesstart > $minactdate) {
+                $activitiesstart = strtotime('last monday', $minactdate);
             }
-            $activitiesEnd = strtotime('next sunday', $maxActDate);
+            $activitiesend = strtotime('next sunday', $maxactdate);
         } else {
-            $activitiesStart = $COURSE->startdate ?: time();
-            $activitiesEnd = !empty($COURSE->enddate) ? $COURSE->enddate : time();
+            $activitiesstart = $COURSE->startdate ?: time();
+            $activitiesend = !empty($COURSE->enddate) ? $COURSE->enddate : time();
         }
-        $activitiesWeeks = max(1, (int)ceil(($activitiesEnd - $activitiesStart) / (7 * 24 * 60 * 60)));
+        $activitiesweeks = max(1, (int)ceil(($activitiesend - $activitiesstart) / (7 * 24 * 60 * 60)));
 
         // --- Calcular semanas para la tarjeta de SESIONES ---
-        if (!empty($sesionesZoom)) {
-            $allSesionDates = array_column($sesionesZoom, 'fecha');
-            $minSesDate = min($allSesionDates);
-            $maxSesDate = max($allSesionDates);
-            $sessionsStart = strtotime('last monday', $minSesDate + 86400);
-            if ($sessionsStart > $minSesDate) {
-                $sessionsStart = strtotime('last monday', $minSesDate);
+        if (!empty($sesioneszoom)) {
+            $allsesiondates = array_column($sesioneszoom, 'fecha');
+            $minsesdate = min($allsesiondates);
+            $maxsesdate = max($allsesiondates);
+            $sessionsstart = strtotime('last monday', $minsesdate + 86400);
+            if ($sessionsstart > $minsesdate) {
+                $sessionsstart = strtotime('last monday', $minsesdate);
             }
-            $sessionsEnd = strtotime('next sunday', $maxSesDate);
-            $sessionsWeeks = max(1, (int)ceil(($sessionsEnd - $sessionsStart) / (7 * 24 * 60 * 60)));
+            $sessionsend = strtotime('next sunday', $maxsesdate);
+            $sessionsweeks = max(1, (int)ceil(($sessionsend - $sessionsstart) / (7 * 24 * 60 * 60)));
         } else {
-            $sessionsStart = $COURSE->startdate ?: time();
-            $sessionsWeeks = 1;
+            $sessionsstart = $COURSE->startdate ?: time();
+            $sessionsweeks = 1;
         }
 
-        $sesionesZoomList = '';
-        if (!empty($sesionesZoom)) {
-            foreach ($sesionesZoom as $sesion) {
+        $sesioneszoomlist = '';
+        if (!empty($sesioneszoom)) {
+            foreach ($sesioneszoom as $sesion) {
                 $fecha = userdate($sesion['fecha'], get_string('strftimedaydatetime', 'langconfig'));
-                $sesionesZoomList .= '<li data-timestamp="' . $sesion['fecha'] . '" style="margin-bottom: 6px;">' .
+                $sesioneszoomlist .= '<li data-timestamp="' . $sesion['fecha'] . '" style="margin-bottom: 6px;">' .
                     $OUTPUT->pix_icon('i/calendar', '', '', ['class' => 'activityicon']) .
                     ' <strong>' . format_string($sesion['titulo']) . '</strong> <span style="font-size:0.93em; color:#555;">(' . $fecha . ')</span></li>';
             }
-            $sesionesZoomList = '<ul id="sesiones-list" style="margin: 12px 0 0 0; padding-left: 18px; list-style: none;">' . $sesionesZoomList . '</ul>';
+            $sesioneszoomlist = '<ul id="sesiones-list" style="margin: 12px 0 0 0; padding-left: 18px; list-style: none;">' . $sesioneszoomlist . '</ul>';
         } else {
-            $sesionesZoomList = '<div style="margin: 12px 0; padding: 12px; text-align: center; color: #555; font-size: 0.9em;">' .
+            $sesioneszoomlist = '<div style="margin: 12px 0; padding: 12px; text-align: center; color: #555; font-size: 0.9em;">' .
                 get_string('nosessionsscheduled', 'block_bloquecero') . '</div>';
         }
 
         // --- NUEVA estructura de la tarjeta de calendario de actividades ---
-        $calendarioActividades = '
+        $calendarioactividades = '
             <div class="udima-maincard calendario-actividades-maincard">
                 <div class="calendario-actividades-header">
                     <div class="bloquecero-card-title-row">
@@ -1056,8 +1101,8 @@ class block_bloquecero extends block_base {
             </div>
             <script>
             document.addEventListener("DOMContentLoaded", function(){
-                const courseStart = ' . $activitiesStart . ';
-                const totalWeeks = ' . $activitiesWeeks . ';
+                const courseStart = ' . $activitiesstart . ';
+                const totalWeeks = ' . $activitiesweeks . ';
                 const now = Math.floor(Date.now() / 1000);
                 let currentWeek = Math.floor((now - courseStart) / (7 * 24 * 60 * 60)) + 1;
                 if (currentWeek < 1) {
@@ -1066,7 +1111,7 @@ class block_bloquecero extends block_base {
                     currentWeek = totalWeeks;
                 }
                 // El listado original de actividades
-                const originalListHTML = ' . json_encode($calendarActivities) . ';
+                const originalListHTML = ' . json_encode($calendaractivities) . ';
                 const contentContainer = document.getElementById("activities-week-content");
                 const weekLabel = document.getElementById("week-label");
                 const prevBtn = document.getElementById("prev-week");
@@ -1169,7 +1214,7 @@ class block_bloquecero extends block_base {
 
         // --- SESIONES EN DIRECTO: genera el bloque con selector de semana ---
         // Calcular semanas para las sesiones (solo si hay sesiones)
-        $sesionesDirecto = '
+        $sesionesdirecto = '
         <div class="udima-maincard sesiones-directo-maincard">
             <div class="sesiones-directo-header">
                 <div class="bloquecero-card-title-row">
@@ -1192,8 +1237,8 @@ class block_bloquecero extends block_base {
         </div>
         <script>
         document.addEventListener("DOMContentLoaded", function(){
-            const courseStart = ' . $sessionsStart . ';
-            const totalWeeks = ' . $sessionsWeeks . ';
+            const courseStart = ' . $sessionsstart . ';
+            const totalWeeks = ' . $sessionsweeks . ';
             const now = Math.floor(Date.now() / 1000);
             let currentWeek = Math.floor((now - courseStart) / (7 * 24 * 60 * 60)) + 1;
             if (currentWeek < 1) {
@@ -1202,7 +1247,7 @@ class block_bloquecero extends block_base {
                 currentWeek = totalWeeks;
             }
             // El listado original de sesiones
-            const originalSesionesHTML = ' . json_encode($sesionesZoomList) . ';
+            const originalSesionesHTML = ' . json_encode($sesioneszoomlist) . ';
             const sesionesContainer = document.getElementById("sesiones-list-content");
             const sesionLabel = document.getElementById("sesion-label");
             const prevBtn = document.getElementById("prev-sesion");
@@ -1283,14 +1328,14 @@ class block_bloquecero extends block_base {
             </style>
             ';
 
-        $metaHide = $is_metacourse ? ' style="display:none"' : '';
+        $metahide = $ismetacourse ? ' style="display:none"' : '';
         $this->content->text .= '
-            <nav class="udima-menu-bar" aria-label="' . get_string('coursemenu', 'block_bloquecero') . '"' . $metaHide . '>
-            <a href="' . new moodle_url('/grade/report/grader/index.php', array('id' => $COURSE->id)) . '" class="udima-menu-link">
+            <nav class="udima-menu-bar" aria-label="' . get_string('coursemenu', 'block_bloquecero') . '"' . $metahide . '>
+            <a href="' . new moodle_url('/grade/report/grader/index.php', ['id' => $COURSE->id]) . '" class="udima-menu-link">
                 ' . $OUTPUT->pix_icon('t/grades', '', 'moodle', ['class' => 'menu-icon']) . '
                 <span>' . get_string('grades', 'block_bloquecero') . '</span>
             </a>
-            <a href="' . new moodle_url('/user/index.php', array('id' => $COURSE->id)) . '" class="udima-menu-link">
+            <a href="' . new moodle_url('/user/index.php', ['id' => $COURSE->id]) . '" class="udima-menu-link">
                 ' . $OUTPUT->pix_icon('i/users', '', 'moodle', ['class' => 'menu-icon']) . '
                 <span>' . get_string('participants', 'block_bloquecero') . '</span>
             </a>
@@ -1298,11 +1343,11 @@ class block_bloquecero extends block_base {
                 ' . $OUTPUT->pix_icon('book', '', 'moodle', ['class' => 'menu-icon']) . '
                 <span>' . get_string('bibliography', 'block_bloquecero') . '</span>
             </a>
-            <a href="' . $guide_url . '" class="udima-menu-link" target="_blank">
+            <a href="' . $guideurl . '" class="udima-menu-link" target="_blank">
                 ' . $OUTPUT->pix_icon('i/info', '', 'moodle', ['class' => 'menu-icon']) . '
                 <span>' . get_string('teacherguide', 'block_bloquecero') . '</span>
             </a>' . ((has_capability('moodle/course:update', $coursecontext)) ? '
-            <a href="' . (new moodle_url('/course/edit.php', array('id' => $COURSE->id))) . '" class="udima-menu-link">
+            <a href="' . (new moodle_url('/course/edit.php', ['id' => $COURSE->id])) . '" class="udima-menu-link">
                 ' . $OUTPUT->pix_icon('i/settings', '', 'moodle', ['class' => 'menu-icon']) . '
                 <span>' . get_string('settings', 'block_bloquecero') . '</span>
             </a>' : '') .
@@ -1310,23 +1355,23 @@ class block_bloquecero extends block_base {
             <div class="bloquecero-main-wrapper" style="padding: 0 20px; font-family: Arial, sans-serif;">
             <!-- Resto del contenido del bloque -->
             <div class="bloquecero-header-responsive">
-                ' . ($fondo_cabecera_img ? '<img src="' . $fondo_cabecera_img . '" alt="" role="presentation" class="bloquecero-header-bg-img">' : '') . '
+                ' . ($fondocabeceraimg ? '<img src="' . $fondocabeceraimg . '" alt="" role="presentation" class="bloquecero-header-bg-img">' : '') . '
                 <div class="bloquecero-header-content">
                     <h2 class="bloquecero-header-title">' . format_string(trim(explode(' - ', $COURSE->fullname, 2)[0])) . '</h2>
                 </div>
             </div>
-            ' . ($is_metacourse ? '
+            ' . ($ismetacourse ? '
             <!-- Aviso de metacurso -->
             <div class="bloquecero-meta-notice" role="alert">
                 <strong>' . get_string('metacourse_notice_title', 'block_bloquecero') . '</strong>
                 <p>' . get_string('metacourse_notice', 'block_bloquecero') . '</p>
-                <p>' . implode('<br>', $metacourse_links) . '</p>
+                <p>' . implode('<br>', $metacourselinks) . '</p>
             </div>' : '') . '
             <!-- Fechas y equipo docente fuera del header para evitar recorte -->
-            <div class="bloquecero-info-row"' . $metaHide . '>
-                ' . (!empty($metachild_links) ? '<p class="bloquecero-metachild-notice">' . get_string('metachild_notice', 'block_bloquecero') . '<br>' . implode('<br>', $metachild_links) . '</p>' : '') . '
-                ' . ($courseDates ? '<p class="bloquecero-header-dates">' . $courseDates . '</p>' : '') . '
-                <p class="bloquecero-header-teachers">' . get_string('teachingteam', 'block_bloquecero') . ': ' . $contactButtonsHtml . '</p>
+            <div class="bloquecero-info-row"' . $metahide . '>
+                ' . (!empty($metachildlinks) ? '<p class="bloquecero-metachild-notice">' . get_string('metachild_notice', 'block_bloquecero') . '<br>' . implode('<br>', $metachildlinks) . '</p>' : '') . '
+                ' . ($coursedates ? '<p class="bloquecero-header-dates">' . $coursedates . '</p>' : '') . '
+                <p class="bloquecero-header-teachers">' . get_string('teachingteam', 'block_bloquecero') . ': ' . $contactbuttonshtml . '</p>
             </div>
             ' . (!empty($this->config->show_september_notice) ? '
             <!-- Aviso convocatoria de septiembre -->
@@ -1335,56 +1380,56 @@ class block_bloquecero extends block_base {
                 <p>' . get_string('septembernotice_text', 'block_bloquecero') . '</p>
             </div>' : '') . '
             <!-- Bloques de información de contacto de cada profesor -->
-            ' . (!$is_metacourse ? $contactBlocksHtml : '') . '
+            ' . (!$ismetacourse ? $contactblockshtml : '') . '
 
 
             <!-- Sección de foros y demás secciones -->
-            <div class="bloquecero-forums-wrapper" style="padding: 0 40px;' . ($is_metacourse ? 'display:none;' : '') . '">
+            <div class="bloquecero-forums-wrapper" style="padding: 0 40px;' . ($ismetacourse ? 'display:none;' : '') . '">
                 <nav class="bloquecero-tabs" aria-label="' . get_string('courseforums', 'block_bloquecero') . '">'
-                    . (!empty($forum_anuncios_url) ? '
-                    <a href="' . $forum_anuncios_url . '" class="bloquecero-tab">
+                    . (!empty($forumanunciosurl) ? '
+                    <a href="' . $forumanunciosurl . '" class="bloquecero-tab">
                         ' . get_string('noticeboard', 'block_bloquecero')
-                            . (isset($count_anuncios) && is_array($count_anuncios) && array_sum($count_anuncios) > 0
-                                ? ' <span style="display:inline-block;min-width:22px;height:22px;line-height:22px;background:#4E6A1E;color:#fff;font-weight:600;font-size:0.98em;border-radius:50%;text-align:center;margin-left:7px;vertical-align:middle;" aria-label="' . array_sum($count_anuncios) . ' ' . get_string('unreadposts', 'block_bloquecero') . '">' . array_sum($count_anuncios) . '</span>'
+                            . (isset($countanuncios) && is_array($countanuncios) && array_sum($countanuncios) > 0
+                                ? ' <span style="display:inline-block;min-width:22px;height:22px;line-height:22px;background:#4E6A1E;color:#fff;font-weight:600;font-size:0.98em;border-radius:50%;text-align:center;margin-left:7px;vertical-align:middle;" aria-label="' . array_sum($countanuncios) . ' ' . get_string('unreadposts', 'block_bloquecero') . '">' . array_sum($countanuncios) . '</span>'
                                 : '') . '
                     </a>' : '')
-                    . (!empty($forum_tutorias_url) ? '
-                    <a href="' . $forum_tutorias_url . '" class="bloquecero-tab">
+                    . (!empty($forumtutoriasurl) ? '
+                    <a href="' . $forumtutoriasurl . '" class="bloquecero-tab">
                         ' . get_string('forum_tutorias', 'block_bloquecero')
-                        . (isset($count_tutorias) && is_array($count_tutorias) && array_sum($count_tutorias) > 0
-                            ? ' <span style="display:inline-block;min-width:22px;height:22px;line-height:22px;background:#4E6A1E;color:#fff;font-weight:600;font-size:0.98em;border-radius:50%;text-align:center;margin-left:7px;vertical-align:middle;" aria-label="' . array_sum($count_tutorias) . ' ' . get_string('unreadposts', 'block_bloquecero') . '">' . array_sum($count_tutorias) . '</span>'
+                        . (isset($counttutorias) && is_array($counttutorias) && array_sum($counttutorias) > 0
+                            ? ' <span style="display:inline-block;min-width:22px;height:22px;line-height:22px;background:#4E6A1E;color:#fff;font-weight:600;font-size:0.98em;border-radius:50%;text-align:center;margin-left:7px;vertical-align:middle;" aria-label="' . array_sum($counttutorias) . ' ' . get_string('unreadposts', 'block_bloquecero') . '">' . array_sum($counttutorias) . '</span>'
                             : '') . '
                     </a>' : '')
-                    . (!empty($forum_estudiantes_url) ? '
-                    <a href="' . $forum_estudiantes_url . '" class="bloquecero-tab">
+                    . (!empty($forumestudiantesurl) ? '
+                    <a href="' . $forumestudiantesurl . '" class="bloquecero-tab">
                         ' . get_string('forum_estudiantes', 'block_bloquecero')
-                        . (isset($count_estudiantes) && is_array($count_estudiantes) && array_sum($count_estudiantes) > 0
-                            ? ' <span style="display:inline-block;min-width:22px;height:22px;line-height:22px;background:#4E6A1E;color:#fff;font-weight:600;font-size:0.98em;border-radius:50%;text-align:center;margin-left:7px;vertical-align:middle;" aria-label="' . array_sum($count_estudiantes) . ' ' . get_string('unreadposts', 'block_bloquecero') . '">' . array_sum($count_estudiantes) . '</span>'
+                        . (isset($countestudiantes) && is_array($countestudiantes) && array_sum($countestudiantes) > 0
+                            ? ' <span style="display:inline-block;min-width:22px;height:22px;line-height:22px;background:#4E6A1E;color:#fff;font-weight:600;font-size:0.98em;border-radius:50%;text-align:center;margin-left:7px;vertical-align:middle;" aria-label="' . array_sum($countestudiantes) . ' ' . get_string('unreadposts', 'block_bloquecero') . '">' . array_sum($countestudiantes) . '</span>'
                             : '') . '
                     </a>' : '')
-                    . (!empty($forum_septiembre_url) ? '
-                    <a href="' . $forum_septiembre_url . '" class="bloquecero-tab bloquecero-tab-september">
+                    . (!empty($forumseptiembreurl) ? '
+                    <a href="' . $forumseptiembreurl . '" class="bloquecero-tab bloquecero-tab-september">
                         ' . get_string('sept_forum_name', 'block_bloquecero')
-                        . (isset($count_septiembre) && is_array($count_septiembre) && array_sum($count_septiembre) > 0
-                            ? ' <span style="display:inline-block;min-width:22px;height:22px;line-height:22px;background:#4E6A1E;color:#fff;font-weight:600;font-size:0.98em;border-radius:50%;text-align:center;margin-left:7px;vertical-align:middle;" aria-label="' . array_sum($count_septiembre) . ' ' . get_string('unreadposts', 'block_bloquecero') . '">' . array_sum($count_septiembre) . '</span>'
+                        . (isset($countseptiembre) && is_array($countseptiembre) && array_sum($countseptiembre) > 0
+                            ? ' <span style="display:inline-block;min-width:22px;height:22px;line-height:22px;background:#4E6A1E;color:#fff;font-weight:600;font-size:0.98em;border-radius:50%;text-align:center;margin-left:7px;vertical-align:middle;" aria-label="' . array_sum($countseptiembre) . ' ' . get_string('unreadposts', 'block_bloquecero') . '">' . array_sum($countseptiembre) . '</span>'
                             : '') . '
                     </a>' : '') . '
                 </nav>
             </div>
             <!-- Bloques divididos en dos columnas -->
-            <div class="bloquecero-maincards-row" style="' . ($is_metacourse ? 'display:none;' : '') . '">
+            <div class="bloquecero-maincards-row" style="' . ($ismetacourse ? 'display:none;' : '') . '">
                 <div style="width: 50%; box-sizing: border-box;">
-                    ' . $sesionesDirecto . '
+                    ' . $sesionesdirecto . '
                 </div>
                 <div style="width: 50%; box-sizing: border-box;">
-                    ' . $calendarioActividades . '
+                    ' . $calendarioactividades . '
                 </div>
             </div>
                     <!-- Carrusel de tarjetas de secciones -->
-                    <div class="bloquecero-sections-title" style="text-align: left; padding: 0 40px; margin-bottom: 10px;' . ($is_metacourse ? 'display:none;' : '') . '">
+                    <div class="bloquecero-sections-title" style="text-align: left; padding: 0 40px; margin-bottom: 10px;' . ($ismetacourse ? 'display:none;' : '') . '">
             <h3 style="color: #004D35; margin-top: 0;">' . get_string('coursesections', 'block_bloquecero') . '</h3>
             </div>' .
-            (!$is_metacourse ? $carouselContainer : '') . '
+            (!$ismetacourse ? $carouselcontainer : '') . '
 
 
                         <style>
@@ -1487,7 +1532,7 @@ class block_bloquecero extends block_base {
 
                 if (isHidden) {
                     if(btn) { btn.classList.add(\'open\'); btn.setAttribute(\'aria-expanded\', \'true\'); }
-                    if(btntext) btntext.innerHTML = \'' . $strHideCourse . '\';
+                    if(btntext) btntext.innerHTML = \'' . $strhidecourse . '\';
                     if (region) {
                         region.style.display = \'\';
                         region.classList.remove(\'bloquecero-fadein\');
@@ -1511,10 +1556,10 @@ class block_bloquecero extends block_base {
                     if(btn) {
                         btn.classList.toggle(\'cerrado\', !isHidden);
                     }
-                    if(btntext) btntext.innerHTML = \'' . $strHideCourse . '\';
+                    if(btntext) btntext.innerHTML = \'' . $strhidecourse . '\';
                 } else {
                     if(btn) { btn.classList.remove(\'open\'); btn.setAttribute(\'aria-expanded\', \'false\'); }
-                    if(btntext) btntext.innerHTML = \'' . $strShowCourse . '\';
+                    if(btntext) btntext.innerHTML = \'' . $strshowcourse . '\';
                     if (region) {
                         region.style.display = \'none\';
                         region.classList.remove(\'bloquecero-fadein\');
@@ -1531,7 +1576,7 @@ class block_bloquecero extends block_base {
                         document.querySelectorAll(selector).forEach(function(e){ e.style.display = \'none\'; });
                     });
                     // Cambia texto a "mostrar curso"
-                    if(btntext) btntext.innerHTML = \'' . $strShowCourse . '\';
+                    if(btntext) btntext.innerHTML = \'' . $strshowcourse . '\';
                 }
             };
             // Al cargar, oculta el curso y ajusta el botón
@@ -1551,7 +1596,7 @@ class block_bloquecero extends block_base {
                 ].forEach(function(selector){
                     document.querySelectorAll(selector).forEach(function(e){ e.style.display = \'none\'; });
                 });
-                if(btntext) btntext.innerHTML = \'' . $strShowCourse . '\';
+                if(btntext) btntext.innerHTML = \'' . $strshowcourse . '\';
             });
             </script>
             <style>
@@ -2563,7 +2608,7 @@ class block_bloquecero extends block_base {
             
             <script>
                 // Datos con las actividades de cada sección (clave: id de la sección)
-                const sectionsActivitiesData = ' . $sectionsActivitiesJson . ';
+                const sectionsActivitiesData = ' . $sectionsactivitiesjson . ';
 
                 function scrollCarousel(direction) {
                     var carousel = document.querySelector(".sections-carousel");
@@ -2773,44 +2818,46 @@ class block_bloquecero extends block_base {
         </div>
     ';
 
-    // --- Generar contenido de bibliografía desde BD ---
-    $bibliografiaHTML = '';
-    $bibliographies = $DB->get_records('block_bloquecero_bibliography',
-        ['blockinstanceid' => $this->instance->id, 'courseid' => $COURSE->id],
-        'sortorder ASC');
+        // --- Generar contenido de bibliografía desde BD ---
+        $bibliografiahtml = '';
+        $bibliographies = $DB->get_records(
+            'block_bloquecero_bibliography',
+            ['blockinstanceid' => $this->instance->id, 'courseid' => $COURSE->id],
+            'sortorder ASC'
+        );
 
-    if (!empty($bibliographies)) {
-        $bibliografiaHTML = '<ul style="list-style:none; padding-left:0; margin:0;">';
-        foreach ($bibliographies as $entry) {
-            $bookname = trim($entry->name);
-            if (!empty($bookname)) {
-                $bookurl = !empty($entry->url) ? trim($entry->url) : '';
-                $bookdesc = !empty($entry->description) ? trim($entry->description) : '';
+        if (!empty($bibliographies)) {
+            $bibliografiahtml = '<ul style="list-style:none; padding-left:0; margin:0;">';
+            foreach ($bibliographies as $entry) {
+                $bookname = trim($entry->name);
+                if (!empty($bookname)) {
+                    $bookurl = !empty($entry->url) ? trim($entry->url) : '';
+                    $bookdesc = !empty($entry->description) ? trim($entry->description) : '';
 
-                $bibliografiaHTML .= '<li style="margin-bottom:14px; display:flex; align-items:flex-start; gap:10px;">';
-                $bibliografiaHTML .= '<span style="color:#6B7D2E; font-size:1.3em; flex-shrink:0;" aria-hidden="true">📚</span>';
-                $bibliografiaHTML .= '<div style="flex:1;">';
+                    $bibliografiahtml .= '<li style="margin-bottom:14px; display:flex; align-items:flex-start; gap:10px;">';
+                    $bibliografiahtml .= '<span style="color:#6B7D2E; font-size:1.3em; flex-shrink:0;" aria-hidden="true">📚</span>';
+                    $bibliografiahtml .= '<div style="flex:1;">';
 
-                if (!empty($bookurl)) {
-                    $bibliografiaHTML .= '<a href="' . s($bookurl) . '" target="_blank" style="color:#004D35; font-weight:500; text-decoration:none; transition:color 0.14s;">' . s($bookname) . '</a>';
-                } else {
-                    $bibliografiaHTML .= '<span style="color:#333; font-weight:400;">' . s($bookname) . '</span>';
+                    if (!empty($bookurl)) {
+                        $bibliografiahtml .= '<a href="' . s($bookurl) . '" target="_blank" style="color:#004D35; font-weight:500; text-decoration:none; transition:color 0.14s;">' . s($bookname) . '</a>';
+                    } else {
+                        $bibliografiahtml .= '<span style="color:#333; font-weight:400;">' . s($bookname) . '</span>';
+                    }
+
+                    if (!empty($bookdesc)) {
+                        $bibliografiahtml .= '<p style="margin:4px 0 0 0; color:#555; font-size:0.9em;">' . s($bookdesc) . '</p>';
+                    }
+
+                    $bibliografiahtml .= '</div></li>';
                 }
-
-                if (!empty($bookdesc)) {
-                    $bibliografiaHTML .= '<p style="margin:4px 0 0 0; color:#555; font-size:0.9em;">' . s($bookdesc) . '</p>';
-                }
-
-                $bibliografiaHTML .= '</div></li>';
             }
+            $bibliografiahtml .= '</ul>';
+        } else {
+            $bibliografiahtml = '<p style="color:#595959; font-style:italic;">' . get_string('nobibliographyyet', 'block_bloquecero') . '</p>';
         }
-        $bibliografiaHTML .= '</ul>';
-    } else {
-        $bibliografiaHTML = '<p style="color:#595959; font-style:italic;">' . get_string('nobibliographyyet', 'block_bloquecero') . '</p>';
-    }
 
-    // Justo antes de cerrar el div principal del bloque, añade el HTML del modal:
-    $this->content->text .= '
+        // Justo antes de cerrar el div principal del bloque, añade el HTML del modal:
+        $this->content->text .= '
         <!-- Modal de Bibliografía -->
         <div id="bloquecero-bibliografia-modal" role="dialog" aria-modal="true" aria-labelledby="bloquecero-bibliografia-modal-title" style="display:none; position:fixed; z-index:9999; left:0; top:0; width:100vw; height:100vh; background:rgba(0,0,0,0.35); align-items:center; justify-content:center;">
             <div style="background:#fff; border-radius:10px; padding:32px 28px; min-width:260px; max-width:90vw; box-shadow:0 8px 32px rgba(0,0,0,0.18); position:relative; text-align:left;">
@@ -2841,16 +2888,16 @@ class block_bloquecero extends block_base {
     </div>
     ';
 
-    // PASAR PHP ARRAY DE SESIONES Y ACTIVIDADES A JS GLOBAL (antes del cierre del div principal)
-    $this->content->text .= '
+        // PASAR PHP ARRAY DE SESIONES Y ACTIVIDADES A JS GLOBAL (antes del cierre del div principal)
+        $this->content->text .= '
     <script>
-    window.bloquecero_sesionesZoom = ' . json_encode($sesionesZoom) . ';
-    window.bloquecero_activitiesData = ' . json_encode($activitiesData) . ';
+    window.bloquecero_sesionesZoom = ' . json_encode($sesioneszoom) . ';
+    window.bloquecero_activitiesData = ' . json_encode($activitiesdata) . ';
     </script>
     ';
 
-    // Gestión accesible de modales: focus trapping, Escape key, restaurar foco
-    $this->content->text .= '
+        // Gestión accesible de modales: focus trapping, Escape key, restaurar foco
+        $this->content->text .= '
     <script>
     window.bloqueceroModal = {
         activeModal: null,
@@ -2901,13 +2948,13 @@ class block_bloquecero extends block_base {
     </script>
     ';
 
-    // Strings de i18n para el JS de la tabla de actividades
-    $bloquecero_i18n = [
+        // Strings de i18n para el JS de la tabla de actividades
+        $blocqueroi18n = [
         'colactivity' => get_string('colactivity', 'block_bloquecero'),
         'coltype'     => get_string('coltype', 'block_bloquecero'),
         'coldue'      => get_string('coldue', 'block_bloquecero'),
         'colstatus'   => get_string('colstatus', 'block_bloquecero'),
-        'noactivities'=> get_string('noactivities', 'block_bloquecero'),
+        'noactivities' => get_string('noactivities', 'block_bloquecero'),
         'duetoday'    => get_string('duetoday', 'block_bloquecero'),
         'duetomorrow' => get_string('duetomorrow', 'block_bloquecero'),
         'dueindays'   => get_string('dueindays', 'block_bloquecero'),
@@ -2917,11 +2964,11 @@ class block_bloquecero extends block_base {
         'pending'     => get_string('pending', 'block_bloquecero'),
         'daynames'    => explode(',', get_string('daynames', 'block_bloquecero')),
         'hiddenfromstudents' => get_string('hiddenfromstudents', 'moodle'),
-    ];
+        ];
 
-    // Añade el script JS para el modal de sesiones fuera de cualquier echo PHP (como HTML, después del modal y antes del cierre del div)
-    $this->content->text .= '<script>var bloqueceroI18n = ' . json_encode($bloquecero_i18n) . ';</script>';
-    $this->content->text .= '
+        // Añade el script JS para el modal de sesiones fuera de cualquier echo PHP (como HTML, después del modal y antes del cierre del div)
+        $this->content->text .= '<script>var bloqueceroI18n = ' . json_encode($blocqueroi18n) . ';</script>';
+        $this->content->text .= '
     <script>
         document.addEventListener("DOMContentLoaded", function() {
             var icon = document.querySelector(".calendario-actividades-calendaricon");
@@ -3052,7 +3099,7 @@ class block_bloquecero extends block_base {
             
             if(btn && modal && content) {
                 // Insertar el contenido de bibliografía
-                content.innerHTML = ' . json_encode($bibliografiaHTML) . ';
+                content.innerHTML = ' . json_encode($bibliografiahtml) . ';
                 
                 btn.addEventListener("click", function(e){
                     e.preventDefault();
@@ -3125,9 +3172,9 @@ class block_bloquecero extends block_base {
     </script>
     ';
 
-    if (!$is_editing) {
+        if (!$isediting) {
             // Inyecta JS para ocultar todo menos este bloque al cargar la página
-            $PAGE->requires->js_init_code("
+            $this->page->requires->js_init_code("
                 document.addEventListener('DOMContentLoaded', function() {
                     var region = document.getElementById('region-main');
                     if (region) region.style.display = 'none';
@@ -3200,7 +3247,7 @@ class block_bloquecero extends block_base {
                     if(btn) btn.style.display = 'none';
                 };
             ");
-            // --- Script para expandir tarjeta de sección ---
+                // --- Script para expandir tarjeta de sección ---
                 $this->content->text .= '
 
         <style>
@@ -3396,13 +3443,18 @@ class block_bloquecero extends block_base {
         }
                     </style>
         ';
+        }
+
+        return $this->content;
     }
 
-    return $this->content;
-}
-
+    /**
+     * Return the applicable page formats for this block.
+     *
+     * @return array Page format => allowed.
+     */
     public function applicable_formats() {
-        return array(
+        return [
             'course-view' => true,
             'course-view-weeks' => true,
             'course-view-topics' => true,
@@ -3410,19 +3462,25 @@ class block_bloquecero extends block_base {
             'site' => false,
             'mod' => false,
             'admin' => false,
-            'all' => false
-        );
+            'all' => false,
+        ];
     }
 
+    /**
+     * This block has a settings page.
+     *
+     * @return bool
+     */
     public function has_config() {
         return true;
     }
 
+    /**
+     * Hide the block header.
+     *
+     * @return bool
+     */
     public function hide_header() {
         return true;
     }
-
 }
-
-            
-            

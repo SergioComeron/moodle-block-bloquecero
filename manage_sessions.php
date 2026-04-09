@@ -70,9 +70,11 @@ $addurl = new moodle_url('/blocks/bloquecero/edit_session.php', ['courseid' => $
 echo html_writer::link($addurl, get_string('addsession', 'block_bloquecero'), ['class' => 'btn btn-primary mb-3']);
 
 // Get sessions for this course and block.
-$sessions = $DB->get_records('block_bloquecero_sessions',
+$sessions = $DB->get_records(
+    'block_bloquecero_sessions',
     ['courseid' => $courseid, 'blockinstanceid' => $blockid],
-    'sessiondate ASC');
+    'sessiondate ASC'
+);
 
 if (empty($sessions)) {
     echo $OUTPUT->notification(get_string('nosessionsyet', 'block_bloquecero'), 'info');
@@ -85,7 +87,7 @@ if (empty($sessions)) {
         get_string('duration', 'block_bloquecero'),
         get_string('bookdescription', 'block_bloquecero'),
         get_string('syncedwithcalendar', 'block_bloquecero'),
-        get_string('actions')
+        get_string('actions'),
     ];
     $table->attributes['class'] = 'generaltable';
 
@@ -93,14 +95,14 @@ if (empty($sessions)) {
         $editurl = new moodle_url('/blocks/bloquecero/edit_session.php', [
             'courseid' => $courseid,
             'blockid' => $blockid,
-            'sessionid' => $session->id
+            'sessionid' => $session->id,
         ]);
         $deleteurl = new moodle_url('/blocks/bloquecero/manage_sessions.php', [
             'courseid' => $courseid,
             'blockid' => $blockid,
             'action' => 'delete',
             'sessionid' => $session->id,
-            'sesskey' => sesskey()
+            'sesskey' => sesskey(),
         ]);
 
         $datestr = userdate($session->sessiondate, get_string('strftimedaydatetime', 'langconfig'));
@@ -111,7 +113,7 @@ if (empty($sessions)) {
 
         $actions = html_writer::link($editurl, $OUTPUT->pix_icon('t/edit', get_string('edit')));
         $actions .= ' ' . html_writer::link($deleteurl, $OUTPUT->pix_icon('t/delete', get_string('delete')), [
-            'onclick' => 'return confirm("' . get_string('confirmdeletesession', 'block_bloquecero') . '");'
+            'onclick' => 'return confirm("' . get_string('confirmdeletesession', 'block_bloquecero') . '");',
         ]);
 
         $descriptionstr = !empty($session->description) ? shorten_text(strip_tags($session->description), 80) : '—';
@@ -122,7 +124,7 @@ if (empty($sessions)) {
             $durationstr,
             $descriptionstr,
             $synced,
-            $actions
+            $actions,
         ];
     }
 

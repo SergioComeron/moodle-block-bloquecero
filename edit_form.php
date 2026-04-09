@@ -18,11 +18,10 @@
  * Form for editing block_bloquecero instances
  *
  * @package    block_bloquecero
- * @copyright  2025 YOUR NAME <your@email.com>
+ * @copyright  2025 Sergio Comerón <info@sergiocomeron.com>
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 class block_bloquecero_edit_form extends block_edit_form {
-
     /**
      * Form fields specific to this type of block
      *
@@ -83,22 +82,22 @@ class block_bloquecero_edit_form extends block_edit_form {
         }
 
         // Determinar si el usuario actual puede editar los datos de todos los profesores
-        $is_manager = has_capability('moodle/role:assign', $context) || is_siteadmin();
+        $ismanager = has_capability('moodle/role:assign', $context) || is_siteadmin();
 
         // Si es manager/admin: mostrar campos de todos los profesores
         // Si es profesor: mostrar solo sus propios campos
-        $teachers_to_edit = [];
-        if ($is_manager) {
-            $teachers_to_edit = $teachers;
+        $teacherstoedit = [];
+        if ($ismanager) {
+            $teacherstoedit = $teachers;
         } else if (array_key_exists($USER->id, $teachers)) {
-            $teachers_to_edit = [$USER->id => $teachers[$USER->id]];
+            $teacherstoedit = [$USER->id => $teachers[$USER->id]];
         }
 
-        if (!empty($teachers_to_edit)) {
-            if (!$is_manager || count($teachers_to_edit) === 1) {
+        if (!empty($teacherstoedit)) {
+            if (!$ismanager || count($teacherstoedit) === 1) {
                 // Profesor editando sus propios datos: un único header
                 $mform->addElement('header', 'teachercustom', get_string('teachercustom', 'block_bloquecero'));
-                $teacher = reset($teachers_to_edit);
+                $teacher = reset($teacherstoedit);
                 $mform->addElement('text', 'config_userphone_' . $teacher->id, get_string('userphone', 'block_bloquecero'));
                 $mform->setType('config_userphone_' . $teacher->id, PARAM_TEXT);
                 $mform->setDefault('config_userphone_' . $teacher->id, '');
@@ -110,7 +109,7 @@ class block_bloquecero_edit_form extends block_edit_form {
                 $mform->addHelpButton('config_userschedule_' . $teacher->id, 'userschedule', 'block_bloquecero');
             } else {
                 // Manager: un header colapsable por profesor, cerrados por defecto
-                foreach ($teachers_to_edit as $teacher) {
+                foreach ($teacherstoedit as $teacher) {
                     $headerid = 'teachercustom_' . $teacher->id;
                     $mform->addElement('header', $headerid, get_string('teachercustom', 'block_bloquecero') . ': ' . fullname($teacher));
                     $mform->setExpanded($headerid, false);
@@ -141,14 +140,21 @@ class block_bloquecero_edit_form extends block_edit_form {
         if ($blockinstanceid) {
             $managebiburl = new moodle_url('/blocks/bloquecero/manage_bibliography.php', [
                 'courseid' => $COURSE->id,
-                'blockid' => $blockinstanceid
+                'blockid' => $blockinstanceid,
             ]);
-            $managebiblink = html_writer::link($managebiburl, get_string('managebibliography', 'block_bloquecero'),
-                ['target' => '_blank', 'class' => 'btn btn-secondary']);
+            $managebiblink = html_writer::link(
+                $managebiburl,
+                get_string('managebibliography', 'block_bloquecero'),
+                ['target' => '_blank', 'class' => 'btn btn-secondary']
+            );
             $mform->addElement('static', 'managebibliographylink', '', $managebiblink);
         } else {
-            $mform->addElement('static', 'managebibliographyinfo', '',
-                get_string('saveblockfirst', 'block_bloquecero'));
+            $mform->addElement(
+                'static',
+                'managebibliographyinfo',
+                '',
+                get_string('saveblockfirst', 'block_bloquecero')
+            );
         }
 
         // --- Configuración de sesiones en directo ---
@@ -164,14 +170,21 @@ class block_bloquecero_edit_form extends block_edit_form {
         if ($blockinstanceid) {
             $manageurl = new moodle_url('/blocks/bloquecero/manage_sessions.php', [
                 'courseid' => $COURSE->id,
-                'blockid' => $blockinstanceid
+                'blockid' => $blockinstanceid,
             ]);
-            $managelink = html_writer::link($manageurl, get_string('managesessions', 'block_bloquecero'),
-                ['target' => '_blank', 'class' => 'btn btn-secondary']);
+            $managelink = html_writer::link(
+                $manageurl,
+                get_string('managesessions', 'block_bloquecero'),
+                ['target' => '_blank', 'class' => 'btn btn-secondary']
+            );
             $mform->addElement('static', 'managesessionslink', '', $managelink);
         } else {
-            $mform->addElement('static', 'managesessionsinfo', '',
-                get_string('saveblockfirst', 'block_bloquecero'));
+            $mform->addElement(
+                'static',
+                'managesessionsinfo',
+                '',
+                get_string('saveblockfirst', 'block_bloquecero')
+            );
         }
 
         // --- Modo septiembre ---
@@ -200,24 +213,24 @@ class block_bloquecero_edit_form extends block_edit_form {
         if (!empty($this->block->config)) {
             $context = context_course::instance($COURSE->id);
             $teachers = get_role_users(3, $context);
-            $is_manager = has_capability('moodle/role:assign', $context) || is_siteadmin();
+            $ismanager = has_capability('moodle/role:assign', $context) || is_siteadmin();
 
-            $teachers_to_load = [];
-            if ($is_manager) {
-                $teachers_to_load = $teachers;
+            $teacherstoload = [];
+            if ($ismanager) {
+                $teacherstoload = $teachers;
             } else if (array_key_exists($USER->id, $teachers)) {
-                $teachers_to_load = [$USER->id => $teachers[$USER->id]];
+                $teacherstoload = [$USER->id => $teachers[$USER->id]];
             }
 
-            foreach ($teachers_to_load as $teacher) {
-                $scheduleKey = 'userschedule_' . $teacher->id;
-                if (!empty($this->block->config->$scheduleKey)) {
-                    if (is_array($this->block->config->$scheduleKey)) {
-                        $defaults->{"config_" . $scheduleKey} = $this->block->config->$scheduleKey;
+            foreach ($teacherstoload as $teacher) {
+                $schedulekey = 'userschedule_' . $teacher->id;
+                if (!empty($this->block->config->$schedulekey)) {
+                    if (is_array($this->block->config->$schedulekey)) {
+                        $defaults->{"config_" . $schedulekey} = $this->block->config->$schedulekey;
                     } else {
-                        $defaults->{"config_" . $scheduleKey} = [
-                            'text' => $this->block->config->$scheduleKey,
-                            'format' => FORMAT_HTML
+                        $defaults->{"config_" . $schedulekey} = [
+                            'text' => $this->block->config->$schedulekey,
+                            'format' => FORMAT_HTML,
                         ];
                     }
                 }

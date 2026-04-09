@@ -90,9 +90,11 @@ $addurl = new moodle_url('/blocks/bloquecero/edit_bibliography.php', ['courseid'
 echo html_writer::link($addurl, get_string('addbibliography', 'block_bloquecero'), ['class' => 'btn btn-primary mb-3']);
 
 // Get bibliography entries for this course and block.
-$entries = $DB->get_records('block_bloquecero_bibliography',
+$entries = $DB->get_records(
+    'block_bloquecero_bibliography',
     ['courseid' => $courseid, 'blockinstanceid' => $blockid],
-    'sortorder ASC');
+    'sortorder ASC'
+);
 
 if (empty($entries)) {
     echo $OUTPUT->notification(get_string('nobibliographyyet', 'block_bloquecero'), 'info');
@@ -103,7 +105,7 @@ if (empty($entries)) {
         get_string('bookname', 'block_bloquecero'),
         get_string('bookdescription', 'block_bloquecero'),
         get_string('bookurl', 'block_bloquecero'),
-        get_string('actions')
+        get_string('actions'),
     ];
     $table->attributes['class'] = 'generaltable';
 
@@ -114,14 +116,14 @@ if (empty($entries)) {
         $editurl = new moodle_url('/blocks/bloquecero/edit_bibliography.php', [
             'courseid' => $courseid,
             'blockid' => $blockid,
-            'bibliographyid' => $entry->id
+            'bibliographyid' => $entry->id,
         ]);
         $deleteurl = new moodle_url('/blocks/bloquecero/manage_bibliography.php', [
             'courseid' => $courseid,
             'blockid' => $blockid,
             'action' => 'delete',
             'bibliographyid' => $entry->id,
-            'sesskey' => sesskey()
+            'sesskey' => sesskey(),
         ]);
 
         $urlhtml = !empty($entry->url) ?
@@ -137,7 +139,7 @@ if (empty($entries)) {
                 'blockid' => $blockid,
                 'action' => 'moveup',
                 'bibliographyid' => $entry->id,
-                'sesskey' => sesskey()
+                'sesskey' => sesskey(),
             ]);
             $actions .= ' ' . html_writer::link($moveupurl, $OUTPUT->pix_icon('t/up', get_string('moveup')));
         }
@@ -149,13 +151,13 @@ if (empty($entries)) {
                 'blockid' => $blockid,
                 'action' => 'movedown',
                 'bibliographyid' => $entry->id,
-                'sesskey' => sesskey()
+                'sesskey' => sesskey(),
             ]);
             $actions .= ' ' . html_writer::link($movedownurl, $OUTPUT->pix_icon('t/down', get_string('movedown')));
         }
 
         $actions .= ' ' . html_writer::link($deleteurl, $OUTPUT->pix_icon('t/delete', get_string('delete')), [
-            'onclick' => 'return confirm("' . get_string('confirmdeletebibliography', 'block_bloquecero') . '");'
+            'onclick' => 'return confirm("' . get_string('confirmdeletebibliography', 'block_bloquecero') . '");',
         ]);
 
         $descriptionhtml = !empty($entry->description) ? shorten_text(format_string($entry->description), 60) : '-';
@@ -164,7 +166,7 @@ if (empty($entries)) {
             format_string($entry->name),
             $descriptionhtml,
             $urlhtml,
-            $actions
+            $actions,
         ];
     }
 

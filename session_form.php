@@ -26,7 +26,17 @@ defined('MOODLE_INTERNAL') || die();
 
 require_once($CFG->libdir . '/formslib.php');
 
+/**
+ * Form for adding/editing a live session.
+ *
+ * @package    block_bloquecero
+ * @copyright  2025 Sergio Comerón <info@sergiocomeron.com>
+ * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
+ */
 class session_form extends moodleform {
+    /**
+     * Form definition.
+     */
     public function definition() {
         $mform = $this->_form;
 
@@ -66,6 +76,13 @@ class session_form extends moodleform {
         $this->add_action_buttons();
     }
 
+    /**
+     * Validate form data.
+     *
+     * @param array $data Form data.
+     * @param array $files Uploaded files.
+     * @return array Validation errors.
+     */
     public function validation($data, $files) {
         return parent::validation($data, $files);
     }

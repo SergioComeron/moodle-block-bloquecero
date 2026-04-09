@@ -2,7 +2,17 @@
   "permissions": {
     "allow": [
       "Bash(git:*)",
-      "Bash(gh:*)"
+      "Bash(gh:*)",
+      "Bash(php -l:*)",
+      "Read(//Users/sergiocomeron/moodles/stable_405/**)",
+      "Bash(php -r \":*)",
+      "Bash(grep:*)",
+      "Bash(cat)",
+      "Bash(chmod +x /Users/sergiocomeron/moodles/stable_405/moodle/blocks/bloquecero/.git/hooks/pre-push)",
+      "Bash(composer install:*)",
+      "Bash(vendor/bin/phpcs --standard=moodle --extensions=php --ignore=vendor --warning-severity=0 .)",
+      "Bash(vendor/bin/phpcbf --standard=moodle --extensions=php --ignore=vendor .)",
+      "Bash(python3:*)"
     ]
   }
 }

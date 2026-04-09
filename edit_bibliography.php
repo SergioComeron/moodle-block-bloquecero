@@ -40,7 +40,7 @@ $returnurl = new moodle_url('/blocks/bloquecero/manage_bibliography.php', ['cour
 $PAGE->set_url('/blocks/bloquecero/edit_bibliography.php', [
     'courseid' => $courseid,
     'blockid' => $blockid,
-    'bibliographyid' => $bibliographyid
+    'bibliographyid' => $bibliographyid,
 ]);
 $PAGE->set_context($context);
 $PAGE->set_title(get_string($bibliographyid ? 'editbibliography' : 'addbibliography', 'block_bloquecero'));

@@ -15,16 +15,17 @@
 // along with Moodle.  If not, see <http://www.gnu.org/licenses/>.
 
 /**
- * Callback implementations for Bloque cero
+ * Callback implementations for block_bloquecero.
  *
  * @package    block_bloquecero
- * @copyright  2025 YOUR NAME <your@email.com>
+ * @copyright  2025 Sergio Comerón <info@sergiocomeron.com>
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 
 /**
- * Oculta el índice de curso (drawer izquierdo) en todas las páginas de cursos
- * que tienen el bloque instalado.
+ * Hides the course index drawer on course pages where the block is installed.
+ *
+ * @return string HTML to inject.
  */
 function block_bloquecero_before_standard_top_of_body_html() {
     global $COURSE, $DB;
@@ -61,7 +62,18 @@ function block_bloquecero_before_standard_top_of_body_html() {
     </style>';
 }
 
-function block_bloquecero_pluginfile($course, $cm, $context, $filearea, $args, $forcedownload, array $options = array()) {
+/**
+ * Serves files for the block_bloquecero plugin.
+ *
+ * @param stdClass $course Course object.
+ * @param stdClass $cm Course module object.
+ * @param context $context Context object.
+ * @param string $filearea File area name.
+ * @param array $args Extra arguments.
+ * @param bool $forcedownload Force download flag.
+ * @param array $options Additional options.
+ */
+function block_bloquecero_pluginfile($course, $cm, $context, $filearea, $args, $forcedownload, array $options = []) {
     // Asegúrate de que estamos en el contexto del sistema (donde se guarda la config del plugin).
     if ($context->contextlevel != CONTEXT_SYSTEM) {
         send_file_not_found();
@@ -84,7 +96,7 @@ function block_bloquecero_pluginfile($course, $cm, $context, $filearea, $args, $
         $filepath = '/';
     } else {
         $filepath = '/' . $filepath . '/';
-    }    
+    }
     if ($filepath === '' || $filepath === '//') {
         $filepath = '/';
     }
