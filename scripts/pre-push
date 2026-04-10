@@ -88,8 +88,9 @@ if [ "$PUSH_TO_MASTER" = true ]; then
     fi
 
     BUMP="patch"
+    FEAT_RE='^[Ff]eat[:(]'
     while IFS= read -r commit_msg; do
-        if [[ "$commit_msg" =~ ^[Ff]eat[:(] ]]; then
+        if [[ "$commit_msg" =~ $FEAT_RE ]]; then
             BUMP="minor"
             break
         fi
