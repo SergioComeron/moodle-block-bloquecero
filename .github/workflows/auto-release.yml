@@ -8,7 +8,7 @@ on:
 
 jobs:
   auto-release:
-    name: Tag and update changelog
+    name: Tag, update changelog and build release
     runs-on: ubuntu-latest
     permissions:
       contents: write
@@ -122,4 +122,47 @@ jobs:
         run: |
           git tag ${{ steps.version.outputs.VERSION }}
           git push origin ${{ steps.version.outputs.VERSION }}
-          echo "Created tag ${{ steps.version.outputs.VERSION }} — release.yml will now build the zip"
+
+      - name: PHP Syntax Check
+        if: steps.tagcheck.outputs.EXISTS == 'false'
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.1'
+
+      - name: Check PHP syntax
+        if: steps.tagcheck.outputs.EXISTS == 'false'
+        run: find . -name "*.php" -not -path "./.git/*" | xargs -I{} php -l {}
+
+      - name: Create plugin zip
+        if: steps.tagcheck.outputs.EXISTS == 'false'
+        run: |
+          cp -r $GITHUB_WORKSPACE /tmp/bloquecero
+          rm -rf /tmp/bloquecero/.git
+          rm -rf /tmp/bloquecero/.github
+          rm -rf /tmp/bloquecero/.claude
+          rm -rf /tmp/bloquecero/vendor
+          rm -f /tmp/bloquecero/CLAUDE.md
+          rm -f /tmp/bloquecero/CONTRIBUTING.md
+          rm -f /tmp/bloquecero/.gitignore
+          rm -f /tmp/bloquecero/composer.json
+          rm -f /tmp/bloquecero/composer.lock
+          cd /tmp
+          zip -r bloquecero-${{ steps.version.outputs.VERSION }}.zip bloquecero
+          mv /tmp/bloquecero-${{ steps.version.outputs.VERSION }}.zip $GITHUB_WORKSPACE/
+
+      - name: Extract changelog for this version
+        if: steps.tagcheck.outputs.EXISTS == 'false'
+        run: |
+          VERSION=${{ steps.version.outputs.VERSION }}
+          NOTES=$(awk "/^## \[${VERSION}\]/{found=1; next} found && /^## \[/{exit} found{print}" CHANGELOG.md)
+          [ -z "$NOTES" ] && NOTES="Ver CHANGELOG.md para detalles."
+          echo "$NOTES" > release_notes.txt
+
+      - name: Create GitHub Release
+        if: steps.tagcheck.outputs.EXISTS == 'false'
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ steps.version.outputs.VERSION }}
+          files: bloquecero-${{ steps.version.outputs.VERSION }}.zip
+          body_path: release_notes.txt
+          name: "bloquecero ${{ steps.version.outputs.VERSION }}"
