@@ -5,6 +5,41 @@ Todos los cambios notables en este proyecto serán documentados en este archivo.
 El formato está basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1.0.0/),
 y este proyecto adhiere a [Semantic Versioning](https://semver.org/lang/es/).
 
+## [v0.5] - 2026-04-10
+
+### Nuevas funcionalidades
+- bump automático de version.php al hacer push a master
+- enlazar sesiones con evento de calendario de Moodle (#9)
+- auto-release y CHANGELOG automático al cambiar versión
+- añadir Moodle Code Style check al CI con moodle-cs
+
+### Correcciones
+- corregir auto-bump en hook pre-push y grep en auto-release.yml
+- reemplazar grep -P por sed en hook pre-push (incompatible con macOS)
+- escapar patrón regex con ( en hook pre-push para evitar error de bash
+- eliminar asignación de propiedad dinámica deprecada en PHP 8.2+
+- ejecutar CI en push a master (rama de releases)
+- ejecutar CI solo en push a dev, no en pull requests
+- añadir code sniffer al hook pre-push local
+- corregir errores de code style detectados por moodle-cs
+- migrar callback before_standard_top_of_body_html al sistema de hooks de Moodle 4.4+ (#10)
+- usar vista de día del calendario en lugar de edición del evento
+- accesibilidad en botones de navegación circular (#8)
+- aplicar estilo circular a botones de navegación de tarjetas (#8)
+- mejorar visibilidad de flechas del carrusel de secciones (#8)
+- dejar de trackear .claude/settings.local.json
+- últimos ajustes de estilo para pasar codechecker sin errores
+- corregir errores de estilo Moodle (codechecker)
+- CI se ejecuta en push/PR a master en lugar de dev
+
+### Documentación
+- actualizar CLAUDE.md con flujo de ramas, hooks locales y CI
+
+### Otros cambios
+- Release: bump version to 0.5
+- Release: bump version to 0.4
+
+
 ## [Unreleased]
 
 ### Añadido
