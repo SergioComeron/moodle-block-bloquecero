@@ -5,6 +5,27 @@ Todos los cambios notables en este proyecto serán documentados en este archivo.
 El formato está basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1.0.0/),
 y este proyecto adhiere a [Semantic Versioning](https://semver.org/lang/es/).
 
+## [v0.7] - 2026-04-10
+
+### Correcciones
+- fusionar auto-release y release en un único workflow para evitar limitación de GITHUB_TOKEN
+
+### Documentación
+- actualizar CLAUDE.md con flujo de versiones, hooks y CI completo
+
+### Otros cambios
+- Release: bump version to 0.7
+
+
+## [v0.6] - 2026-04-10
+
+### Correcciones
+- comprobar bump ya hecho antes de modificar version.php en hook pre-push
+
+### Otros cambios
+- Release: bump version to 0.6
+
+
 ## [v0.5] - 2026-04-10
 
 ### Nuevas funcionalidades

@@ -425,11 +425,11 @@ The hook (`scripts/pre-push`) runs on every push and does:
 **Push to master workflow:**
 ```bash
 git push origin master   # 1st attempt: bumps version, commits, exits with error
+php admin/tool/phpunit/cli/init.php  # reinit PHPUnit if it fails due to version mismatch
 git push origin master   # 2nd attempt: detects bump done, pushes everything
-```
-If PHPUnit fails after the bump due to version mismatch, reinitialize the test environment:
-```bash
-php admin/tool/phpunit/cli/init.php
+# CI now commits CHANGELOG back to master — branches diverge
+git pull --rebase origin master  # integrate CI commit
+git push origin dev              # sync back to dev
 ```
 
 To autocorrect code style issues: `vendor/bin/phpcbf --standard=moodle --extensions=php --ignore=vendor .`
@@ -455,11 +455,16 @@ Three workflows defined in `.github/workflows/`:
 2. Checks if the tag already exists (skips if so)
 3. Generates a CHANGELOG entry grouped by commit type (`feat:` → Features, `fix:` → Fixes, `docs:` → Docs)
 4. Commits the CHANGELOG update back to master (`[skip ci]`)
-5. Creates and pushes the version tag (e.g. `v0.6`)
+5. Creates and pushes the version tag (e.g. `v0.7`)
+6. PHP syntax check
+7. Builds the plugin zip (excludes `.git`, `.github`, `vendor`, `CLAUDE.md`, etc.)
+8. Extracts the changelog section for that version
+9. Creates a GitHub Release with the zip attached
+- Note: all in one job to avoid the `GITHUB_TOKEN` limitation (tags created by GITHUB_TOKEN don't trigger other workflows)
 
-**`release.yml`** — triggers on new `v*` tag (created by auto-release):
+**`release.yml`** — triggers on new `v*` tag pushed manually (fallback):
 1. PHP syntax check
-2. Builds the plugin zip (excludes `.git`, `.github`, `vendor`, `CLAUDE.md`, etc.)
+2. Builds the plugin zip
 3. Extracts the changelog section for that version
 4. Creates a GitHub Release with the zip attached
 
