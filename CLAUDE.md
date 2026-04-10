@@ -401,19 +401,67 @@ Branch strategy:
 
 When creating pull requests, target the `dev` branch, not `master`.
 
+After merging to master and pushing, always sync back to dev:
+```bash
+git checkout dev && git merge master && git push origin dev
+```
+If the CI commits back to master (e.g. CHANGELOG update) while you have local commits,
+the branches diverge. Use `git pull --rebase origin master` to resolve it.
+
 ### Local hooks
 Run once after cloning to install the pre-push hook:
 ```bash
 bash scripts/install-hooks.sh
 ```
-The hook runs code sniffer and PHPUnit before every push, blocking it if either fails.
+The hook (`scripts/pre-push`) runs on every push and does:
+1. Code sniffer (phpcs) — blocks on style errors
+2. PHPUnit — blocks if tests fail
+3. **Auto version bump** (only on push to `master`):
+   - Analyzes commits since last tag: any `feat:` → minor bump; otherwise → patch bump
+   - Updates `$plugin->version` (YYYYMMDDXX) and `$plugin->release` in `version.php`
+   - Commits the bump and **exits 1** (git does not include hook commits in the current push)
+   - On the **second** `git push origin master` the hook detects the bump is already done and lets the push through
+
+**Push to master workflow:**
+```bash
+git push origin master   # 1st attempt: bumps version, commits, exits with error
+git push origin master   # 2nd attempt: detects bump done, pushes everything
+```
+If PHPUnit fails after the bump due to version mismatch, reinitialize the test environment:
+```bash
+php admin/tool/phpunit/cli/init.php
+```
+
 To autocorrect code style issues: `vendor/bin/phpcbf --standard=moodle --extensions=php --ignore=vendor .`
 
+### Version numbering
+- `$plugin->version` — build number in `YYYYMMDDXX` format (XX = sequence within the day)
+- `$plugin->release` — semantic version (`MAJOR.MINOR` or `MAJOR.MINOR.PATCH`)
+- Bump rules (auto-applied by hook on push to master):
+  - Any `feat:` commit since last tag → **minor** bump (e.g. `0.4` → `0.5`)
+  - Only `fix:`, `docs:`, etc. → **patch** bump (e.g. `0.5` → `0.5.1`)
+  - **Major** bumps are always manual
+
 ### CI (GitHub Actions)
-Defined in `.github/workflows/ci.yml`. Triggers only on push to `master`:
+Three workflows defined in `.github/workflows/`:
+
+**`ci.yml`** — triggers on push to `master`:
 1. PHP syntax check
 2. Moodle code style (moodle-cs / phpcs)
 3. PHPUnit tests via `moodle-plugin-ci` (PHP 8.2 + 8.3, Moodle 4.5, pgsql)
+
+**`auto-release.yml`** — triggers on push to `master` when `version.php` changes:
+1. Extracts version from `$plugin->release`
+2. Checks if the tag already exists (skips if so)
+3. Generates a CHANGELOG entry grouped by commit type (`feat:` → Features, `fix:` → Fixes, `docs:` → Docs)
+4. Commits the CHANGELOG update back to master (`[skip ci]`)
+5. Creates and pushes the version tag (e.g. `v0.6`)
+
+**`release.yml`** — triggers on new `v*` tag (created by auto-release):
+1. PHP syntax check
+2. Builds the plugin zip (excludes `.git`, `.github`, `vendor`, `CLAUDE.md`, etc.)
+3. Extracts the changelog section for that version
+4. Creates a GitHub Release with the zip attached
 
 ## Project Organization
 
