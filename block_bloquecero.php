@@ -75,7 +75,6 @@ class block_bloquecero extends block_base {
      */
     public function init() {
         $this->title = get_string('pluginname', 'block_bloquecero');
-        $this->instance_allow_multiple = false;
     }
 
     /**
