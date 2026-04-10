@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 #
 # Hook pre-push para block_bloquecero.
-# Ejecuta los tests PHPUnit del plugin antes de cada push.
+# Ejecuta code sniffer y tests PHPUnit antes de cada push.
 #
 # Instalación: bash scripts/install-hooks.sh
 
@@ -10,6 +10,31 @@ set -e
 PLUGIN_DIR="$(cd "$(dirname "$0")/.." && pwd)"
 MOODLE_ROOT="$(cd "${PLUGIN_DIR}/../.." && pwd)"
 PHPUNIT="${MOODLE_ROOT}/vendor/bin/phpunit"
+PHPCS="${PLUGIN_DIR}/vendor/bin/phpcs"
+
+# --- Code sniffer ---
+
+if [ ! -f "${PHPCS}" ]; then
+    echo "⚠️  phpcs no encontrado en ${PHPCS}"
+    echo "   Asegúrate de haber ejecutado 'composer install' en el directorio del plugin."
+    exit 1
+fi
+
+echo "▶ Ejecutando code sniffer..."
+
+cd "${PLUGIN_DIR}"
+"${PHPCS}" --standard=moodle --extensions=php --ignore=vendor --warning-severity=0 .
+
+if [ $? -ne 0 ]; then
+    echo ""
+    echo "✗ Errores de code style. Push cancelado."
+    echo "  Ejecuta: vendor/bin/phpcbf --standard=moodle --extensions=php --ignore=vendor ."
+    exit 1
+fi
+
+echo "✓ Code style correcto."
+
+# --- PHPUnit ---
 
 if [ ! -f "${PHPUNIT}" ]; then
     echo "⚠️  PHPUnit no encontrado en ${PHPUNIT}"
@@ -17,14 +42,12 @@ if [ ! -f "${PHPUNIT}" ]; then
     exit 1
 fi
 
-echo "▶ Ejecutando tests PHPUnit de block_bloquecero..."
+echo "▶ Ejecutando tests PHPUnit..."
 
 cd "${MOODLE_ROOT}"
 php "${PHPUNIT}" --testsuite block_bloquecero_testsuite
 
-STATUS=$?
-
-if [ $STATUS -ne 0 ]; then
+if [ $? -ne 0 ]; then
     echo ""
     echo "✗ Tests fallidos. Push cancelado."
     echo "  Corrige los errores antes de volver a hacer push."
