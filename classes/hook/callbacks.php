@@ -24,7 +24,6 @@ namespace block_bloquecero\hook;
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 class callbacks {
-
     /**
      * Hides the course index drawer on course pages where the block is installed.
      *

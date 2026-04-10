@@ -1,7 +1,7 @@
 <?php
 // This file is part of Moodle - http://moodle.org/
 //
-// Moodle is free free software: you can redistribute it and/or modify
+// Moodle is free software: you can redistribute it and/or modify
 // it under the terms of the GNU General Public License as published by
 // the Free Software Foundation, either version 3 of the License, or
 // (at your option) any later version.
@@ -30,7 +30,6 @@ use core\hook\output\before_standard_top_of_body_html_generation;
  * @coversDefaultClass \block_bloquecero\hook\callbacks
  */
 final class callbacks_test extends advanced_testcase {
-
     /**
      * Devuelve un objeto hook vacío para usar en los tests.
      */
