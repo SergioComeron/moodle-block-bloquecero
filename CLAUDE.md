@@ -394,9 +394,26 @@ Locate inline `<style>` blocks in block_bloquecero.php:
 
 ## Git Workflow
 
-Main development branch: `dev`
+Branch strategy:
+- **Feature/fix branches** → merge to `dev` via pull request
+- **`dev`** → main development branch; merge to `master` for releases
+- **`master`** → release branch; triggers CI in GitHub Actions on push
 
-When creating pull requests, target the `dev` branch, not `main`/`master`.
+When creating pull requests, target the `dev` branch, not `master`.
+
+### Local hooks
+Run once after cloning to install the pre-push hook:
+```bash
+bash scripts/install-hooks.sh
+```
+The hook runs code sniffer and PHPUnit before every push, blocking it if either fails.
+To autocorrect code style issues: `vendor/bin/phpcbf --standard=moodle --extensions=php --ignore=vendor .`
+
+### CI (GitHub Actions)
+Defined in `.github/workflows/ci.yml`. Triggers only on push to `master`:
+1. PHP syntax check
+2. Moodle code style (moodle-cs / phpcs)
+3. PHPUnit tests via `moodle-plugin-ci` (PHP 8.2 + 8.3, Moodle 4.5, pgsql)
 
 ## Project Organization
 
