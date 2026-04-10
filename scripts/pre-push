@@ -1,0 +1,35 @@
+#!/usr/bin/env bash
+#
+# Hook pre-push para block_bloquecero.
+# Ejecuta los tests PHPUnit del plugin antes de cada push.
+#
+# Instalación: bash scripts/install-hooks.sh
+
+set -e
+
+PLUGIN_DIR="$(cd "$(dirname "$0")/.." && pwd)"
+MOODLE_ROOT="$(cd "${PLUGIN_DIR}/../.." && pwd)"
+PHPUNIT="${MOODLE_ROOT}/vendor/bin/phpunit"
+
+if [ ! -f "${PHPUNIT}" ]; then
+    echo "⚠️  PHPUnit no encontrado en ${PHPUNIT}"
+    echo "   Asegúrate de haber ejecutado 'composer install' en la raíz de Moodle."
+    exit 1
+fi
+
+echo "▶ Ejecutando tests PHPUnit de block_bloquecero..."
+
+cd "${MOODLE_ROOT}"
+php "${PHPUNIT}" --testsuite block_bloquecero_testsuite
+
+STATUS=$?
+
+if [ $STATUS -ne 0 ]; then
+    echo ""
+    echo "✗ Tests fallidos. Push cancelado."
+    echo "  Corrige los errores antes de volver a hacer push."
+    exit 1
+fi
+
+echo "✓ Todos los tests pasan. Continuando con el push."
+exit 0

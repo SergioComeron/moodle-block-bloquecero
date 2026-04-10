@@ -22,45 +22,6 @@
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 
-/**
- * Hides the course index drawer on course pages where the block is installed.
- *
- * @return string HTML to inject.
- */
-function block_bloquecero_before_standard_top_of_body_html() {
-    global $COURSE, $DB;
-
-    if (empty($COURSE) || $COURSE->id == SITEID) {
-        return '';
-    }
-
-    static $hasblock = null;
-    if ($hasblock === null) {
-        $coursecontext = context_course::instance($COURSE->id);
-        $hasblock = $DB->record_exists('block_instances', [
-            'blockname'       => 'bloquecero',
-            'parentcontextid' => $coursecontext->id,
-        ]);
-    }
-
-    if (!$hasblock) {
-        return '';
-    }
-
-    return '<style>
-        #courseindex-drawer,
-        .courseindex,
-        .drawer-toggler.drawer-left-toggle { display: none !important; }
-        @media (min-width: 768px) {
-            .drawer-left {
-                display: block !important;
-                transform: translateX(0) !important;
-                visibility: visible !important;
-            }
-            .drawers-backdrop { display: none !important; }
-        }
-    </style>';
-}
 
 /**
  * Serves files for the block_bloquecero plugin.
