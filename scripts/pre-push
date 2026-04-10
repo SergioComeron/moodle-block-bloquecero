@@ -76,8 +76,8 @@ if [ "$PUSH_TO_MASTER" = true ]; then
     VERSION_FILE="${PLUGIN_DIR}/version.php"
 
     # Leer versión actual
-    CURRENT_RELEASE=$(grep "\$plugin->release" "${VERSION_FILE}" | grep -oP "'\K[^']+")
-    CURRENT_BUILD=$(grep "\$plugin->version" "${VERSION_FILE}" | grep -oP '\b[0-9]{10}\b')
+    CURRENT_RELEASE=$(grep "\$plugin->release" "${VERSION_FILE}" | sed "s/.*'\([^']*\)'.*/\1/")
+    CURRENT_BUILD=$(grep "\$plugin->version" "${VERSION_FILE}" | sed 's/[^0-9]*\([0-9]\{10\}\).*/\1/')
 
     # Analizar commits desde el último tag para determinar el tipo de bump
     LAST_TAG=$(git -C "${PLUGIN_DIR}" describe --tags --abbrev=0 2>/dev/null || echo "")
