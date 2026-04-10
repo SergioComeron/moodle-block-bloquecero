@@ -1,11 +1,15 @@
 #!/usr/bin/env bash
 #
 # Hook pre-push para block_bloquecero.
-# Ejecuta code sniffer y tests PHPUnit antes de cada push.
+# - Ejecuta code sniffer y tests PHPUnit antes de cada push.
+# - En push a master: bump automático de version.php y commit.
 #
 # Instalación: bash scripts/install-hooks.sh
 
 set -e
+
+# Capturar refs de stdin antes de que se consuman
+PUSH_REFS=$(cat)
 
 PLUGIN_DIR="$(cd "$(dirname "$0")/.." && pwd)"
 MOODLE_ROOT="$(cd "${PLUGIN_DIR}/../.." && pwd)"
@@ -54,5 +58,91 @@ if [ $? -ne 0 ]; then
     exit 1
 fi
 
-echo "✓ Todos los tests pasan. Continuando con el push."
+echo "✓ Todos los tests pasan."
+
+# --- Auto version bump cuando push a master ---
+
+PUSH_TO_MASTER=false
+while IFS=' ' read -r local_ref local_sha remote_ref remote_sha; do
+    if [[ "$remote_ref" == "refs/heads/master" ]]; then
+        PUSH_TO_MASTER=true
+    fi
+done <<< "$PUSH_REFS"
+
+if [ "$PUSH_TO_MASTER" = true ]; then
+    echo ""
+    echo "▶ Push a master detectado. Calculando bump de versión..."
+
+    VERSION_FILE="${PLUGIN_DIR}/version.php"
+
+    # Leer versión actual
+    CURRENT_RELEASE=$(grep "\$plugin->release" "${VERSION_FILE}" | grep -oP "'\K[^']+")
+    CURRENT_BUILD=$(grep "\$plugin->version" "${VERSION_FILE}" | grep -oP '\b[0-9]{10}\b')
+
+    # Analizar commits desde el último tag para determinar el tipo de bump
+    LAST_TAG=$(git -C "${PLUGIN_DIR}" describe --tags --abbrev=0 2>/dev/null || echo "")
+    if [ -n "$LAST_TAG" ]; then
+        COMMITS=$(git -C "${PLUGIN_DIR}" log "${LAST_TAG}..HEAD" --pretty=format:"%s" --no-merges)
+    else
+        COMMITS=$(git -C "${PLUGIN_DIR}" log --pretty=format:"%s" --no-merges)
+    fi
+
+    BUMP="patch"
+    while IFS= read -r commit_msg; do
+        if [[ "$commit_msg" =~ ^[Ff]eat[:(] ]]; then
+            BUMP="minor"
+            break
+        fi
+    done <<< "$COMMITS"
+
+    # Parsear versión semántica (soporta X.Y y X.Y.Z)
+    IFS='.' read -ra PARTS <<< "$CURRENT_RELEASE"
+    MAJOR=${PARTS[0]:-0}
+    MINOR=${PARTS[1]:-0}
+    PATCH=${PARTS[2]:-0}
+
+    if [ "$BUMP" = "minor" ]; then
+        MINOR=$((MINOR + 1))
+        NEW_RELEASE="${MAJOR}.${MINOR}"
+    else
+        PATCH=$((PATCH + 1))
+        NEW_RELEASE="${MAJOR}.${MINOR}.${PATCH}"
+    fi
+
+    # Calcular nuevo número de build (YYYYMMDDXX)
+    TODAY=$(date +%Y%m%d)
+    if [[ "$CURRENT_BUILD" == ${TODAY}* ]]; then
+        SEQ="${CURRENT_BUILD: -2}"
+        NEW_BUILD="${TODAY}$(printf '%02d' $((10#$SEQ + 1)))"
+    else
+        NEW_BUILD="${TODAY}00"
+    fi
+
+    echo "   Versión:  ${CURRENT_RELEASE} → ${NEW_RELEASE}  (bump: ${BUMP})"
+    echo "   Build:    ${CURRENT_BUILD} → ${NEW_BUILD}"
+
+    # Actualizar version.php con Python para evitar problemas de escaping en sed
+    python3 - "${VERSION_FILE}" "${NEW_BUILD}" "${NEW_RELEASE}" << 'PYEOF'
+import sys, re
+
+filepath, new_build, new_release = sys.argv[1], sys.argv[2], sys.argv[3]
+
+with open(filepath, 'r') as f:
+    content = f.read()
+
+content = re.sub(r'(\$plugin->version = )\d+', rf'\g<1>{new_build}', content)
+content = re.sub(r"(\$plugin->release = ')[^']+(';)", rf"\g<1>{new_release}\g<2>", content)
+
+with open(filepath, 'w') as f:
+    f.write(content)
+PYEOF
+
+    # Commit del bump de versión
+    git -C "${PLUGIN_DIR}" add version.php
+    git -C "${PLUGIN_DIR}" commit -m "Release: bump version to ${NEW_RELEASE}"
+
+    echo "✓ version.php actualizado y commiteado (se incluirá en el push)."
+fi
+
+echo "▶ Continuando con el push."
 exit 0

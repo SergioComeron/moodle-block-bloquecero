@@ -20,4 +20,5 @@ EOF
 chmod +x "${GIT_HOOKS_DIR}/pre-push"
 
 echo "✓ Hook pre-push instalado correctamente."
-echo "  Los tests PHPUnit se ejecutarán automáticamente antes de cada push."
+echo "  - Code sniffer y PHPUnit se ejecutan antes de cada push."
+echo "  - En push a master: version.php se bumpa automáticamente y se commitea."
