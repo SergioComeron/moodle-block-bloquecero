@@ -21,7 +21,7 @@ jobs:
       - name: Extract version from version.php
         id: version
         run: |
-          VERSION=$(grep "\$plugin->release" version.php | grep -oP "'\K[^']+")
+          VERSION=$(grep "\$plugin->release" version.php | grep -oP "'\K[^']+(?=')")
           echo "VERSION=v${VERSION}" >> $GITHUB_OUTPUT
           echo "Detected version: v${VERSION}"
 

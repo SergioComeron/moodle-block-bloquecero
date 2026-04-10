@@ -138,11 +138,22 @@ with open(filepath, 'w') as f:
     f.write(content)
 PYEOF
 
-    # Commit del bump de versión
-    git -C "${PLUGIN_DIR}" add version.php
-    git -C "${PLUGIN_DIR}" commit -m "Release: bump version to ${NEW_RELEASE}"
+    # Comprobar si el último commit ya es un bump de versión (segundo intento de push)
+    LAST_COMMIT=$(git -C "${PLUGIN_DIR}" log -1 --pretty=format:"%s")
+    if [[ "$LAST_COMMIT" == Release:\ bump\ version* ]]; then
+        echo "✓ Versión ya bumpeada (${CURRENT_RELEASE}). Continuando con el push."
+    else
+        # Commit del bump de versión
+        git -C "${PLUGIN_DIR}" add version.php
+        git -C "${PLUGIN_DIR}" commit -m "Release: bump version to ${NEW_RELEASE}"
 
-    echo "✓ version.php actualizado y commiteado (se incluirá en el push)."
+        echo ""
+        echo "✓ version.php bumpeado a ${NEW_RELEASE} y commiteado."
+        echo "  Git no incluye commits del hook en el push actual."
+        echo "  Vuelve a ejecutar: git push origin master"
+        echo ""
+        exit 1
+    fi
 fi
 
 echo "▶ Continuando con el push."
