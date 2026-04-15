@@ -189,38 +189,37 @@ class block_bloquecero_edit_form extends block_edit_form {
 
         // --- Programación de secciones (solo para formatos sin fechas automáticas, no 'weeks') ---
         if ($COURSE->format !== 'weeks') {
-        $mform->addElement('header', 'sectionschedulingheader', get_string('sectionscheduling', 'block_bloquecero'));
-        $mform->setExpanded('sectionschedulingheader', false);
-        $mform->addElement('static', 'sectionschedulingdesc', '', get_string('sectionscheduling_desc', 'block_bloquecero'));
+            $mform->addElement('header', 'sectionschedulingheader', get_string('sectionscheduling', 'block_bloquecero'));
+            $mform->setExpanded('sectionschedulingheader', false);
+            $mform->addElement('static', 'sectionschedulingdesc', '', get_string('sectionscheduling_desc', 'block_bloquecero'));
 
-        $sections = $DB->get_records_select(
-            'course_sections',
-            'course = ? AND section > 0 AND (component IS NULL OR component <> ?)',
-            [$COURSE->id, 'mod_subsection'],
-            'section ASC'
-        );
+            $sections = $DB->get_records_select(
+                'course_sections',
+                'course = ? AND section > 0 AND (component IS NULL OR component <> ?)',
+                [$COURSE->id, 'mod_subsection'],
+                'section ASC'
+            );
 
-        foreach ($sections as $sec) {
-            $secname = !empty($sec->name)
+            foreach ($sections as $sec) {
+                $secname = !empty($sec->name)
                 ? format_string($sec->name)
                 : get_string('section', 'moodle') . ' ' . $sec->section;
 
-            $enablekey = 'config_section_enabled_' . $sec->id;
-            $startkey  = 'config_section_start_'   . $sec->id;
-            $endkey    = 'config_section_end_'     . $sec->id;
+                $enablekey = 'config_section_enabled_' . $sec->id;
+                $startkey  = 'config_section_start_'   . $sec->id;
+                $endkey    = 'config_section_end_'     . $sec->id;
 
-            $mform->addElement('advcheckbox', $enablekey, $secname, get_string('sectionscheduling_enable', 'block_bloquecero'));
-            $mform->setDefault($enablekey, 0);
+                $mform->addElement('advcheckbox', $enablekey, $secname, get_string('sectionscheduling_enable', 'block_bloquecero'));
+                $mform->setDefault($enablekey, 0);
 
-            $mform->addElement('date_selector', $startkey, get_string('sectionstart', 'block_bloquecero'));
-            $mform->setDefault($startkey, time());
-            $mform->disabledIf($startkey, $enablekey, 'eq', 0);
+                $mform->addElement('date_selector', $startkey, get_string('sectionstart', 'block_bloquecero'));
+                $mform->setDefault($startkey, time());
+                $mform->disabledIf($startkey, $enablekey, 'eq', 0);
 
-            $mform->addElement('date_selector', $endkey, get_string('sectionend', 'block_bloquecero'));
-            $mform->setDefault($endkey, time());
-            $mform->disabledIf($endkey, $enablekey, 'eq', 0);
-        } // end foreach sections
-
+                $mform->addElement('date_selector', $endkey, get_string('sectionend', 'block_bloquecero'));
+                $mform->setDefault($endkey, time());
+                $mform->disabledIf($endkey, $enablekey, 'eq', 0);
+            } // end foreach sections
         } // end if format !== 'weeks'
 
         // --- Modo septiembre ---
@@ -312,7 +311,7 @@ class block_bloquecero_edit_form extends block_edit_form {
             }
 
             $startval = isset($data[$startkey]) ? (int)$data[$startkey] : 0;
-            $endval   = isset($data[$endkey])   ? (int)$data[$endkey]   : 0;
+            $endval   = isset($data[$endkey]) ? (int)$data[$endkey] : 0;
 
             if ($endval < $startval) {
                 $errors[$endkey] = get_string('sectionend_before_start', 'block_bloquecero');

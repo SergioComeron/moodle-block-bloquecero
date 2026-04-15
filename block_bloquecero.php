@@ -634,7 +634,7 @@ class block_bloquecero extends block_base {
 
                 $hasdates = true;
                 $startval = isset($this->config->$startkey) ? (int)$this->config->$startkey : 0;
-                $endval   = isset($this->config->$endkey)   ? (int)$this->config->$endkey   : 0;
+                $endval   = isset($this->config->$endkey) ? (int)$this->config->$endkey : 0;
 
                 if ($startval > 0 && $endval > 0 && $now >= $startval && $now < $endval + 86400) {
                     $activesectionnumber = (int)$dbsec->section;
@@ -682,7 +682,7 @@ class block_bloquecero extends block_base {
                 $startkey = 'section_start_' . $sec->id;
                 $endkey   = 'section_end_'   . $sec->id;
                 $startval = isset($this->config->$startkey) ? (int)$this->config->$startkey : 0;
-                $endval   = isset($this->config->$endkey)   ? (int)$this->config->$endkey   : 0;
+                $endval   = isset($this->config->$endkey) ? (int)$this->config->$endkey : 0;
                 if ($startval > 0 && $endval > 0) {
                     $sectionschedulemap[$sec->id] = [
                         'start' => $startval,
@@ -884,18 +884,18 @@ class block_bloquecero extends block_base {
             }
             $cardhtml .= '
                 <div class="bloquecero-section-header-flex" style="display:flex;flex-direction:column;width:100%;gap:4px;margin-bottom:8px;">
-                    <div style="min-width:0;overflow:hidden;">' . (function() use ($sectionurl, $sectiontitle, $section, $sectionschedulemap) {
+                    <div style="min-width:0;overflow:hidden;">' . (function () use ($sectionurl, $sectiontitle, $section, $sectionschedulemap) {
                         $titleattr = htmlspecialchars(strip_tags($sectiontitle));
                         $tooltipattrs = '';
-                        if (isset($sectionschedulemap[$section->id])) {
-                            $datestart = userdate($sectionschedulemap[$section->id]['start'], get_string('strftimedate', 'langconfig'));
-                            $dateend   = userdate($sectionschedulemap[$section->id]['end'],   get_string('strftimedate', 'langconfig'));
-                            $tooltiptext = htmlspecialchars($datestart . ' – ' . $dateend);
-                            $titleattr   = $tooltiptext;
-                            $tooltipattrs = ' data-bs-toggle="tooltip" data-bs-placement="top"';
-                        }
+                if (isset($sectionschedulemap[$section->id])) {
+                    $datestart = userdate($sectionschedulemap[$section->id]['start'], get_string('strftimedate', 'langconfig'));
+                    $dateend   = userdate($sectionschedulemap[$section->id]['end'], get_string('strftimedate', 'langconfig'));
+                    $tooltiptext = htmlspecialchars($datestart . ' – ' . $dateend);
+                    $titleattr   = $tooltiptext;
+                    $tooltipattrs = ' data-bs-toggle="tooltip" data-bs-placement="top"';
+                }
                         return '<a href="' . $sectionurl . '" class="bloquecero-section-number" title="' . $titleattr . '"' . $tooltipattrs . '>' . $sectiontitle . '</a>';
-                    })() . '</div>
+            })() . '</div>
                 </div>
                 <div class="bloquecero-section-line" style="background: ' . $linecolor . '; margin-bottom:12px;"></div>
                 <div class="bloquecero-section-content">
