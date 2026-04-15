@@ -692,6 +692,55 @@ class block_bloquecero extends block_base {
             }
         }
 
+        // --- Datos para el cronograma Gantt ---
+        // $ganttsectionsmap: todas las secciones visibles (con o sin fechas), keyed by sectionnum.
+        $ganttsectionsmap = [];
+        $ganttrangestart = 0;
+        $ganttrangeend = 0;
+
+        foreach ($modinfo->get_section_info_all() as $sec) {
+            if ($sec->section == 0) {
+                continue;
+            }
+            if (!empty($sec->component) && $sec->component === 'mod_subsection') {
+                continue;
+            }
+            if (!$sec->uservisible && !$canviewhidden) {
+                continue;
+            }
+            $secname = format_string($sec->name ?: get_string('section', 'moodle') . ' ' . $sec->section);
+            $secstart = 0;
+            $secend = 0;
+
+            if ($format === 'weeks') {
+                $coursestart = $modinfo->get_course()->startdate;
+                $secstart = $coursestart + ($sec->section - 1) * 7 * 86400;
+                $secend = $secstart + 7 * 86400 - 1;
+            } else if (!empty($this->config)) {
+                $enablekey = 'section_enabled_' . $sec->id;
+                if (!empty($this->config->$enablekey)) {
+                    $startkey = 'section_start_' . $sec->id;
+                    $endkey   = 'section_end_'   . $sec->id;
+                    $secstart = isset($this->config->$startkey) ? (int)$this->config->$startkey : 0;
+                    $secend   = isset($this->config->$endkey)   ? (int)$this->config->$endkey   : 0;
+                }
+            }
+
+            $ganttsectionsmap[$sec->section] = ['name' => $secname, 'start' => $secstart, 'end' => $secend];
+
+            if ($secstart > 0 && $secend > 0) {
+                if ($ganttrangestart === 0 || $secstart < $ganttrangestart) {
+                    $ganttrangestart = $secstart;
+                }
+                if ($secend > $ganttrangeend) {
+                    $ganttrangeend = $secend;
+                }
+            }
+        }
+
+        // Las semanas se generan después de incorporar las actividades (el rango puede ampliarse).
+        $ganttweeks = [];
+
         $sectioncards = [];
         $sectioncount = 0;
         foreach ($modinfo->get_section_info_all() as $section) {
@@ -1044,6 +1093,7 @@ class block_bloquecero extends block_base {
                     'duedate' => (int)$duedate,
                     'submitted' => $submitted,
                     'hidden' => (!$cm->visible && $canviewhidden),
+                    'sectionnum' => (int)$cm->sectionnum,
                 ];
 
                 $duedatehtml = '';
@@ -1075,6 +1125,38 @@ class block_bloquecero extends block_base {
                 get_string('noactivities', 'block_bloquecero') . '</div>';
         }
 
+        // --- Actividades para el Gantt ---
+        // Agrupar actividades por sección para el Gantt.
+        $ganttactivitiesbysection = []; // sectionnum => [activities]
+        foreach ($activitiesdata as $act) {
+            $actstart = (int)$act['startdate'];
+            $actend   = (int)$act['duedate'];
+            if (!$actstart && !$actend) {
+                continue;
+            }
+            if (!$actstart) {
+                $actstart = $actend;
+            }
+            if (!$actend) {
+                $actend = $actstart;
+            }
+            if ($ganttrangestart === 0 || $actstart < $ganttrangestart) {
+                $ganttrangestart = $actstart;
+            }
+            if ($actend > $ganttrangeend) {
+                $ganttrangeend = $actend;
+            }
+            $sectionnum = (int)$act['sectionnum'];
+            $ganttactivitiesbysection[$sectionnum][] = [
+                'name'   => $act['name'],
+                'icon'   => $act['icon'],
+                'start'  => $actstart,
+                'end'    => $actend,
+                'hidden' => $act['hidden'],
+            ];
+        }
+
+        // Generar columnas semanales con el rango final (secciones + actividades).
         // --- SESIONES EN DIRECTO ---
         // Preparar sesiones en directo desde la base de datos (PRIMERO, antes de calcular semanas)
         $sesioneszoom = [];
@@ -1102,6 +1184,27 @@ class block_bloquecero extends block_base {
                     'descripcion' => !empty($session->description) ? format_text($session->description, FORMAT_HTML) : '',
                     'calendarurl' => $calendarurl,
                 ];
+            }
+        }
+
+        // Incorporar sesiones al rango del Gantt y generar columnas semanales.
+        foreach ($sesioneszoom as $ses) {
+            $sesdate = (int)$ses['fecha'];
+            if ($sesdate > 0) {
+                if ($ganttrangestart === 0 || $sesdate < $ganttrangestart) {
+                    $ganttrangestart = $sesdate;
+                }
+                if ($sesdate > $ganttrangeend) {
+                    $ganttrangeend = $sesdate;
+                }
+            }
+        }
+        if ($ganttrangestart > 0 && $ganttrangeend > 0) {
+            $dow = (int)date('N', $ganttrangestart);
+            $weekts = mktime(0, 0, 0, (int)date('n', $ganttrangestart), (int)date('j', $ganttrangestart) - ($dow - 1), (int)date('Y', $ganttrangestart));
+            while ($weekts <= $ganttrangeend && count($ganttweeks) < 60) {
+                $ganttweeks[] = $weekts;
+                $weekts += 7 * 86400;
             }
         }
 
@@ -1430,7 +1533,11 @@ class block_bloquecero extends block_base {
             <a href="#" id="bloquecero-bibliografia-btn" class="udima-menu-link">
                 ' . $OUTPUT->pix_icon('book', '', 'moodle', ['class' => 'menu-icon']) . '
                 <span>' . get_string('bibliography', 'block_bloquecero') . '</span>
-            </a>
+            </a>' . (!empty($ganttweeks) ? '
+            <a href="#" id="bloquecero-gantt-btn" class="udima-menu-link">
+                ' . $OUTPUT->pix_icon('i/scheduled', '', 'moodle', ['class' => 'menu-icon']) . '
+                <span>' . get_string('gantt', 'block_bloquecero') . '</span>
+            </a>' : '') . '
             <a href="' . $guideurl . '" class="udima-menu-link" target="_blank">
                 ' . $OUTPUT->pix_icon('i/info', '', 'moodle', ['class' => 'menu-icon']) . '
                 <span>' . get_string('teacherguide', 'block_bloquecero') . '</span>
@@ -2991,6 +3098,14 @@ class block_bloquecero extends block_base {
 
         // Justo antes de cerrar el div principal del bloque, añade el HTML del modal:
         $this->content->text .= '
+        <!-- Modal Cronograma Gantt -->
+        <div id="bloquecero-gantt-modal" role="dialog" aria-modal="true" aria-labelledby="bloquecero-gantt-modal-title" style="display:none; position:fixed; z-index:9999; left:0; top:0; width:100vw; height:100vh; background:rgba(0,0,0,0.35); align-items:center; justify-content:center;">
+            <div style="background:#fff; border-radius:10px; padding:28px 24px; max-width:95vw; width:auto; max-height:90vh; box-shadow:0 8px 32px rgba(0,0,0,0.18); position:relative; text-align:left; display:flex; flex-direction:column;">
+                <button onclick="bloqueceroModal.close(\'bloquecero-gantt-modal\')" aria-label="' . get_string('close', 'block_bloquecero') . '" style="position:absolute; top:10px; right:14px; background:none; border:none; font-size:1.5em; color:#595959; cursor:pointer;">&times;</button>
+                <h2 id="bloquecero-gantt-modal-title" style="margin-top:0; color:#004D35; font-size:1.3em; margin-bottom:16px;">' . get_string('gantt', 'block_bloquecero') . '</h2>
+                <div id="bloquecero-gantt-content" style="overflow:auto; flex:1;"></div>
+            </div>
+        </div>
         <!-- Modal de Bibliografía -->
         <div id="bloquecero-bibliografia-modal" role="dialog" aria-modal="true" aria-labelledby="bloquecero-bibliografia-modal-title" style="display:none; position:fixed; z-index:9999; left:0; top:0; width:100vw; height:100vh; background:rgba(0,0,0,0.35); align-items:center; justify-content:center;">
             <div style="background:#fff; border-radius:10px; padding:32px 28px; min-width:260px; max-width:90vw; box-shadow:0 8px 32px rgba(0,0,0,0.18); position:relative; text-align:left;">
@@ -3026,6 +3141,117 @@ class block_bloquecero extends block_base {
     <script>
     window.bloquecero_sesionesZoom = ' . json_encode($sesioneszoom) . ';
     window.bloquecero_activitiesData = ' . json_encode($activitiesdata) . ';
+    </script>
+    ';
+
+        // Construir HTML del Gantt.
+        $gantthtml = '';
+        if (!empty($ganttweeks) && !empty($ganttsectionsmap)) {
+            $now = time();
+            // Índice de la semana actual.
+            $currentweekidx = -1;
+            foreach ($ganttweeks as $idx => $wts) {
+                if ($now >= $wts && $now < $wts + 7 * 86400) {
+                    $currentweekidx = $idx;
+                    break;
+                }
+            }
+
+            $gantthtml .= '<div style="overflow-x:auto;">';
+            $gantthtml .= '<table class="bloquecero-gantt-table">';
+
+            // Cabecera: semanas.
+            $gantthtml .= '<thead><tr><th class="bloquecero-gantt-sectioncol">' . get_string('section', 'moodle') . '</th>';
+            foreach ($ganttweeks as $idx => $wts) {
+                $weekend = $wts + 6 * 86400;
+                $label = date('d/m', $wts) . '<br>' . date('d/m', $weekend);
+                $currentclass = ($idx === $currentweekidx) ? ' bloquecero-gantt-currentweek' : '';
+                $gantthtml .= '<th class="bloquecero-gantt-weekcol' . $currentclass . '">' . $label . '</th>';
+            }
+            $gantthtml .= '</tr></thead>';
+
+            // Filas: por cada sección, primero la fila de sección y luego sus actividades.
+            $gantthtml .= '<tbody>';
+            foreach ($ganttsectionsmap as $sectionnum => $sec) {
+                $hasactivities = !empty($ganttactivitiesbysection[$sectionnum]);
+                // Omitir secciones sin fechas y sin actividades con fechas.
+                if ($sec['start'] == 0 && !$hasactivities) {
+                    continue;
+                }
+                // Fila de sección.
+                $gantthtml .= '<tr>';
+                $gantthtml .= '<td class="bloquecero-gantt-sectionname">' . htmlspecialchars($sec['name']) . '</td>';
+                foreach ($ganttweeks as $idx => $wts) {
+                    $weekend = $wts + 7 * 86400 - 1;
+                    $active = ($sec['start'] > 0 && $sec['start'] <= $weekend && $sec['end'] >= $wts);
+                    $currentclass = ($idx === $currentweekidx) ? ' bloquecero-gantt-currentweek' : '';
+                    $cellclass = 'bloquecero-gantt-cell' . ($active ? ' bloquecero-gantt-active' : '') . $currentclass;
+                    $gantthtml .= '<td class="' . $cellclass . '"></td>';
+                }
+                $gantthtml .= '</tr>';
+                // Filas de actividades de esta sección.
+                foreach ($ganttactivitiesbysection[$sectionnum] ?? [] as $act) {
+                    $hiddenclass = $act['hidden'] ? ' bloquecero-item-hidden' : '';
+                    $gantthtml .= '<tr class="' . trim($hiddenclass) . '">';
+                    $gantthtml .= '<td class="bloquecero-gantt-sectionname bloquecero-gantt-activityname">'
+                        . '&nbsp;&nbsp;&nbsp;' . $act['icon'] . ' ' . htmlspecialchars($act['name']) . '</td>';
+                    foreach ($ganttweeks as $idx => $wts) {
+                        $weekend = $wts + 7 * 86400 - 1;
+                        $active = ($act['start'] <= $weekend && $act['end'] >= $wts);
+                        $currentclass = ($idx === $currentweekidx) ? ' bloquecero-gantt-currentweek' : '';
+                        $cellclass = 'bloquecero-gantt-cell' . ($active ? ' bloquecero-gantt-activity' : '') . $currentclass;
+                        $gantthtml .= '<td class="' . $cellclass . '"></td>';
+                    }
+                    $gantthtml .= '</tr>';
+                }
+            }
+
+            // Fila de sesiones en directo (una sola fila con marcador por semana).
+            if (!empty($sesioneszoom)) {
+                $gantthtml .= '<tr>';
+                $gantthtml .= '<td class="bloquecero-gantt-sectionname bloquecero-gantt-sessionrow">'
+                    . get_string('livesessions', 'block_bloquecero') . '</td>';
+                foreach ($ganttweeks as $idx => $wts) {
+                    $weekend = $wts + 7 * 86400;
+                    $currentclass = ($idx === $currentweekidx) ? ' bloquecero-gantt-currentweek' : '';
+                    $weeksessions = array_filter($sesioneszoom, function($s) use ($wts, $weekend) {
+                        return (int)$s['fecha'] >= $wts && (int)$s['fecha'] < $weekend;
+                    });
+                    if (!empty($weeksessions)) {
+                        $titles = implode('&#10;', array_map(function($s) {
+                            return htmlspecialchars($s['titulo']) . ' (' . userdate((int)$s['fecha'], '%d/%m %H:%M') . ')';
+                        }, $weeksessions));
+                        $count = count($weeksessions);
+                        $marker = $count > 1 ? $count : '&#9679;';
+                        $gantthtml .= '<td class="bloquecero-gantt-cell bloquecero-gantt-session' . $currentclass
+                            . '" title="' . $titles . '" data-bs-toggle="tooltip" data-bs-placement="top">' . $marker . '</td>';
+                    } else {
+                        $gantthtml .= '<td class="bloquecero-gantt-cell' . $currentclass . '"></td>';
+                    }
+                }
+                $gantthtml .= '</tr>';
+            }
+
+            $gantthtml .= '</tbody></table></div>';
+        }
+
+        $this->content->text .= '
+    <script>
+    document.addEventListener("DOMContentLoaded", function() {
+        var btn = document.getElementById("bloquecero-gantt-btn");
+        var modal = document.getElementById("bloquecero-gantt-modal");
+        var content = document.getElementById("bloquecero-gantt-content");
+        if (btn && modal && content) {
+            content.innerHTML = ' . json_encode($gantthtml) . ';
+            btn.addEventListener("click", function(e) {
+                e.preventDefault();
+                bloqueceroModal.open("bloquecero-gantt-modal");
+            });
+            modal.addEventListener("click", function(e) {
+                if (e.target === modal) bloqueceroModal.close("bloquecero-gantt-modal");
+            });
+        }
+    });
     </script>
     ';
 
@@ -3585,6 +3811,80 @@ class block_bloquecero extends block_base {
         .bloquecero-vermas-btn:hover {
             text-decoration: underline;
             color: #004D35;
+        }
+        /* Gantt */
+        .bloquecero-gantt-table {
+            border-collapse: collapse;
+            font-size: 0.82em;
+            min-width: 400px;
+            white-space: nowrap;
+        }
+        .bloquecero-gantt-table th,
+        .bloquecero-gantt-table td {
+            border: 1px solid #ddd;
+            padding: 6px 8px;
+            text-align: center;
+            vertical-align: middle;
+        }
+        .bloquecero-gantt-sectioncol {
+            text-align: left !important;
+            font-weight: 600;
+            background: #f5f5f5;
+            min-width: 140px;
+            position: sticky;
+            left: 0;
+            z-index: 1;
+        }
+        .bloquecero-gantt-sectionname {
+            text-align: left !important;
+            background: #fff;
+            position: sticky;
+            left: 0;
+            z-index: 1;
+            max-width: 180px;
+            white-space: normal;
+            font-weight: 500;
+        }
+        .bloquecero-gantt-weekcol {
+            min-width: 52px;
+            font-weight: 500;
+            background: #f5f5f5;
+            line-height: 1.2;
+        }
+        .bloquecero-gantt-cell {
+            min-width: 52px;
+        }
+        .bloquecero-gantt-active {
+            background: #6B7D2E;
+        }
+        .bloquecero-gantt-activity {
+            background: #B8860B;
+        }
+        .bloquecero-gantt-currentweek {
+            background: #e8f5e9 !important;
+        }
+        .bloquecero-gantt-active.bloquecero-gantt-currentweek {
+            background: #4a5c1a !important;
+        }
+        .bloquecero-gantt-activity.bloquecero-gantt-currentweek {
+            background: #8B6008 !important;
+        }
+        .bloquecero-gantt-activityname {
+            font-weight: 400;
+            font-size: 0.9em;
+        }
+        .bloquecero-gantt-session {
+            background: #1565C0;
+            color: #fff;
+            font-size: 0.85em;
+            cursor: default;
+        }
+        .bloquecero-gantt-session.bloquecero-gantt-currentweek {
+            background: #0D47A1 !important;
+        }
+        .bloquecero-gantt-sessionrow {
+            font-style: italic;
+            color: #1565C0;
         }
                     </style>
         ';
