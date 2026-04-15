@@ -607,6 +607,49 @@ class block_bloquecero extends block_base {
         // Inicializar array para almacenar las actividades de cada sección (clave: id de la sección)
         $sectionsactivitiesdata = [];
 
+        // Auto-destacado de sección por fechas programadas por el profesor.
+        // Solo aplica en formatos sin fechas automáticas de sección (no 'weeks').
+        // Se ejecuta antes de get_fast_modinfo para que el marcador esté actualizado.
+        if (!empty($this->config) && $COURSE->format !== 'weeks') {
+            $now = time();
+            $hasdates = false;
+            $activesectionnumber = null;
+
+            $dbsections = $DB->get_records_select(
+                'course_sections',
+                'course = ? AND section > 0 AND (component IS NULL OR component <> ?)',
+                [$COURSE->id, 'mod_subsection'],
+                'section ASC',
+                'id, section'
+            );
+
+            foreach ($dbsections as $dbsec) {
+                $enablekey = 'section_enabled_' . $dbsec->id;
+                $startkey  = 'section_start_'   . $dbsec->id;
+                $endkey    = 'section_end_'     . $dbsec->id;
+
+                if (empty($this->config->$enablekey)) {
+                    continue;
+                }
+
+                $hasdates = true;
+                $startval = isset($this->config->$startkey) ? (int)$this->config->$startkey : 0;
+                $endval   = isset($this->config->$endkey) ? (int)$this->config->$endkey : 0;
+
+                if ($startval > 0 && $endval > 0 && $now >= $startval && $now < $endval + 86400) {
+                    $activesectionnumber = (int)$dbsec->section;
+                    break;
+                }
+            }
+
+            if ($hasdates) {
+                $targetmarker = ($activesectionnumber !== null) ? $activesectionnumber : 0;
+                if ((int)$COURSE->marker !== $targetmarker) {
+                    course_set_marker($COURSE->id, $targetmarker);
+                }
+            }
+        }
+
         // Carrusel de tarjetas de secciones (sin mostrar las actividades inline)
         $sectionscarousel = '<div class="sections-carousel">';
         $modinfo = get_fast_modinfo($COURSE);
@@ -622,6 +665,30 @@ class block_bloquecero extends block_base {
             $todaysection = floor(($now - $startdate) / $weekduration) + 1;
             if ($todaysection < 1) {
                 $todaysection = 1;
+            }
+        }
+
+        // Mapa de fechas programadas por sección (solo para formatos no semanales).
+        $sectionschedulemap = [];
+        if (!empty($this->config) && $format !== 'weeks') {
+            foreach ($modinfo->get_section_info_all() as $sec) {
+                if ($sec->section == 0) {
+                    continue;
+                }
+                $enablekey = 'section_enabled_' . $sec->id;
+                if (empty($this->config->$enablekey)) {
+                    continue;
+                }
+                $startkey = 'section_start_' . $sec->id;
+                $endkey   = 'section_end_'   . $sec->id;
+                $startval = isset($this->config->$startkey) ? (int)$this->config->$startkey : 0;
+                $endval   = isset($this->config->$endkey) ? (int)$this->config->$endkey : 0;
+                if ($startval > 0 && $endval > 0) {
+                    $sectionschedulemap[$sec->id] = [
+                        'start' => $startval,
+                        'end'   => $endval,
+                    ];
+                }
             }
         }
 
@@ -817,7 +884,18 @@ class block_bloquecero extends block_base {
             }
             $cardhtml .= '
                 <div class="bloquecero-section-header-flex" style="display:flex;flex-direction:column;width:100%;gap:4px;margin-bottom:8px;">
-                    <div style="min-width:0;overflow:hidden;"><a href="' . $sectionurl . '" class="bloquecero-section-number" title="' . htmlspecialchars(strip_tags($sectiontitle)) . '">' . $sectiontitle . '</a></div>
+                    <div style="min-width:0;overflow:hidden;">' . (function () use ($sectionurl, $sectiontitle, $section, $sectionschedulemap) {
+                        $titleattr = htmlspecialchars(strip_tags($sectiontitle));
+                        $tooltipattrs = '';
+                if (isset($sectionschedulemap[$section->id])) {
+                    $datestart = userdate($sectionschedulemap[$section->id]['start'], get_string('strftimedate', 'langconfig'));
+                    $dateend   = userdate($sectionschedulemap[$section->id]['end'], get_string('strftimedate', 'langconfig'));
+                    $tooltiptext = htmlspecialchars($datestart . ' – ' . $dateend);
+                    $titleattr   = $tooltiptext;
+                    $tooltipattrs = ' data-bs-toggle="tooltip" data-bs-placement="top"';
+                }
+                        return '<a href="' . $sectionurl . '" class="bloquecero-section-number" title="' . $titleattr . '"' . $tooltipattrs . '>' . $sectiontitle . '</a>';
+            })() . '</div>
                 </div>
                 <div class="bloquecero-section-line" style="background: ' . $linecolor . '; margin-bottom:12px;"></div>
                 <div class="bloquecero-section-content">
