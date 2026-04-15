@@ -722,7 +722,7 @@ class block_bloquecero extends block_base {
                     $startkey = 'section_start_' . $sec->id;
                     $endkey   = 'section_end_'   . $sec->id;
                     $secstart = isset($this->config->$startkey) ? (int)$this->config->$startkey : 0;
-                    $secend   = isset($this->config->$endkey)   ? (int)$this->config->$endkey   : 0;
+                    $secend   = isset($this->config->$endkey) ? (int)$this->config->$endkey : 0;
                 }
             }
 
@@ -3214,11 +3214,11 @@ class block_bloquecero extends block_base {
                 foreach ($ganttweeks as $idx => $wts) {
                     $weekend = $wts + 7 * 86400;
                     $currentclass = ($idx === $currentweekidx) ? ' bloquecero-gantt-currentweek' : '';
-                    $weeksessions = array_filter($sesioneszoom, function($s) use ($wts, $weekend) {
+                    $weeksessions = array_filter($sesioneszoom, function ($s) use ($wts, $weekend) {
                         return (int)$s['fecha'] >= $wts && (int)$s['fecha'] < $weekend;
                     });
                     if (!empty($weeksessions)) {
-                        $titles = implode('&#10;', array_map(function($s) {
+                        $titles = implode('&#10;', array_map(function ($s) {
                             return htmlspecialchars($s['titulo']) . ' (' . userdate((int)$s['fecha'], '%d/%m %H:%M') . ')';
                         }, $weeksessions));
                         $count = count($weeksessions);
