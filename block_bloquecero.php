@@ -3175,7 +3175,7 @@ class block_bloquecero extends block_base {
 
         // Construir HTML del Gantt.
         $gantthtml = '';
-        if (!empty($ganttweeks) && !empty($ganttsections)) {
+        if (!empty($ganttweeks) && (!empty($ganttsections) || !empty($ganttactivities))) {
             $now = time();
             // Índice de la semana actual.
             $currentweekidx = -1;
