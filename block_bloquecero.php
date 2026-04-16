@@ -1159,10 +1159,11 @@ class block_bloquecero extends block_base {
             [$insql, $inparams] = $DB->get_in_or_equal($cmids);
             $inparams[] = $COURSE->id;
             $parentcms = $DB->get_records_sql(
-                "SELECT cm.id, cs.section as parentsecnum
+                "SELECT cm.instance, cs.section AS parentsecnum
                    FROM {course_modules} cm
                    JOIN {course_sections} cs ON cs.id = cm.section
-                  WHERE cm.id $insql AND cm.course = ?",
+                   JOIN {modules} m ON m.id = cm.module AND m.name = 'subsection'
+                  WHERE cm.instance $insql AND cm.course = ?",
                 $inparams
             );
             foreach ($subsectionrecs as $subsec) {
