@@ -1582,27 +1582,27 @@ class block_bloquecero extends block_base {
         $metahide = $ismetacourse ? ' style="display:none"' : '';
         $this->content->text .= '
             <nav class="udima-menu-bar" aria-label="' . get_string('coursemenu', 'block_bloquecero') . '"' . $metahide . '>
-            <a href="' . new moodle_url('/grade/report/grader/index.php', ['id' => $COURSE->id]) . '" class="udima-menu-link">
+            <a href="' . new moodle_url('/grade/report/grader/index.php', ['id' => $COURSE->id]) . '" class="udima-menu-link" title="' . get_string('grades', 'block_bloquecero') . '" data-bs-toggle="tooltip" data-bs-placement="bottom">
                 ' . $OUTPUT->pix_icon('t/grades', '', 'moodle', ['class' => 'menu-icon']) . '
                 <span>' . get_string('grades', 'block_bloquecero') . '</span>
             </a>
-            <a href="' . new moodle_url('/user/index.php', ['id' => $COURSE->id]) . '" class="udima-menu-link">
+            <a href="' . new moodle_url('/user/index.php', ['id' => $COURSE->id]) . '" class="udima-menu-link" title="' . get_string('participants', 'block_bloquecero') . '" data-bs-toggle="tooltip" data-bs-placement="bottom">
                 ' . $OUTPUT->pix_icon('i/users', '', 'moodle', ['class' => 'menu-icon']) . '
                 <span>' . get_string('participants', 'block_bloquecero') . '</span>
             </a>
-            <a href="#" id="bloquecero-bibliografia-btn" class="udima-menu-link">
+            <a href="#" id="bloquecero-bibliografia-btn" class="udima-menu-link" title="' . get_string('bibliography', 'block_bloquecero') . '" data-bs-toggle="tooltip" data-bs-placement="bottom">
                 ' . $OUTPUT->pix_icon('book', '', 'moodle', ['class' => 'menu-icon']) . '
                 <span>' . get_string('bibliography', 'block_bloquecero') . '</span>
             </a>' . (!empty($ganttweeks) ? '
-            <a href="#" id="bloquecero-gantt-btn" class="udima-menu-link">
+            <a href="#" id="bloquecero-gantt-btn" class="udima-menu-link" title="' . get_string('gantt', 'block_bloquecero') . '" data-bs-toggle="tooltip" data-bs-placement="bottom">
                 <i class="fa fa-bar-chart fa-fw menu-icon" aria-hidden="true"></i>
                 <span>' . get_string('gantt', 'block_bloquecero') . '</span>
             </a>' : '') . '
-            <a href="' . $guideurl . '" class="udima-menu-link" target="_blank">
+            <a href="' . $guideurl . '" class="udima-menu-link" target="_blank" title="' . get_string('teacherguide', 'block_bloquecero') . '" data-bs-toggle="tooltip" data-bs-placement="bottom">
                 ' . $OUTPUT->pix_icon('i/info', '', 'moodle', ['class' => 'menu-icon']) . '
                 <span>' . get_string('teacherguide', 'block_bloquecero') . '</span>
             </a>' . ((has_capability('moodle/course:update', $coursecontext)) ? '
-            <a href="' . (new moodle_url('/course/edit.php', ['id' => $COURSE->id])) . '" class="udima-menu-link">
+            <a href="' . (new moodle_url('/course/edit.php', ['id' => $COURSE->id])) . '" class="udima-menu-link" title="' . get_string('settings', 'block_bloquecero') . '" data-bs-toggle="tooltip" data-bs-placement="bottom">
                 ' . $OUTPUT->pix_icon('i/settings', '', 'moodle', ['class' => 'menu-icon']) . '
                 <span>' . get_string('settings', 'block_bloquecero') . '</span>
             </a>' : '') .
@@ -3675,6 +3675,19 @@ class block_bloquecero extends block_base {
                     if(btn) btn.style.display = 'none';
                 };
             ");
+        }
+
+        // Inicializa tooltips de Bootstrap 5 para los iconos del menú.
+        $this->page->requires->js_init_code("
+            document.addEventListener('DOMContentLoaded', function() {
+                var tooltipEls = document.querySelectorAll('.udima-menu-link[data-bs-toggle=\"tooltip\"]');
+                tooltipEls.forEach(function(el) {
+                    new bootstrap.Tooltip(el, { trigger: 'hover focus' });
+                });
+            });
+        ");
+
+        if (!$isediting) {
                 // --- Script para expandir tarjeta de sección ---
                 $this->content->text .= '
 
