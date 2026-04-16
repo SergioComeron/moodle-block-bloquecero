@@ -697,6 +697,15 @@ class block_bloquecero extends block_base {
         $ganttrangestart = 0;
         $ganttrangeend = 0;
 
+        // Para weeks: pre-calcular la base en medianoche hora local (igual que las columnas).
+        $ganttweeksbase = null;
+        if ($format === 'weeks') {
+            $tz = core_date::get_user_timezone_object();
+            $ganttweeksbase = new DateTime('@' . $modinfo->get_course()->startdate);
+            $ganttweeksbase->setTimezone($tz);
+            $ganttweeksbase->setTime(0, 0, 0);
+        }
+
         foreach ($modinfo->get_section_info_all() as $sec) {
             if ($sec->section == 0) {
                 continue;
@@ -711,10 +720,13 @@ class block_bloquecero extends block_base {
             $secstart = 0;
             $secend = 0;
 
-            if ($format === 'weeks') {
-                $coursestart = $modinfo->get_course()->startdate;
-                $secstart = $coursestart + ($sec->section - 1) * 7 * 86400;
-                $secend = $secstart + 7 * 86400 - 1;
+            if ($format === 'weeks' && $ganttweeksbase !== null) {
+                $dtstart = clone $ganttweeksbase;
+                $dtstart->modify('+' . ($sec->section - 1) . ' weeks');
+                $secstart = $dtstart->getTimestamp();
+                $dtend = clone $dtstart;
+                $dtend->modify('+1 week');
+                $secend = $dtend->getTimestamp() - 1;
             } else if (!empty($this->config)) {
                 $enablekey = 'section_enabled_' . $sec->id;
                 if (!empty($this->config->$enablekey)) {
