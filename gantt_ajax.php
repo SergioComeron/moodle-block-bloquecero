@@ -208,6 +208,7 @@ function bloquecero_gantt_course_data(stdClass $course, $blockconfig, int $useri
             'icon'       => $icon,
             'start'      => $actstart,
             'end'        => $actend,
+            'modname'    => $cm->modname,
             'sectionnum' => $sectionnum,
         ];
     }
@@ -342,7 +343,7 @@ foreach ($coursesdata as $cdata) {
         }
 
         // Section row.
-        $html .= '<tr><td class="bloquecero-gantt-sectionname">' . htmlspecialchars($sec['name']) . '</td>';
+        $html .= '<tr data-gantt-type="section"><td class="bloquecero-gantt-sectionname">' . htmlspecialchars($sec['name']) . '</td>';
         foreach ($ganttweeks as $idx => $wts) {
             $weekend      = $ganttweekends[$idx];
             $active       = ($hasdates && $sec['start'] <= $weekend && $sec['end'] >= $wts);
@@ -355,7 +356,8 @@ foreach ($coursesdata as $cdata) {
         // Activity rows.
         if ($hasactivities) {
             foreach ($activitiesbysection[$sectionnum] as $act) {
-                $html .= '<tr><td class="bloquecero-gantt-sectionname bloquecero-gantt-activityname">'
+                $modtype = htmlspecialchars($act['modname'] ?? 'other');
+                $html .= '<tr data-gantt-type="' . $modtype . '"><td class="bloquecero-gantt-sectionname bloquecero-gantt-activityname">'
                     . $act['icon'] . ' ' . htmlspecialchars($act['name']) . '</td>';
                 foreach ($ganttweeks as $idx => $wts) {
                     $weekend      = $ganttweekends[$idx];

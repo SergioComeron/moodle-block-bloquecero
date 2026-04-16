@@ -1204,6 +1204,7 @@ class block_bloquecero extends block_base {
                 'end'        => $actend,
                 'hidden'     => $act['hidden'],
                 'sectionnum' => $sectionnum,
+                'modname'    => $act['modname'] ?? 'other',
             ];
         }
 
@@ -3208,6 +3209,14 @@ class block_bloquecero extends block_base {
                             . htmlspecialchars($c['name']) . '</button>';
                     }, $ganttothercourses)) . '
                 </div>
+                <div id="bloquecero-gantt-filters" style="display:flex; flex-wrap:wrap; gap:6px; margin-bottom:10px; padding-bottom:10px; border-bottom:1px solid #e0e0e0;">
+                    <span style="font-size:0.82em; color:#666; align-self:center; margin-right:4px;">' . get_string('ganttfilter', 'block_bloquecero') . ':</span>
+                    <button class="bloquecero-gantt-filter bloquecero-gantt-filter-active" data-filter-type="section" style="background:#6B7D2E; color:#fff; border:none; border-radius:20px; padding:3px 12px; font-size:0.82em; cursor:pointer;">' . get_string('ganttfiltersections', 'block_bloquecero') . '</button>
+                    <button class="bloquecero-gantt-filter bloquecero-gantt-filter-active" data-filter-type="assign" style="background:#B8860B; color:#fff; border:none; border-radius:20px; padding:3px 12px; font-size:0.82em; cursor:pointer;">' . get_string('ganttfilterassign', 'block_bloquecero') . '</button>
+                    <button class="bloquecero-gantt-filter bloquecero-gantt-filter-active" data-filter-type="quiz" style="background:#B8860B; color:#fff; border:none; border-radius:20px; padding:3px 12px; font-size:0.82em; cursor:pointer;">' . get_string('ganttfilterquiz', 'block_bloquecero') . '</button>
+                    <button class="bloquecero-gantt-filter bloquecero-gantt-filter-active" data-filter-type="forum" style="background:#B8860B; color:#fff; border:none; border-radius:20px; padding:3px 12px; font-size:0.82em; cursor:pointer;">' . get_string('ganttfilterforum', 'block_bloquecero') . '</button>
+                    <button class="bloquecero-gantt-filter bloquecero-gantt-filter-active" data-filter-type="livesession" style="background:#1565C0; color:#fff; border:none; border-radius:20px; padding:3px 12px; font-size:0.82em; cursor:pointer;">' . get_string('ganttfilterlivesessions', 'block_bloquecero') . '</button>
+                </div>
                 <div id="bloquecero-gantt-loading" style="display:none; text-align:center; padding:20px; color:#666;">
                     <i class="fa fa-spinner fa-spin" aria-hidden="true"></i> ' . get_string('loading', 'moodle') . '
                 </div>
@@ -3294,7 +3303,7 @@ class block_bloquecero extends block_base {
                     continue;
                 }
                 // Fila de sección.
-                $gantthtml .= '<tr>';
+                $gantthtml .= '<tr data-gantt-type="section">';
                 $gantthtml .= '<td class="bloquecero-gantt-sectionname">' . htmlspecialchars($sec['name']) . '</td>';
                 foreach ($ganttweeks as $idx => $wts) {
                     $weekend = $ganttweekends[$idx];
@@ -3307,8 +3316,9 @@ class block_bloquecero extends block_base {
                 // Filas de actividades anidadas bajo esta sección.
                 if ($hasactivities) {
                     foreach ($activitiesbysection[$sectionnum] as $act) {
+                        $modtype = htmlspecialchars($act['modname'] ?? 'other');
                         $hiddenclass = $act['hidden'] ? ' bloquecero-item-hidden' : '';
-                        $gantthtml .= '<tr class="' . trim($hiddenclass) . '">';
+                        $gantthtml .= '<tr data-gantt-type="' . $modtype . '" class="' . trim($hiddenclass) . '">';
                         $gantthtml .= '<td class="bloquecero-gantt-sectionname bloquecero-gantt-activityname">'
                             . $act['icon'] . ' ' . htmlspecialchars($act['name']) . '</td>';
                         foreach ($ganttweeks as $idx => $wts) {
@@ -3325,7 +3335,7 @@ class block_bloquecero extends block_base {
 
             // Fila de sesiones en directo (una sola fila con marcador por semana).
             if (!empty($sesioneszoom)) {
-                $gantthtml .= '<tr>';
+                $gantthtml .= '<tr data-gantt-type="livesession">';
                 $gantthtml .= '<td class="bloquecero-gantt-sectionname bloquecero-gantt-sessionrow">'
                     . get_string('livesessions', 'block_bloquecero') . '</td>';
                 foreach ($ganttweeks as $idx => $wts) {
@@ -3399,6 +3409,7 @@ class block_bloquecero extends block_base {
                         var data = JSON.parse(text);
                         ganttCache[key] = data.html || "";
                         content.innerHTML = ganttCache[key];
+                        applyGanttFilters();
                     } catch (e) {
                         console.error("bloquecero gantt_ajax parse error:", e, text);
                         content.innerHTML = "<p style=\"color:red;\">Error al cargar el diagrama. Consulta la consola del navegador.</p>";
@@ -3441,6 +3452,33 @@ class block_bloquecero extends block_base {
                     pill.style.border = "none";
                 }
                 ganttRenderForCourses(ganttActiveCourseIds());
+            });
+        });
+
+        // Filter pills (type filter).
+        function applyGanttFilters() {
+            var activeTypes = new Set();
+            document.querySelectorAll(".bloquecero-gantt-filter.bloquecero-gantt-filter-active").forEach(function(p) {
+                activeTypes.add(p.dataset.filterType);
+            });
+            document.querySelectorAll("#bloquecero-gantt-content tr[data-gantt-type]").forEach(function(row) {
+                row.style.display = activeTypes.has(row.dataset.ganttType) ? "" : "none";
+            });
+        }
+
+        document.querySelectorAll(".bloquecero-gantt-filter").forEach(function(pill) {
+            pill.addEventListener("click", function() {
+                var isActive = pill.classList.contains("bloquecero-gantt-filter-active");
+                if (isActive) {
+                    var activePillsNow = document.querySelectorAll(".bloquecero-gantt-filter.bloquecero-gantt-filter-active");
+                    if (activePillsNow.length <= 1) return;
+                    pill.classList.remove("bloquecero-gantt-filter-active");
+                    pill.style.opacity = "0.4";
+                } else {
+                    pill.classList.add("bloquecero-gantt-filter-active");
+                    pill.style.opacity = "1";
+                }
+                applyGanttFilters();
             });
         });
 
