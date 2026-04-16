@@ -3356,7 +3356,20 @@ class block_bloquecero extends block_base {
                     \'</style></head><body>\' +
                     \'<h1>\' + courseName + \' – ' . get_string('gantt', 'block_bloquecero') . '</h1>\' +
                     \'<div class="gantt-print-wrapper">\' + tableHtml + \'</div>\' +
-                    \'<script>window.onload=function(){window.print();};</\' + \'script>\' +
+                    \'<script>\' +
+                    \'window.onload = function() {\' +
+                    \'    var table = document.querySelector("table");\' +
+                    \'    if (table) {\' +
+                    \'        var pageWidthPx = 1019;\' +
+                    \'        var tableWidth = table.scrollWidth;\' +
+                    \'        if (tableWidth > pageWidthPx) {\' +
+                    \'            var scale = pageWidthPx / tableWidth;\' +
+                    \'            document.body.style.zoom = scale;\' +
+                    \'        }\' +
+                    \'    }\' +
+                    \'    window.print();\' +
+                    \'};\' +
+                    \'</\' + \'script>\' +
                     \'</body></html>\');
                 win.document.close();
             });
