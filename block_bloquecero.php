@@ -1146,7 +1146,26 @@ class block_bloquecero extends block_base {
         }
 
         // --- Actividades para el Gantt ---
-        // Agrupar actividades por sección para el Gantt.
+        // Mapa subsección → sección padre (para actividades dentro de mod_subsection).
+        $subsectionsectionmap = [];
+        $subsectionrecs = $DB->get_records('course_sections',
+            ['course' => $COURSE->id, 'component' => 'mod_subsection'], '', 'section, itemid');
+        if (!empty($subsectionrecs)) {
+            $cmids = array_column((array)$subsectionrecs, 'itemid');
+            list($insql, $inparams) = $DB->get_in_or_equal($cmids);
+            $inparams[] = $COURSE->id;
+            $parentcms = $DB->get_records_sql(
+                "SELECT cm.id, cs.section as parentsecnum
+                   FROM {course_modules} cm
+                   JOIN {course_sections} cs ON cs.id = cm.section
+                  WHERE cm.id $insql AND cm.course = ?", $inparams);
+            foreach ($subsectionrecs as $subsec) {
+                if (!empty($parentcms[$subsec->itemid])) {
+                    $subsectionsectionmap[(int)$subsec->section] = (int)$parentcms[$subsec->itemid]->parentsecnum;
+                }
+            }
+        }
+
         $ganttactivities = [];
         foreach ($activitiesdata as $act) {
             $actstart = (int)$act['startdate'];
@@ -1166,13 +1185,18 @@ class block_bloquecero extends block_base {
             if ($actend > $ganttrangeend) {
                 $ganttrangeend = $actend;
             }
+            $sectionnum = (int)$act['sectionnum'];
+            // Si la actividad está en una subsección, usar la sección padre.
+            if (isset($subsectionsectionmap[$sectionnum])) {
+                $sectionnum = $subsectionsectionmap[$sectionnum];
+            }
             $ganttactivities[] = [
                 'name'       => $act['name'],
                 'icon'       => $act['icon'],
                 'start'      => $actstart,
                 'end'        => $actend,
                 'hidden'     => $act['hidden'],
-                'sectionnum' => (int)$act['sectionnum'],
+                'sectionnum' => $sectionnum,
             ];
         }
 
