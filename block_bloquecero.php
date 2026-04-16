@@ -3156,6 +3156,34 @@ class block_bloquecero extends block_base {
             $bibliografiahtml = '<p style="color:#595959; font-style:italic;">' . get_string('nobibliographyyet', 'block_bloquecero') . '</p>';
         }
 
+        // --- Cursos matriculados con el bloque (para el selector multi-curso del Gantt) ---
+        $ganttothercourses = [];
+        $enrolledcourses = enrol_get_my_courses('id, fullname', 'fullname ASC');
+        if (!empty($enrolledcourses)) {
+            $otherids = array_diff(array_keys($enrolledcourses), [$COURSE->id]);
+            if (!empty($otherids)) {
+                [$insql2, $inparams2] = $DB->get_in_or_equal($otherids);
+                $courseswithblock = $DB->get_records_sql(
+                    "SELECT DISTINCT ctx.instanceid AS courseid
+                       FROM {block_instances} bi
+                       JOIN {context} ctx ON ctx.id = bi.parentcontextid
+                      WHERE bi.blockname = 'bloquecero'
+                        AND ctx.contextlevel = " . CONTEXT_COURSE . "
+                        AND ctx.instanceid $insql2",
+                    $inparams2
+                );
+                foreach ($courseswithblock as $row) {
+                    $cid = (int)$row->courseid;
+                    if (isset($enrolledcourses[$cid])) {
+                        $ganttothercourses[] = [
+                            'id'   => $cid,
+                            'name' => format_string($enrolledcourses[$cid]->fullname),
+                        ];
+                    }
+                }
+            }
+        }
+
         // Justo antes de cerrar el div principal del bloque, añade el HTML del modal:
         $this->content->text .= '
         <!-- Modal Cronograma Gantt -->
@@ -3223,34 +3251,6 @@ class block_bloquecero extends block_base {
     window.bloquecero_activitiesData = ' . json_encode($activitiesdata) . ';
     </script>
     ';
-
-        // --- Cursos matriculados con el bloque (para el selector multi-curso del Gantt) ---
-        $ganttothercourses = [];
-        $enrolledcourses = enrol_get_my_courses('id, fullname', 'fullname ASC');
-        if (!empty($enrolledcourses)) {
-            $otherids = array_diff(array_keys($enrolledcourses), [$COURSE->id]);
-            if (!empty($otherids)) {
-                [$insql2, $inparams2] = $DB->get_in_or_equal($otherids);
-                $courseswithblock = $DB->get_records_sql(
-                    "SELECT DISTINCT ctx.instanceid AS courseid
-                       FROM {block_instances} bi
-                       JOIN {context} ctx ON ctx.id = bi.parentcontextid
-                      WHERE bi.blockname = 'bloquecero'
-                        AND ctx.contextlevel = " . CONTEXT_COURSE . "
-                        AND ctx.instanceid $insql2",
-                    $inparams2
-                );
-                foreach ($courseswithblock as $row) {
-                    $cid = (int)$row->courseid;
-                    if (isset($enrolledcourses[$cid])) {
-                        $ganttothercourses[] = [
-                            'id'   => $cid,
-                            'name' => format_string($enrolledcourses[$cid]->fullname),
-                        ];
-                    }
-                }
-            }
-        }
 
         // Construir HTML del Gantt.
         $gantthtml = '';
