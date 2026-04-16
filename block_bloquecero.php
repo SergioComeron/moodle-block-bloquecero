@@ -3162,7 +3162,12 @@ class block_bloquecero extends block_base {
         <div id="bloquecero-gantt-modal" role="dialog" aria-modal="true" aria-labelledby="bloquecero-gantt-modal-title" style="display:none; position:fixed; z-index:9999; left:0; top:0; width:100vw; height:100vh; background:rgba(0,0,0,0.35); align-items:center; justify-content:center;">
             <div style="background:#fff; border-radius:10px; padding:28px 24px; max-width:95vw; width:auto; max-height:90vh; box-shadow:0 8px 32px rgba(0,0,0,0.18); position:relative; text-align:left; display:flex; flex-direction:column;">
                 <button onclick="bloqueceroModal.close(\'bloquecero-gantt-modal\')" aria-label="' . get_string('close', 'block_bloquecero') . '" style="position:absolute; top:10px; right:14px; background:none; border:none; font-size:1.5em; color:#595959; cursor:pointer;">&times;</button>
-                <h2 id="bloquecero-gantt-modal-title" style="margin-top:0; color:#004D35; font-size:1.3em; margin-bottom:16px;">' . get_string('gantt', 'block_bloquecero') . '</h2>
+                <div style="display:flex; align-items:center; gap:12px; margin-bottom:16px;">
+                    <h2 id="bloquecero-gantt-modal-title" style="margin:0; color:#004D35; font-size:1.3em; flex:1;">' . get_string('gantt', 'block_bloquecero') . '</h2>
+                    <button id="bloquecero-gantt-export-btn" title="' . get_string('ganttexportpdf', 'block_bloquecero') . '" style="background:#004D35; color:#fff; border:none; border-radius:6px; padding:6px 14px; font-size:0.88em; cursor:pointer; display:flex; align-items:center; gap:6px;">
+                        <i class="fa fa-file-pdf-o" aria-hidden="true"></i> ' . get_string('ganttexportpdf', 'block_bloquecero') . '
+                    </button>
+                </div>
                 <div id="bloquecero-gantt-content" style="overflow:auto; flex:1;"></div>
             </div>
         </div>
@@ -3318,6 +3323,42 @@ class block_bloquecero extends block_base {
             });
             modal.addEventListener("click", function(e) {
                 if (e.target === modal) bloqueceroModal.close("bloquecero-gantt-modal");
+            });
+        }
+
+        var exportBtn = document.getElementById("bloquecero-gantt-export-btn");
+        if (exportBtn) {
+            exportBtn.addEventListener("click", function() {
+                var tableEl = document.querySelector("#bloquecero-gantt-content .bloquecero-gantt-table");
+                if (!tableEl) return;
+                var courseName = ' . json_encode(format_string($COURSE->fullname)) . ';
+                var tableHtml = tableEl.outerHTML;
+                var win = window.open("", "_blank", "width=1200,height=700");
+                win.document.write(\'<!DOCTYPE html><html><head><meta charset="utf-8">\' +
+                    \'<title>\' + courseName + \' – ' . get_string('gantt', 'block_bloquecero') . '</title>\' +
+                    \'<style>\' +
+                    \'@page { size: A4 landscape; margin: 10mm; }\' +
+                    \'body { font-family: Arial, sans-serif; font-size: 0.78em; margin: 0; padding: 0; }\' +
+                    \'h1 { font-size: 1em; color: #004D35; margin: 0 0 8px 0; }\' +
+                    \'.gantt-print-wrapper { width: 100%; }\' +
+                    \'table { border-collapse: collapse; width: 100%; table-layout: auto; white-space: nowrap; }\' +
+                    \'th, td { border: 1px solid #ccc; padding: 4px 6px; text-align: center; vertical-align: middle; font-size: 0.85em; }\' +
+                    \'.bloquecero-gantt-sectioncol, .bloquecero-gantt-sectionname { text-align: left !important; background: #f5f5f5; min-width: 120px; max-width: 160px; white-space: normal; font-weight: 600; }\' +
+                    \'.bloquecero-gantt-activityname { text-align: left !important; padding-left: 18px !important; font-weight: 400; white-space: normal; max-width: 160px; }\' +
+                    \'.bloquecero-gantt-weekcol { min-width: 36px; font-weight: 500; background: #f5f5f5; line-height: 1.1; }\' +
+                    \'.bloquecero-gantt-active { background: #6B7D2E !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }\' +
+                    \'.bloquecero-gantt-activity { background: #B8860B !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }\' +
+                    \'.bloquecero-gantt-currentweek { background: #e8f5e9 !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }\' +
+                    \'.bloquecero-gantt-active.bloquecero-gantt-currentweek { background: #4a5c1a !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }\' +
+                    \'.bloquecero-gantt-activity.bloquecero-gantt-currentweek { background: #8B6008 !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }\' +
+                    \'.bloquecero-gantt-session { background: #1565c0 !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }\' +
+                    \'img.activityicon { width: 14px; height: 14px; }\' +
+                    \'</style></head><body>\' +
+                    \'<h1>\' + courseName + \' – ' . get_string('gantt', 'block_bloquecero') . '</h1>\' +
+                    \'<div class="gantt-print-wrapper">\' + tableHtml + \'</div>\' +
+                    \'<script>window.onload=function(){window.print();};</\' + \'script>\' +
+                    \'</body></html>\');
+                win.document.close();
             });
         }
     });

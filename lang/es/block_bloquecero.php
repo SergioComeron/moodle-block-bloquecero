@@ -129,6 +129,7 @@ $string['noticeboard'] = 'Tablón de anuncios';
 $string['current'] = 'Actual';
 $string['highlighted'] = 'Destacada';
 $string['gantt'] = 'Cronograma';
+$string['ganttexportpdf'] = 'Exportar PDF';
 $string['sectionscheduling'] = 'Programación de secciones';
 $string['sectionscheduling_desc'] = 'Asigne un periodo de fechas a cada sección. El bloque destacará automáticamente la sección cuyo rango incluya la fecha actual.';
 $string['sectionstart'] = 'Fecha de inicio';
