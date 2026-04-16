@@ -1167,11 +1167,12 @@ class block_bloquecero extends block_base {
                 $ganttrangeend = $actend;
             }
             $ganttactivities[] = [
-                'name'   => $act['name'],
-                'icon'   => $act['icon'],
-                'start'  => $actstart,
-                'end'    => $actend,
-                'hidden' => $act['hidden'],
+                'name'       => $act['name'],
+                'icon'       => $act['icon'],
+                'start'      => $actstart,
+                'end'        => $actend,
+                'hidden'     => $act['hidden'],
+                'sectionnum' => (int)$act['sectionnum'],
             ];
         }
 
