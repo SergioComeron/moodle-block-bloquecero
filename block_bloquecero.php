@@ -3189,13 +3189,13 @@ class block_bloquecero extends block_base {
         $this->content->text .= '
         <!-- Modal Cronograma Gantt -->
         <div id="bloquecero-gantt-modal" role="dialog" aria-modal="true" aria-labelledby="bloquecero-gantt-modal-title" style="display:none; position:fixed; z-index:9999; left:0; top:0; width:100vw; height:100vh; background:rgba(0,0,0,0.35); align-items:center; justify-content:center;">
-            <div style="background:#fff; border-radius:10px; padding:28px 24px; max-width:95vw; width:auto; max-height:90vh; box-shadow:0 8px 32px rgba(0,0,0,0.18); position:relative; text-align:left; display:flex; flex-direction:column;">
-                <button onclick="bloqueceroModal.close(\'bloquecero-gantt-modal\')" aria-label="' . get_string('close', 'block_bloquecero') . '" style="position:absolute; top:10px; right:14px; background:none; border:none; font-size:1.5em; color:#595959; cursor:pointer;">&times;</button>
-                <div style="display:flex; align-items:center; gap:12px; margin-bottom:12px;">
+            <div style="background:#fff; border-radius:10px; padding:20px 24px 24px; max-width:95vw; width:auto; max-height:90vh; box-shadow:0 8px 32px rgba(0,0,0,0.18); position:relative; text-align:left; display:flex; flex-direction:column;">
+                <div style="display:flex; align-items:center; gap:10px; margin-bottom:12px; flex-shrink:0;">
                     <h2 id="bloquecero-gantt-modal-title" style="margin:0; color:#004D35; font-size:1.3em; flex:1;">' . get_string('gantt', 'block_bloquecero') . '</h2>
-                    <button id="bloquecero-gantt-export-btn" title="' . get_string('ganttexportpdf', 'block_bloquecero') . '" style="background:#004D35; color:#fff; border:none; border-radius:6px; padding:6px 14px; font-size:0.88em; cursor:pointer; display:flex; align-items:center; gap:6px;">
+                    <button id="bloquecero-gantt-export-btn" title="' . get_string('ganttexportpdf', 'block_bloquecero') . '" style="background:#004D35; color:#fff; border:none; border-radius:6px; padding:6px 14px; font-size:0.88em; cursor:pointer; display:flex; align-items:center; gap:6px; flex-shrink:0;">
                         <i class="fa fa-file-pdf-o" aria-hidden="true"></i> ' . get_string('ganttexportpdf', 'block_bloquecero') . '
                     </button>
+                    <button onclick="bloqueceroModal.close(\'bloquecero-gantt-modal\')" aria-label="' . get_string('close', 'block_bloquecero') . '" style="background:none; border:none; font-size:1.5em; color:#595959; cursor:pointer; line-height:1; padding:0 0 0 4px; flex-shrink:0;">&times;</button>
                 </div>
                 <div id="bloquecero-gantt-courses" style="display:flex; flex-wrap:wrap; gap:6px; margin-bottom:12px; padding-bottom:10px; border-bottom:1px solid #e0e0e0;">
                     <span style="font-size:0.82em; color:#666; align-self:center; margin-right:4px;">' . get_string('ganttcoursefilter', 'block_bloquecero') . ':</span>
