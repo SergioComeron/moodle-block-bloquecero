@@ -3337,9 +3337,11 @@ class block_bloquecero extends block_base {
                 win.document.write(\'<!DOCTYPE html><html><head><meta charset="utf-8">\' +
                     \'<title>\' + courseName + \' – ' . get_string('gantt', 'block_bloquecero') . '</title>\' +
                     \'<style>\' +
-                    \'@page { size: A4 landscape; margin: 10mm; }\' +
-                    \'body { font-family: Arial, sans-serif; font-size: 0.78em; margin: 0; padding: 0; }\' +
-                    \'h1 { font-size: 1em; color: #004D35; margin: 0 0 8px 0; }\' +
+                    \'@page { size: 297mm 210mm; margin: 10mm; }\' +
+                    \'body { font-family: Arial, sans-serif; font-size: 0.78em; margin: 0; padding: 8px; }\' +
+                    \'h1 { font-size: 1em; color: #004D35; margin: 0 0 6px 0; }\' +
+                    \'.gantt-print-notice { background: #fff3cd; border: 1px solid #ffc107; border-radius: 4px; padding: 6px 10px; font-size: 0.9em; margin-bottom: 8px; color: #664d03; }\' +
+                    \'@media print { .gantt-print-notice { display: none; } }\' +
                     \'.gantt-print-wrapper { width: 100%; }\' +
                     \'table { border-collapse: collapse; width: 100%; table-layout: auto; white-space: nowrap; }\' +
                     \'th, td { border: 1px solid #ccc; padding: 4px 6px; text-align: center; vertical-align: middle; font-size: 0.85em; }\' +
@@ -3354,13 +3356,14 @@ class block_bloquecero extends block_base {
                     \'.bloquecero-gantt-session { background: #1565c0 !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }\' +
                     \'img.activityicon { width: 14px; height: 14px; }\' +
                     \'</style></head><body>\' +
+                    \'<div class="gantt-print-notice">⚠️ ' . get_string('ganttprintnotice', 'block_bloquecero') . '</div>\' +
                     \'<h1>\' + courseName + \' – ' . get_string('gantt', 'block_bloquecero') . '</h1>\' +
                     \'<div class="gantt-print-wrapper">\' + tableHtml + \'</div>\' +
                     \'<script>\' +
                     \'window.onload = function() {\' +
                     \'    var table = document.querySelector("table");\' +
                     \'    if (table) {\' +
-                    \'        var pageWidthPx = 1019;\' +
+                    \'        var pageWidthPx = 1047;\' +
                     \'        var tableWidth = table.scrollWidth;\' +
                     \'        if (tableWidth > pageWidthPx) {\' +
                     \'            var scale = pageWidthPx / tableWidth;\' +

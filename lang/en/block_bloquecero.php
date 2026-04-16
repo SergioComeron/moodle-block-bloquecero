@@ -129,6 +129,7 @@ $string['current'] = 'Current';
 $string['highlighted'] = 'Highlighted';
 $string['gantt'] = 'Schedule';
 $string['ganttexportpdf'] = 'Export PDF';
+$string['ganttprintnotice'] = 'To get the correct result, select <strong>Landscape</strong> orientation in the print dialog.';
 $string['sectionscheduling'] = 'Section scheduling';
 $string['sectionscheduling_desc'] = 'Assign a date range to each section. The block will automatically highlight the section whose range includes the current date.';
 $string['sectionstart'] = 'Start date';
