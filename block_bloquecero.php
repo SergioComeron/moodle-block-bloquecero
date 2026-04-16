@@ -1200,8 +1200,16 @@ class block_bloquecero extends block_base {
             }
         }
         if ($ganttrangestart > 0 && $ganttrangeend > 0) {
-            $dow = (int)date('N', $ganttrangestart);
-            $weekts = mktime(0, 0, 0, (int)date('n', $ganttrangestart), (int)date('j', $ganttrangestart) - ($dow - 1), (int)date('Y', $ganttrangestart));
+            // Usar la zona horaria del usuario para calcular el lunes correcto.
+            $tz = core_date::get_user_timezone_object();
+            $dt = new DateTime('@' . $ganttrangestart);
+            $dt->setTimezone($tz);
+            $dt->setTime(0, 0, 0);
+            $dow = (int)$dt->format('N'); // 1=lunes … 7=domingo
+            if ($dow > 1) {
+                $dt->modify('-' . ($dow - 1) . ' days');
+            }
+            $weekts = $dt->getTimestamp();
             while ($weekts <= $ganttrangeend && count($ganttweeks) < 60) {
                 $ganttweeks[] = $weekts;
                 $weekts += 7 * 86400;
@@ -3164,7 +3172,7 @@ class block_bloquecero extends block_base {
             $gantthtml .= '<thead><tr><th class="bloquecero-gantt-sectioncol">' . get_string('section', 'moodle') . '</th>';
             foreach ($ganttweeks as $idx => $wts) {
                 $weekend = $wts + 6 * 86400;
-                $label = date('d/m', $wts) . '<br>' . date('d/m', $weekend);
+                $label = userdate($wts, '%d/%m') . '<br>' . userdate($weekend, '%d/%m');
                 $currentclass = ($idx === $currentweekidx) ? ' bloquecero-gantt-currentweek' : '';
                 $gantthtml .= '<th class="bloquecero-gantt-weekcol' . $currentclass . '">' . $label . '</th>';
             }
