@@ -750,6 +750,7 @@ class block_bloquecero extends block_base {
 
         // Las semanas se generan después de incorporar actividades y sesiones.
         $ganttweeks = [];
+        $ganttweekends = []; // Último segundo de cada semana (inicio_semana_siguiente - 1).
 
         $sectioncards = [];
         $sectioncount = 0;
@@ -1218,10 +1219,11 @@ class block_bloquecero extends block_base {
             if ($dow > 1) {
                 $dt->modify('-' . ($dow - 1) . ' days');
             }
-            $weekts = $dt->getTimestamp();
-            while ($weekts <= $ganttrangeend && count($ganttweeks) < 60) {
-                $ganttweeks[] = $weekts;
-                $weekts += 7 * 86400;
+            // Avanzar semana a semana con modify('+1 week') para respetar cambios de hora (DST).
+            while ($dt->getTimestamp() <= $ganttrangeend && count($ganttweeks) < 60) {
+                $ganttweeks[] = $dt->getTimestamp();
+                $dt->modify('+1 week');
+                $ganttweekends[] = $dt->getTimestamp() - 1;
             }
         }
 
@@ -3168,7 +3170,7 @@ class block_bloquecero extends block_base {
             // Índice de la semana actual.
             $currentweekidx = -1;
             foreach ($ganttweeks as $idx => $wts) {
-                if ($now >= $wts && $now < $wts + 7 * 86400) {
+                if ($now >= $wts && $now <= $ganttweekends[$idx]) {
                     $currentweekidx = $idx;
                     break;
                 }
@@ -3180,7 +3182,7 @@ class block_bloquecero extends block_base {
             // Cabecera: semanas.
             $gantthtml .= '<thead><tr><th class="bloquecero-gantt-sectioncol">' . get_string('section', 'moodle') . '</th>';
             foreach ($ganttweeks as $idx => $wts) {
-                $weekend = $wts + 6 * 86400;
+                $weekend = $ganttweekends[$idx];
                 $label = userdate($wts, '%d/%m') . '<br>' . userdate($weekend, '%d/%m');
                 $currentclass = ($idx === $currentweekidx) ? ' bloquecero-gantt-currentweek' : '';
                 $gantthtml .= '<th class="bloquecero-gantt-weekcol' . $currentclass . '">' . $label . '</th>';
@@ -3193,7 +3195,7 @@ class block_bloquecero extends block_base {
                 $gantthtml .= '<tr>';
                 $gantthtml .= '<td class="bloquecero-gantt-sectionname">' . htmlspecialchars($sec['name']) . '</td>';
                 foreach ($ganttweeks as $idx => $wts) {
-                    $weekend = $wts + 7 * 86400 - 1;
+                    $weekend = $ganttweekends[$idx];
                     $active = ($sec['start'] <= $weekend && $sec['end'] >= $wts);
                     $currentclass = ($idx === $currentweekidx) ? ' bloquecero-gantt-currentweek' : '';
                     $cellclass = 'bloquecero-gantt-cell' . ($active ? ' bloquecero-gantt-active' : '') . $currentclass;
@@ -3207,7 +3209,7 @@ class block_bloquecero extends block_base {
                 $gantthtml .= '<td class="bloquecero-gantt-sectionname bloquecero-gantt-activityname">'
                     . $act['icon'] . ' ' . htmlspecialchars($act['name']) . '</td>';
                 foreach ($ganttweeks as $idx => $wts) {
-                    $weekend = $wts + 7 * 86400 - 1;
+                    $weekend = $ganttweekends[$idx];
                     $active = ($act['start'] <= $weekend && $act['end'] >= $wts);
                     $currentclass = ($idx === $currentweekidx) ? ' bloquecero-gantt-currentweek' : '';
                     $cellclass = 'bloquecero-gantt-cell' . ($active ? ' bloquecero-gantt-activity' : '') . $currentclass;
@@ -3222,7 +3224,7 @@ class block_bloquecero extends block_base {
                 $gantthtml .= '<td class="bloquecero-gantt-sectionname bloquecero-gantt-sessionrow">'
                     . get_string('livesessions', 'block_bloquecero') . '</td>';
                 foreach ($ganttweeks as $idx => $wts) {
-                    $weekend = $wts + 7 * 86400;
+                    $weekend = $ganttweekends[$idx] + 1; // Exclusivo: inicio de la semana siguiente.
                     $currentclass = ($idx === $currentweekidx) ? ' bloquecero-gantt-currentweek' : '';
                     $weeksessions = array_filter($sesioneszoom, function ($s) use ($wts, $weekend) {
                         return (int)$s['fecha'] >= $wts && (int)$s['fecha'] < $weekend;
