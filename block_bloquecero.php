@@ -1595,7 +1595,7 @@ class block_bloquecero extends block_base {
                 <span>' . get_string('bibliography', 'block_bloquecero') . '</span>
             </a>' . (!empty($ganttweeks) ? '
             <a href="#" id="bloquecero-gantt-btn" class="udima-menu-link">
-                ' . $OUTPUT->pix_icon('i/scheduled', '', 'moodle', ['class' => 'menu-icon']) . '
+                <i class="fa fa-bar-chart fa-fw menu-icon" aria-hidden="true"></i>
                 <span>' . get_string('gantt', 'block_bloquecero') . '</span>
             </a>' : '') . '
             <a href="' . $guideurl . '" class="udima-menu-link" target="_blank">
