@@ -29,7 +29,6 @@
 define('AJAX_SCRIPT', true);
 
 require_once(__DIR__ . '/../../config.php');
-require_once($CFG->dirroot . '/blocks/bloquecero/block_bloquecero.php');
 
 require_login();
 require_sesskey();

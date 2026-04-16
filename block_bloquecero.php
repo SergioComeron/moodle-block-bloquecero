@@ -3389,15 +3389,25 @@ class block_bloquecero extends block_base {
             formData.append("courseids", JSON.stringify(courseids));
             formData.append("sesskey", ganttSesskey);
             fetch(ganttAjaxUrl, { method: "POST", body: formData })
-                .then(function(r) { return r.json(); })
-                .then(function(data) {
-                    loading.style.display = "none";
-                    ganttCache[key] = data.html || "";
-                    content.innerHTML = ganttCache[key];
+                .then(function(r) {
+                    if (!r.ok) { throw new Error("HTTP " + r.status); }
+                    return r.text();
                 })
-                .catch(function() {
+                .then(function(text) {
                     loading.style.display = "none";
-                    content.innerHTML = "";
+                    try {
+                        var data = JSON.parse(text);
+                        ganttCache[key] = data.html || "";
+                        content.innerHTML = ganttCache[key];
+                    } catch (e) {
+                        console.error("bloquecero gantt_ajax parse error:", e, text);
+                        content.innerHTML = "<p style=\"color:red;\">Error al cargar el diagrama. Consulta la consola del navegador.</p>";
+                    }
+                })
+                .catch(function(err) {
+                    loading.style.display = "none";
+                    console.error("bloquecero gantt_ajax fetch error:", err);
+                    content.innerHTML = "<p style=\"color:red;\">Error de conexión al cargar el diagrama.</p>";
                 });
         }
 
