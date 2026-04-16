@@ -3173,7 +3173,7 @@ class block_bloquecero extends block_base {
                     <button class="bloquecero-gantt-pill bloquecero-gantt-pill-active"
                         data-courseid="' . $COURSE->id . '"
                         style="background:#004D35; color:#fff; border:none; border-radius:20px; padding:3px 12px; font-size:0.82em; cursor:pointer; white-space:nowrap;">' . format_string($COURSE->fullname) . '</button>'
-                    . implode('', array_map(function($c) {
+                    . implode('', array_map(function ($c) {
                         return '<button class="bloquecero-gantt-pill"
                             data-courseid="' . $c['id'] . '"
                             style="background:#e8f0e4; color:#004D35; border:1px solid #b7c65c; border-radius:20px; padding:3px 12px; font-size:0.82em; cursor:pointer; white-space:nowrap;">'
@@ -3231,7 +3231,7 @@ class block_bloquecero extends block_base {
             $otherids = array_diff(array_keys($enrolledcourses), [$COURSE->id]);
             if (!empty($otherids)) {
                 [$insql2, $inparams2] = $DB->get_in_or_equal($otherids);
-                $coursesWithBlock = $DB->get_records_sql(
+                $courseswithblock = $DB->get_records_sql(
                     "SELECT DISTINCT ctx.instanceid AS courseid
                        FROM {block_instances} bi
                        JOIN {context} ctx ON ctx.id = bi.parentcontextid
@@ -3240,7 +3240,7 @@ class block_bloquecero extends block_base {
                         AND ctx.instanceid $insql2",
                     $inparams2
                 );
-                foreach ($coursesWithBlock as $row) {
+                foreach ($courseswithblock as $row) {
                     $cid = (int)$row->courseid;
                     if (isset($enrolledcourses[$cid])) {
                         $ganttothercourses[] = [
