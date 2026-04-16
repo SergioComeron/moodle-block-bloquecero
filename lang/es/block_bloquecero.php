@@ -129,6 +129,7 @@ $string['noticeboard'] = 'Tablón de anuncios';
 $string['current'] = 'Actual';
 $string['highlighted'] = 'Destacada';
 $string['gantt'] = 'Cronograma';
+$string['ganttcoursefilter'] = 'Asignaturas';
 $string['ganttexportpdf'] = 'Exportar PDF';
 $string['ganttprintnotice'] = 'Para obtener el resultado correcto, selecciona orientación <strong>Horizontal</strong> en el diálogo de impresión.';
 $string['sectionscheduling'] = 'Programación de secciones';

@@ -128,6 +128,7 @@ $string['noticeboard'] = 'Notice board';
 $string['current'] = 'Current';
 $string['highlighted'] = 'Highlighted';
 $string['gantt'] = 'Schedule';
+$string['ganttcoursefilter'] = 'Subjects';
 $string['ganttexportpdf'] = 'Export PDF';
 $string['ganttprintnotice'] = 'To get the correct result, select <strong>Landscape</strong> orientation in the print dialog.';
 $string['sectionscheduling'] = 'Section scheduling';

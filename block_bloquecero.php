@@ -3162,11 +3162,26 @@ class block_bloquecero extends block_base {
         <div id="bloquecero-gantt-modal" role="dialog" aria-modal="true" aria-labelledby="bloquecero-gantt-modal-title" style="display:none; position:fixed; z-index:9999; left:0; top:0; width:100vw; height:100vh; background:rgba(0,0,0,0.35); align-items:center; justify-content:center;">
             <div style="background:#fff; border-radius:10px; padding:28px 24px; max-width:95vw; width:auto; max-height:90vh; box-shadow:0 8px 32px rgba(0,0,0,0.18); position:relative; text-align:left; display:flex; flex-direction:column;">
                 <button onclick="bloqueceroModal.close(\'bloquecero-gantt-modal\')" aria-label="' . get_string('close', 'block_bloquecero') . '" style="position:absolute; top:10px; right:14px; background:none; border:none; font-size:1.5em; color:#595959; cursor:pointer;">&times;</button>
-                <div style="display:flex; align-items:center; gap:12px; margin-bottom:16px;">
+                <div style="display:flex; align-items:center; gap:12px; margin-bottom:12px;">
                     <h2 id="bloquecero-gantt-modal-title" style="margin:0; color:#004D35; font-size:1.3em; flex:1;">' . get_string('gantt', 'block_bloquecero') . '</h2>
                     <button id="bloquecero-gantt-export-btn" title="' . get_string('ganttexportpdf', 'block_bloquecero') . '" style="background:#004D35; color:#fff; border:none; border-radius:6px; padding:6px 14px; font-size:0.88em; cursor:pointer; display:flex; align-items:center; gap:6px;">
                         <i class="fa fa-file-pdf-o" aria-hidden="true"></i> ' . get_string('ganttexportpdf', 'block_bloquecero') . '
                     </button>
+                </div>
+                <div id="bloquecero-gantt-courses" style="display:flex; flex-wrap:wrap; gap:6px; margin-bottom:12px; padding-bottom:10px; border-bottom:1px solid #e0e0e0;">
+                    <span style="font-size:0.82em; color:#666; align-self:center; margin-right:4px;">' . get_string('ganttcoursefilter', 'block_bloquecero') . ':</span>
+                    <button class="bloquecero-gantt-pill bloquecero-gantt-pill-active"
+                        data-courseid="' . $COURSE->id . '"
+                        style="background:#004D35; color:#fff; border:none; border-radius:20px; padding:3px 12px; font-size:0.82em; cursor:pointer; white-space:nowrap;">' . format_string($COURSE->fullname) . '</button>'
+                    . implode('', array_map(function($c) {
+                        return '<button class="bloquecero-gantt-pill"
+                            data-courseid="' . $c['id'] . '"
+                            style="background:#e8f0e4; color:#004D35; border:1px solid #b7c65c; border-radius:20px; padding:3px 12px; font-size:0.82em; cursor:pointer; white-space:nowrap;">'
+                            . htmlspecialchars($c['name']) . '</button>';
+                    }, $ganttothercourses)) . '
+                </div>
+                <div id="bloquecero-gantt-loading" style="display:none; text-align:center; padding:20px; color:#666;">
+                    <i class="fa fa-spinner fa-spin" aria-hidden="true"></i> ' . get_string('loading', 'moodle') . '
                 </div>
                 <div id="bloquecero-gantt-content" style="overflow:auto; flex:1;"></div>
             </div>
@@ -3208,6 +3223,34 @@ class block_bloquecero extends block_base {
     window.bloquecero_activitiesData = ' . json_encode($activitiesdata) . ';
     </script>
     ';
+
+        // --- Cursos matriculados con el bloque (para el selector multi-curso del Gantt) ---
+        $ganttothercourses = [];
+        $enrolledcourses = enrol_get_my_courses('id, fullname', 'fullname ASC');
+        if (!empty($enrolledcourses)) {
+            $otherids = array_diff(array_keys($enrolledcourses), [$COURSE->id]);
+            if (!empty($otherids)) {
+                [$insql2, $inparams2] = $DB->get_in_or_equal($otherids);
+                $coursesWithBlock = $DB->get_records_sql(
+                    "SELECT DISTINCT ctx.instanceid AS courseid
+                       FROM {block_instances} bi
+                       JOIN {context} ctx ON ctx.id = bi.parentcontextid
+                      WHERE bi.blockname = 'bloquecero'
+                        AND ctx.contextlevel = " . CONTEXT_COURSE . "
+                        AND ctx.instanceid $insql2",
+                    $inparams2
+                );
+                foreach ($coursesWithBlock as $row) {
+                    $cid = (int)$row->courseid;
+                    if (isset($enrolledcourses[$cid])) {
+                        $ganttothercourses[] = [
+                            'id'   => $cid,
+                            'name' => format_string($enrolledcourses[$cid]->fullname),
+                        ];
+                    }
+                }
+            }
+        }
 
         // Construir HTML del Gantt.
         $gantthtml = '';
@@ -3315,8 +3358,51 @@ class block_bloquecero extends block_base {
         var btn = document.getElementById("bloquecero-gantt-btn");
         var modal = document.getElementById("bloquecero-gantt-modal");
         var content = document.getElementById("bloquecero-gantt-content");
+        var ganttDefaultHtml = ' . json_encode($gantthtml) . ';
+        var ganttAjaxUrl = ' . json_encode((new moodle_url('/blocks/bloquecero/gantt_ajax.php'))->out(false)) . ';
+        var ganttSesskey = ' . json_encode(sesskey()) . ';
+        // Cache: key = sorted courseids joined by comma, value = html string.
+        var ganttCache = {};
+
+        function ganttActiveCourseIds() {
+            var pills = document.querySelectorAll(".bloquecero-gantt-pill.bloquecero-gantt-pill-active");
+            return Array.from(pills).map(function(p) { return parseInt(p.dataset.courseid, 10); });
+        }
+
+        function ganttRenderForCourses(courseids) {
+            var key = courseids.slice().sort().join(",");
+            var content = document.getElementById("bloquecero-gantt-content");
+            var loading = document.getElementById("bloquecero-gantt-loading");
+
+            // If only current course selected (or no multi-course selection), use pre-rendered html.
+            if (courseids.length === 1 && courseids[0] === ' . (int)$COURSE->id . ') {
+                content.innerHTML = ganttDefaultHtml;
+                return;
+            }
+            if (ganttCache[key]) {
+                content.innerHTML = ganttCache[key];
+                return;
+            }
+            content.innerHTML = "";
+            loading.style.display = "block";
+            var formData = new FormData();
+            formData.append("courseids", JSON.stringify(courseids));
+            formData.append("sesskey", ganttSesskey);
+            fetch(ganttAjaxUrl, { method: "POST", body: formData })
+                .then(function(r) { return r.json(); })
+                .then(function(data) {
+                    loading.style.display = "none";
+                    ganttCache[key] = data.html || "";
+                    content.innerHTML = ganttCache[key];
+                })
+                .catch(function() {
+                    loading.style.display = "none";
+                    content.innerHTML = "";
+                });
+        }
+
         if (btn && modal && content) {
-            content.innerHTML = ' . json_encode($gantthtml) . ';
+            content.innerHTML = ganttDefaultHtml;
             btn.addEventListener("click", function(e) {
                 e.preventDefault();
                 bloqueceroModal.open("bloquecero-gantt-modal");
@@ -3326,12 +3412,36 @@ class block_bloquecero extends block_base {
             });
         }
 
+        // Pills toggle.
+        document.querySelectorAll(".bloquecero-gantt-pill").forEach(function(pill) {
+            pill.addEventListener("click", function() {
+                var isActive = pill.classList.contains("bloquecero-gantt-pill-active");
+                if (isActive) {
+                    // Only deselect if at least one other pill is active.
+                    var activePills = document.querySelectorAll(".bloquecero-gantt-pill.bloquecero-gantt-pill-active");
+                    if (activePills.length <= 1) return;
+                    pill.classList.remove("bloquecero-gantt-pill-active");
+                    pill.style.background = "#e8f0e4";
+                    pill.style.color = "#004D35";
+                    pill.style.border = "1px solid #b7c65c";
+                } else {
+                    pill.classList.add("bloquecero-gantt-pill-active");
+                    pill.style.background = "#004D35";
+                    pill.style.color = "#fff";
+                    pill.style.border = "none";
+                }
+                ganttRenderForCourses(ganttActiveCourseIds());
+            });
+        });
+
         var exportBtn = document.getElementById("bloquecero-gantt-export-btn");
         if (exportBtn) {
             exportBtn.addEventListener("click", function() {
                 var tableEl = document.querySelector("#bloquecero-gantt-content .bloquecero-gantt-table");
                 if (!tableEl) return;
-                var courseName = ' . json_encode(format_string($COURSE->fullname)) . ';
+                var activePills = document.querySelectorAll(".bloquecero-gantt-pill.bloquecero-gantt-pill-active");
+                var courseNames = Array.from(activePills).map(function(p) { return p.textContent.trim(); });
+                var courseName = courseNames.join(" · ");
                 var tableHtml = tableEl.outerHTML;
                 var win = window.open("", "_blank", "width=1200,height=700");
                 win.document.write(\'<!DOCTYPE html><html><head><meta charset="utf-8">\' +
@@ -3354,6 +3464,7 @@ class block_bloquecero extends block_base {
                     \'.bloquecero-gantt-active.bloquecero-gantt-currentweek { background: #4a5c1a !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }\' +
                     \'.bloquecero-gantt-activity.bloquecero-gantt-currentweek { background: #8B6008 !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }\' +
                     \'.bloquecero-gantt-session { background: #1565c0 !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }\' +
+                    \'.bloquecero-gantt-courseheader { background: #004D35 !important; color: #fff !important; font-weight: 700; text-align: left !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }\' +
                     \'img.activityicon { width: 14px; height: 14px; }\' +
                     \'</style></head><body>\' +
                     \'<div class="gantt-print-notice">⚠️ ' . get_string('ganttprintnotice', 'block_bloquecero') . '</div>\' +
@@ -4024,6 +4135,15 @@ class block_bloquecero extends block_base {
         .bloquecero-gantt-sessionrow {
             font-style: italic;
             color: #1565C0;
+        }
+        .bloquecero-gantt-courseheader {
+            background: #004D35 !important;
+            color: #fff !important;
+            font-weight: 700;
+            font-size: 0.9em;
+            text-align: left !important;
+            padding: 5px 8px;
+            letter-spacing: 0.02em;
         }
                     </style>
         ';
