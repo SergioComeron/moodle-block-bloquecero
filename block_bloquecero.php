@@ -1148,17 +1148,23 @@ class block_bloquecero extends block_base {
         // --- Actividades para el Gantt ---
         // Mapa subsección → sección padre (para actividades dentro de mod_subsection).
         $subsectionsectionmap = [];
-        $subsectionrecs = $DB->get_records('course_sections',
-            ['course' => $COURSE->id, 'component' => 'mod_subsection'], '', 'section, itemid');
+        $subsectionrecs = $DB->get_records(
+            'course_sections',
+            ['course' => $COURSE->id, 'component' => 'mod_subsection'],
+            '',
+            'section, itemid'
+        );
         if (!empty($subsectionrecs)) {
             $cmids = array_column((array)$subsectionrecs, 'itemid');
-            list($insql, $inparams) = $DB->get_in_or_equal($cmids);
+            [$insql, $inparams] = $DB->get_in_or_equal($cmids);
             $inparams[] = $COURSE->id;
             $parentcms = $DB->get_records_sql(
                 "SELECT cm.id, cs.section as parentsecnum
                    FROM {course_modules} cm
                    JOIN {course_sections} cs ON cs.id = cm.section
-                  WHERE cm.id $insql AND cm.course = ?", $inparams);
+                  WHERE cm.id $insql AND cm.course = ?",
+                $inparams
+            );
             foreach ($subsectionrecs as $subsec) {
                 if (!empty($parentcms[$subsec->itemid])) {
                     $subsectionsectionmap[(int)$subsec->section] = (int)$parentcms[$subsec->itemid]->parentsecnum;
