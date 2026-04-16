@@ -694,6 +694,7 @@ class block_bloquecero extends block_base {
 
         // --- Datos para el cronograma Gantt ---
         $ganttsections = [];
+        $ganttallsections = []; // Mapa sectionnum => datos, incluye secciones sin fechas.
         $ganttrangestart = 0;
         $ganttrangeend = 0;
 
@@ -737,8 +738,16 @@ class block_bloquecero extends block_base {
                 }
             }
 
+            // Registrar siempre la sección (con o sin fechas) para agrupar actividades.
+            $ganttallsections[(int)$sec->section] = [
+                'name'       => $secname,
+                'start'      => $secstart,
+                'end'        => $secend,
+                'sectionnum' => (int)$sec->section,
+            ];
+
             if ($secstart > 0 && $secend > 0) {
-                $ganttsections[] = ['name' => $secname, 'start' => $secstart, 'end' => $secend];
+                $ganttsections[] = ['name' => $secname, 'start' => $secstart, 'end' => $secend, 'sectionnum' => (int)$sec->section];
                 if ($ganttrangestart === 0 || $secstart < $ganttrangestart) {
                     $ganttrangestart = $secstart;
                 }
@@ -3189,33 +3198,49 @@ class block_bloquecero extends block_base {
             }
             $gantthtml .= '</tr></thead>';
 
-            // Filas: primero todas las secciones, luego todas las actividades.
+            // Agrupar actividades por sección.
+            $activitiesbysection = [];
+            foreach ($ganttactivities as $act) {
+                $activitiesbysection[$act['sectionnum']][] = $act;
+            }
+
+            // Filas: secciones con sus actividades anidadas debajo.
             $gantthtml .= '<tbody>';
-            foreach ($ganttsections as $sec) {
+            foreach ($ganttallsections as $sectionnum => $sec) {
+                $hasactivities = !empty($activitiesbysection[$sectionnum]);
+                $hasdates = ($sec['start'] > 0 && $sec['end'] > 0);
+                // Solo mostrar la sección si tiene fechas o tiene actividades con fechas.
+                if (!$hasdates && !$hasactivities) {
+                    continue;
+                }
+                // Fila de sección.
                 $gantthtml .= '<tr>';
                 $gantthtml .= '<td class="bloquecero-gantt-sectionname">' . htmlspecialchars($sec['name']) . '</td>';
                 foreach ($ganttweeks as $idx => $wts) {
                     $weekend = $ganttweekends[$idx];
-                    $active = ($sec['start'] <= $weekend && $sec['end'] >= $wts);
+                    $active = ($hasdates && $sec['start'] <= $weekend && $sec['end'] >= $wts);
                     $currentclass = ($idx === $currentweekidx) ? ' bloquecero-gantt-currentweek' : '';
                     $cellclass = 'bloquecero-gantt-cell' . ($active ? ' bloquecero-gantt-active' : '') . $currentclass;
                     $gantthtml .= '<td class="' . $cellclass . '"></td>';
                 }
                 $gantthtml .= '</tr>';
-            }
-            foreach ($ganttactivities as $act) {
-                $hiddenclass = $act['hidden'] ? ' bloquecero-item-hidden' : '';
-                $gantthtml .= '<tr class="' . trim($hiddenclass) . '">';
-                $gantthtml .= '<td class="bloquecero-gantt-sectionname bloquecero-gantt-activityname">'
-                    . $act['icon'] . ' ' . htmlspecialchars($act['name']) . '</td>';
-                foreach ($ganttweeks as $idx => $wts) {
-                    $weekend = $ganttweekends[$idx];
-                    $active = ($act['start'] <= $weekend && $act['end'] >= $wts);
-                    $currentclass = ($idx === $currentweekidx) ? ' bloquecero-gantt-currentweek' : '';
-                    $cellclass = 'bloquecero-gantt-cell' . ($active ? ' bloquecero-gantt-activity' : '') . $currentclass;
-                    $gantthtml .= '<td class="' . $cellclass . '"></td>';
+                // Filas de actividades anidadas bajo esta sección.
+                if ($hasactivities) {
+                    foreach ($activitiesbysection[$sectionnum] as $act) {
+                        $hiddenclass = $act['hidden'] ? ' bloquecero-item-hidden' : '';
+                        $gantthtml .= '<tr class="' . trim($hiddenclass) . '">';
+                        $gantthtml .= '<td class="bloquecero-gantt-sectionname bloquecero-gantt-activityname">'
+                            . $act['icon'] . ' ' . htmlspecialchars($act['name']) . '</td>';
+                        foreach ($ganttweeks as $idx => $wts) {
+                            $weekend = $ganttweekends[$idx];
+                            $active = ($act['start'] <= $weekend && $act['end'] >= $wts);
+                            $currentclass = ($idx === $currentweekidx) ? ' bloquecero-gantt-currentweek' : '';
+                            $cellclass = 'bloquecero-gantt-cell' . ($active ? ' bloquecero-gantt-activity' : '') . $currentclass;
+                            $gantthtml .= '<td class="' . $cellclass . '"></td>';
+                        }
+                        $gantthtml .= '</tr>';
+                    }
                 }
-                $gantthtml .= '</tr>';
             }
 
             // Fila de sesiones en directo (una sola fila con marcador por semana).
