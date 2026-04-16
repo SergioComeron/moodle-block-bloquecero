@@ -693,8 +693,7 @@ class block_bloquecero extends block_base {
         }
 
         // --- Datos para el cronograma Gantt ---
-        // $ganttsectionsmap: todas las secciones visibles (con o sin fechas), keyed by sectionnum.
-        $ganttsectionsmap = [];
+        $ganttsections = [];
         $ganttrangestart = 0;
         $ganttrangeend = 0;
 
@@ -726,9 +725,8 @@ class block_bloquecero extends block_base {
                 }
             }
 
-            $ganttsectionsmap[$sec->section] = ['name' => $secname, 'start' => $secstart, 'end' => $secend];
-
             if ($secstart > 0 && $secend > 0) {
+                $ganttsections[] = ['name' => $secname, 'start' => $secstart, 'end' => $secend];
                 if ($ganttrangestart === 0 || $secstart < $ganttrangestart) {
                     $ganttrangestart = $secstart;
                 }
@@ -738,7 +736,7 @@ class block_bloquecero extends block_base {
             }
         }
 
-        // Las semanas se generan después de incorporar las actividades (el rango puede ampliarse).
+        // Las semanas se generan después de incorporar actividades y sesiones.
         $ganttweeks = [];
 
         $sectioncards = [];
@@ -1127,7 +1125,7 @@ class block_bloquecero extends block_base {
 
         // --- Actividades para el Gantt ---
         // Agrupar actividades por sección para el Gantt.
-        $ganttactivitiesbysection = []; // sectionnum => [activities]
+        $ganttactivities = [];
         foreach ($activitiesdata as $act) {
             $actstart = (int)$act['startdate'];
             $actend   = (int)$act['duedate'];
@@ -1146,8 +1144,7 @@ class block_bloquecero extends block_base {
             if ($actend > $ganttrangeend) {
                 $ganttrangeend = $actend;
             }
-            $sectionnum = (int)$act['sectionnum'];
-            $ganttactivitiesbysection[$sectionnum][] = [
+            $ganttactivities[] = [
                 'name'   => $act['name'],
                 'icon'   => $act['icon'],
                 'start'  => $actstart,
@@ -3154,7 +3151,7 @@ class block_bloquecero extends block_base {
 
         // Construir HTML del Gantt.
         $gantthtml = '';
-        if (!empty($ganttweeks) && !empty($ganttsectionsmap)) {
+        if (!empty($ganttweeks) && !empty($ganttsections)) {
             $now = time();
             // Índice de la semana actual.
             $currentweekidx = -1;
@@ -3178,40 +3175,33 @@ class block_bloquecero extends block_base {
             }
             $gantthtml .= '</tr></thead>';
 
-            // Filas: por cada sección, primero la fila de sección y luego sus actividades.
+            // Filas: primero todas las secciones, luego todas las actividades.
             $gantthtml .= '<tbody>';
-            foreach ($ganttsectionsmap as $sectionnum => $sec) {
-                $hasactivities = !empty($ganttactivitiesbysection[$sectionnum]);
-                // Omitir secciones sin fechas y sin actividades con fechas.
-                if ($sec['start'] == 0 && !$hasactivities) {
-                    continue;
-                }
-                // Fila de sección.
+            foreach ($ganttsections as $sec) {
                 $gantthtml .= '<tr>';
                 $gantthtml .= '<td class="bloquecero-gantt-sectionname">' . htmlspecialchars($sec['name']) . '</td>';
                 foreach ($ganttweeks as $idx => $wts) {
                     $weekend = $wts + 7 * 86400 - 1;
-                    $active = ($sec['start'] > 0 && $sec['start'] <= $weekend && $sec['end'] >= $wts);
+                    $active = ($sec['start'] <= $weekend && $sec['end'] >= $wts);
                     $currentclass = ($idx === $currentweekidx) ? ' bloquecero-gantt-currentweek' : '';
                     $cellclass = 'bloquecero-gantt-cell' . ($active ? ' bloquecero-gantt-active' : '') . $currentclass;
                     $gantthtml .= '<td class="' . $cellclass . '"></td>';
                 }
                 $gantthtml .= '</tr>';
-                // Filas de actividades de esta sección.
-                foreach ($ganttactivitiesbysection[$sectionnum] ?? [] as $act) {
-                    $hiddenclass = $act['hidden'] ? ' bloquecero-item-hidden' : '';
-                    $gantthtml .= '<tr class="' . trim($hiddenclass) . '">';
-                    $gantthtml .= '<td class="bloquecero-gantt-sectionname bloquecero-gantt-activityname">'
-                        . '&nbsp;&nbsp;&nbsp;' . $act['icon'] . ' ' . htmlspecialchars($act['name']) . '</td>';
-                    foreach ($ganttweeks as $idx => $wts) {
-                        $weekend = $wts + 7 * 86400 - 1;
-                        $active = ($act['start'] <= $weekend && $act['end'] >= $wts);
-                        $currentclass = ($idx === $currentweekidx) ? ' bloquecero-gantt-currentweek' : '';
-                        $cellclass = 'bloquecero-gantt-cell' . ($active ? ' bloquecero-gantt-activity' : '') . $currentclass;
-                        $gantthtml .= '<td class="' . $cellclass . '"></td>';
-                    }
-                    $gantthtml .= '</tr>';
+            }
+            foreach ($ganttactivities as $act) {
+                $hiddenclass = $act['hidden'] ? ' bloquecero-item-hidden' : '';
+                $gantthtml .= '<tr class="' . trim($hiddenclass) . '">';
+                $gantthtml .= '<td class="bloquecero-gantt-sectionname bloquecero-gantt-activityname">'
+                    . $act['icon'] . ' ' . htmlspecialchars($act['name']) . '</td>';
+                foreach ($ganttweeks as $idx => $wts) {
+                    $weekend = $wts + 7 * 86400 - 1;
+                    $active = ($act['start'] <= $weekend && $act['end'] >= $wts);
+                    $currentclass = ($idx === $currentweekidx) ? ' bloquecero-gantt-currentweek' : '';
+                    $cellclass = 'bloquecero-gantt-cell' . ($active ? ' bloquecero-gantt-activity' : '') . $currentclass;
+                    $gantthtml .= '<td class="' . $cellclass . '"></td>';
                 }
+                $gantthtml .= '</tr>';
             }
 
             // Fila de sesiones en directo (una sola fila con marcador por semana).
