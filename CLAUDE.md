@@ -18,7 +18,7 @@ This is a Moodle block plugin (`block_bloquecero`) that provides a customized co
 
 ### Core Files
 
-**block_bloquecero.php** (main block class - ~120KB)
+**block_bloquecero.php** (main block class - ~130KB+)
 - `class block_bloquecero extends block_base` with two main methods:
   - `init()`: Sets block title and `$this->instance_allow_multiple = false`
   - `get_content()`: Generates all block HTML, JavaScript, and CSS (main rendering method)
@@ -27,6 +27,15 @@ This is a Moodle block plugin (`block_bloquecero`) that provides a customized co
 - Implements course section navigation with carousel-style week/topic browsing
 - Handles teacher profile display with contact information toggles
 - Integrates Zoom session fetching via fetch_sessions.php
+- Renders Gantt diagram (v0.8+) — see Gantt section below
+
+**gantt_ajax.php** (multi-course Gantt AJAX endpoint — v0.8+)
+- Accepts POST: `courseids` (JSON array of ints), `sesskey`
+- For each course ID: verifies enrollment, loads block instance config, builds sections + activities data
+- Function `bloquecero_gantt_course_data($course, $blockconfig, $userid)`: returns sections, activities, date range for one course
+- Merges time axes across all requested courses into a unified week column array
+- Renders combined HTML with a dark-green course header row per course
+- Does **not** `require_once` block_bloquecero.php (would break AJAX context by loading format libs)
 
 **edit_form.php** (block configuration form)
 - `class block_bloquecero_edit_form extends block_edit_form`
@@ -168,6 +177,49 @@ The block extensively hides/shows Moodle UI elements:
 - Groups activities by section with expand/collapse functionality
 - **Section cards**: only the title link and individual activity links are clickable — the card container itself has `cursor: default` (`.bloquecero-section-card { cursor: default }`)
 - **Hidden activity indicators**: teachers/managers with `moodle/course:update` see a "Hidden from students" badge on hidden activities in section cards, the weekly activities card, and the activities modal. Checked via `$can_view_hidden = has_capability('moodle/course:update', $coursecontext)`
+
+### Gantt Diagram (v0.8+)
+
+**Architecture:**
+- Gantt data built in `get_content()` from two sources:
+  1. **Sections**: for `weeks` format, dates are auto-calculated from `course->startdate` using DST-safe `DateTime::modify('+1 week')`. For other formats, dates come from block config (`section_enabled_X`, `section_start_X`, `section_end_X`).
+  2. **Activities**: assign, quiz, forum with dates. Other module types are skipped unless they appear in `grade_items`.
+- `$ganttactivities[]` includes `modname` field for type filtering.
+- `$ganttallsections` (sectionnum → data) always populated (including sections without dates) to group activities under their sections.
+- `$ganttweeks[]` + `$ganttweekends[]` pre-computed with DST-safe DateTime arithmetic — never use raw `+7*86400`.
+
+**Subsection parent resolution:**
+- Moodle 4.x `mod_subsection` creates nested sections where `course_sections.itemid` = the **instance ID** from `mdl_subsection` (NOT `course_modules.id`).
+- `$subsectionsectionmap` built by joining `course_modules.instance` (not `cm.id`) to map subsection `sectionnum` → parent `sectionnum`.
+- Activities in subsections are displayed under their parent section's row.
+
+**Gantt modal UI:**
+- Opened via `#bloquecero-gantt-btn` in the top menu bar (FA icon `fa-bar-chart`).
+- Modal header row: title + [Exportar PDF] button + × close — all in one flex row (no `position:absolute` on close button).
+- **Course selector row** (pills): enrolled courses with block shown as toggle pills. Current course active by default. Multi-course selection triggers AJAX to `gantt_ajax.php`; responses cached in JS object keyed by sorted course ID list.
+- **Type filter row** (pills): Unidades (green), Tareas (amber), Cuestionarios (amber), Foros (amber), Sesiones (blue). Filters rows by `data-gantt-type` attribute on each `<tr>`. Re-applied after AJAX content load.
+- Each `<tr>` in the Gantt table has `data-gantt-type="section"` | `"assign"` | `"quiz"` | `"forum"` | `"livesession"` for JS filtering.
+
+**Multi-course Gantt (`gantt_ajax.php`):**
+- Called when more than one course pill is active.
+- Unified time axis spans all selected courses.
+- One bold `bloquecero-gantt-courseheader` row per course (dark green background, full colspan).
+- Enrollment check per course before including data.
+- Block config loaded from `block_instances.configdata` via `unserialize(base64_decode(...))`.
+- `$ganttothercourses` must be built **before** the modal HTML is generated in `get_content()` (variable used in PHP string concatenation).
+
+**PDF export:**
+- Button in modal header opens a new window with print-optimized HTML.
+- `@page { size: 297mm 210mm }` (explicit dimensions, more reliable than `A4 landscape` keyword).
+- JS calculates `body.style.zoom = 1019 / table.scrollWidth` to fit table in one page (1019px = A4 landscape printable width at 96dpi minus 10mm margins).
+- Screen-only notice tells user to select "Horizontal" orientation in the print dialog.
+- Colors forced with `print-color-adjust: exact`.
+- Title shows names of all active course pills joined by ` · `.
+
+**Menu bar tooltips:**
+- All `<a class="udima-menu-link">` elements have `title` + `data-bs-toggle="tooltip" data-bs-placement="bottom"`.
+- Bootstrap 5 tooltips initialized via `js_init_code` with `new bootstrap.Tooltip(el, { trigger: 'hover focus' })`.
+- Especially useful on mobile where `<span>` labels are hidden (`display:none` in `@media`).
 
 ### Bibliography Management (v0.3+)
 **Database-driven with dedicated management interface:**
@@ -492,6 +544,7 @@ See GitHub issues for full list. Key technical debt:
 1. [#1] Refactor: Separate inline CSS/JS to external files (~3300 lines in one file)
 2. [#2] Refactor: Review block_zoom_udima dependency in fetch_sessions.php
 3. [#3] Feature: Add PHPUnit and Behat automated tests
+4. [#15] Feature: Backup/restore support for block instance data (sessions, bibliography, section scheduling config)
 
 ### Planned Features
 - **Welcome message**: Field in block config for a teacher welcome message, displayed persistently in the block and auto-sent by email to each student at enrolment time via `\core\event\user_enrolment_created` observer + `email_to_user()`

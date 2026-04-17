@@ -692,6 +692,75 @@ class block_bloquecero extends block_base {
             }
         }
 
+        // --- Datos para el cronograma Gantt ---
+        $ganttsections = [];
+        $ganttallsections = []; // Mapa sectionnum => datos, incluye secciones sin fechas.
+        $ganttrangestart = 0;
+        $ganttrangeend = 0;
+
+        // Para weeks: pre-calcular la base en medianoche hora local (igual que las columnas).
+        $ganttweeksbase = null;
+        if ($format === 'weeks') {
+            $tz = core_date::get_user_timezone_object();
+            $ganttweeksbase = new DateTime('@' . $modinfo->get_course()->startdate);
+            $ganttweeksbase->setTimezone($tz);
+            $ganttweeksbase->setTime(0, 0, 0);
+        }
+
+        foreach ($modinfo->get_section_info_all() as $sec) {
+            if ($sec->section == 0) {
+                continue;
+            }
+            if (!empty($sec->component) && $sec->component === 'mod_subsection') {
+                continue;
+            }
+            if (!$sec->uservisible && !$canviewhidden) {
+                continue;
+            }
+            $secname = format_string($sec->name ?: get_string('section', 'moodle') . ' ' . $sec->section);
+            $secstart = 0;
+            $secend = 0;
+
+            if ($format === 'weeks' && $ganttweeksbase !== null) {
+                $dtstart = clone $ganttweeksbase;
+                $dtstart->modify('+' . ($sec->section - 1) . ' weeks');
+                $secstart = $dtstart->getTimestamp();
+                $dtend = clone $dtstart;
+                $dtend->modify('+1 week');
+                $secend = $dtend->getTimestamp() - 1;
+            } else if (!empty($this->config)) {
+                $enablekey = 'section_enabled_' . $sec->id;
+                if (!empty($this->config->$enablekey)) {
+                    $startkey = 'section_start_' . $sec->id;
+                    $endkey   = 'section_end_'   . $sec->id;
+                    $secstart = isset($this->config->$startkey) ? (int)$this->config->$startkey : 0;
+                    $secend   = isset($this->config->$endkey) ? (int)$this->config->$endkey : 0;
+                }
+            }
+
+            // Registrar siempre la sección (con o sin fechas) para agrupar actividades.
+            $ganttallsections[(int)$sec->section] = [
+                'name'       => $secname,
+                'start'      => $secstart,
+                'end'        => $secend,
+                'sectionnum' => (int)$sec->section,
+            ];
+
+            if ($secstart > 0 && $secend > 0) {
+                $ganttsections[] = ['name' => $secname, 'start' => $secstart, 'end' => $secend, 'sectionnum' => (int)$sec->section];
+                if ($ganttrangestart === 0 || $secstart < $ganttrangestart) {
+                    $ganttrangestart = $secstart;
+                }
+                if ($secend > $ganttrangeend) {
+                    $ganttrangeend = $secend;
+                }
+            }
+        }
+
+        // Las semanas se generan después de incorporar actividades y sesiones.
+        $ganttweeks = [];
+        $ganttweekends = []; // Último segundo de cada semana (inicio_semana_siguiente - 1).
+
         $sectioncards = [];
         $sectioncount = 0;
         foreach ($modinfo->get_section_info_all() as $section) {
@@ -1044,6 +1113,7 @@ class block_bloquecero extends block_base {
                     'duedate' => (int)$duedate,
                     'submitted' => $submitted,
                     'hidden' => (!$cm->visible && $canviewhidden),
+                    'sectionnum' => (int)$cm->sectionnum,
                 ];
 
                 $duedatehtml = '';
@@ -1075,6 +1145,70 @@ class block_bloquecero extends block_base {
                 get_string('noactivities', 'block_bloquecero') . '</div>';
         }
 
+        // --- Actividades para el Gantt ---
+        // Mapa subsección → sección padre (para actividades dentro de mod_subsection).
+        $subsectionsectionmap = [];
+        $subsectionrecs = $DB->get_records(
+            'course_sections',
+            ['course' => $COURSE->id, 'component' => 'mod_subsection'],
+            '',
+            'section, itemid'
+        );
+        if (!empty($subsectionrecs)) {
+            $cmids = array_column((array)$subsectionrecs, 'itemid');
+            [$insql, $inparams] = $DB->get_in_or_equal($cmids);
+            $inparams[] = $COURSE->id;
+            $parentcms = $DB->get_records_sql(
+                "SELECT cm.instance, cs.section AS parentsecnum
+                   FROM {course_modules} cm
+                   JOIN {course_sections} cs ON cs.id = cm.section
+                   JOIN {modules} m ON m.id = cm.module AND m.name = 'subsection'
+                  WHERE cm.instance $insql AND cm.course = ?",
+                $inparams
+            );
+            foreach ($subsectionrecs as $subsec) {
+                if (!empty($parentcms[$subsec->itemid])) {
+                    $subsectionsectionmap[(int)$subsec->section] = (int)$parentcms[$subsec->itemid]->parentsecnum;
+                }
+            }
+        }
+
+        $ganttactivities = [];
+        foreach ($activitiesdata as $act) {
+            $actstart = (int)$act['startdate'];
+            $actend   = (int)$act['duedate'];
+            if (!$actstart && !$actend) {
+                continue;
+            }
+            if (!$actstart) {
+                $actstart = $actend;
+            }
+            if (!$actend) {
+                $actend = $actstart;
+            }
+            if ($ganttrangestart === 0 || $actstart < $ganttrangestart) {
+                $ganttrangestart = $actstart;
+            }
+            if ($actend > $ganttrangeend) {
+                $ganttrangeend = $actend;
+            }
+            $sectionnum = (int)$act['sectionnum'];
+            // Si la actividad está en una subsección, usar la sección padre.
+            if (isset($subsectionsectionmap[$sectionnum])) {
+                $sectionnum = $subsectionsectionmap[$sectionnum];
+            }
+            $ganttactivities[] = [
+                'name'       => $act['name'],
+                'icon'       => $act['icon'],
+                'start'      => $actstart,
+                'end'        => $actend,
+                'hidden'     => $act['hidden'],
+                'sectionnum' => $sectionnum,
+                'modname'    => $act['modname'] ?? 'other',
+            ];
+        }
+
+        // Generar columnas semanales con el rango final (secciones + actividades).
         // --- SESIONES EN DIRECTO ---
         // Preparar sesiones en directo desde la base de datos (PRIMERO, antes de calcular semanas)
         $sesioneszoom = [];
@@ -1102,6 +1236,36 @@ class block_bloquecero extends block_base {
                     'descripcion' => !empty($session->description) ? format_text($session->description, FORMAT_HTML) : '',
                     'calendarurl' => $calendarurl,
                 ];
+            }
+        }
+
+        // Incorporar sesiones al rango del Gantt y generar columnas semanales.
+        foreach ($sesioneszoom as $ses) {
+            $sesdate = (int)$ses['fecha'];
+            if ($sesdate > 0) {
+                if ($ganttrangestart === 0 || $sesdate < $ganttrangestart) {
+                    $ganttrangestart = $sesdate;
+                }
+                if ($sesdate > $ganttrangeend) {
+                    $ganttrangeend = $sesdate;
+                }
+            }
+        }
+        if ($ganttrangestart > 0 && $ganttrangeend > 0) {
+            // Usar la zona horaria del usuario para calcular el lunes correcto.
+            $tz = core_date::get_user_timezone_object();
+            $dt = new DateTime('@' . $ganttrangestart);
+            $dt->setTimezone($tz);
+            $dt->setTime(0, 0, 0);
+            $dow = (int)$dt->format('N'); // 1=lunes … 7=domingo
+            if ($dow > 1) {
+                $dt->modify('-' . ($dow - 1) . ' days');
+            }
+            // Avanzar semana a semana con modify('+1 week') para respetar cambios de hora (DST).
+            while ($dt->getTimestamp() <= $ganttrangeend && count($ganttweeks) < 60) {
+                $ganttweeks[] = $dt->getTimestamp();
+                $dt->modify('+1 week');
+                $ganttweekends[] = $dt->getTimestamp() - 1;
             }
         }
 
@@ -1419,23 +1583,27 @@ class block_bloquecero extends block_base {
         $metahide = $ismetacourse ? ' style="display:none"' : '';
         $this->content->text .= '
             <nav class="udima-menu-bar" aria-label="' . get_string('coursemenu', 'block_bloquecero') . '"' . $metahide . '>
-            <a href="' . new moodle_url('/grade/report/grader/index.php', ['id' => $COURSE->id]) . '" class="udima-menu-link">
+            <a href="' . new moodle_url('/grade/report/grader/index.php', ['id' => $COURSE->id]) . '" class="udima-menu-link" title="' . get_string('grades', 'block_bloquecero') . '" data-bs-toggle="tooltip" data-bs-placement="bottom">
                 ' . $OUTPUT->pix_icon('t/grades', '', 'moodle', ['class' => 'menu-icon']) . '
                 <span>' . get_string('grades', 'block_bloquecero') . '</span>
             </a>
-            <a href="' . new moodle_url('/user/index.php', ['id' => $COURSE->id]) . '" class="udima-menu-link">
+            <a href="' . new moodle_url('/user/index.php', ['id' => $COURSE->id]) . '" class="udima-menu-link" title="' . get_string('participants', 'block_bloquecero') . '" data-bs-toggle="tooltip" data-bs-placement="bottom">
                 ' . $OUTPUT->pix_icon('i/users', '', 'moodle', ['class' => 'menu-icon']) . '
                 <span>' . get_string('participants', 'block_bloquecero') . '</span>
             </a>
-            <a href="#" id="bloquecero-bibliografia-btn" class="udima-menu-link">
+            <a href="#" id="bloquecero-bibliografia-btn" class="udima-menu-link" title="' . get_string('bibliography', 'block_bloquecero') . '" data-bs-toggle="tooltip" data-bs-placement="bottom">
                 ' . $OUTPUT->pix_icon('book', '', 'moodle', ['class' => 'menu-icon']) . '
                 <span>' . get_string('bibliography', 'block_bloquecero') . '</span>
-            </a>
-            <a href="' . $guideurl . '" class="udima-menu-link" target="_blank">
+            </a>' . (!empty($ganttweeks) ? '
+            <a href="#" id="bloquecero-gantt-btn" class="udima-menu-link" title="' . get_string('gantt', 'block_bloquecero') . '" data-bs-toggle="tooltip" data-bs-placement="bottom">
+                <i class="fa fa-bar-chart fa-fw menu-icon" aria-hidden="true"></i>
+                <span>' . get_string('gantt', 'block_bloquecero') . '</span>
+            </a>' : '') . '
+            <a href="' . $guideurl . '" class="udima-menu-link" target="_blank" title="' . get_string('teacherguide', 'block_bloquecero') . '" data-bs-toggle="tooltip" data-bs-placement="bottom">
                 ' . $OUTPUT->pix_icon('i/info', '', 'moodle', ['class' => 'menu-icon']) . '
                 <span>' . get_string('teacherguide', 'block_bloquecero') . '</span>
             </a>' . ((has_capability('moodle/course:update', $coursecontext)) ? '
-            <a href="' . (new moodle_url('/course/edit.php', ['id' => $COURSE->id])) . '" class="udima-menu-link">
+            <a href="' . (new moodle_url('/course/edit.php', ['id' => $COURSE->id])) . '" class="udima-menu-link" title="' . get_string('settings', 'block_bloquecero') . '" data-bs-toggle="tooltip" data-bs-placement="bottom">
                 ' . $OUTPUT->pix_icon('i/settings', '', 'moodle', ['class' => 'menu-icon']) . '
                 <span>' . get_string('settings', 'block_bloquecero') . '</span>
             </a>' : '') .
@@ -2989,8 +3157,72 @@ class block_bloquecero extends block_base {
             $bibliografiahtml = '<p style="color:#595959; font-style:italic;">' . get_string('nobibliographyyet', 'block_bloquecero') . '</p>';
         }
 
+        // --- Cursos matriculados con el bloque (para el selector multi-curso del Gantt) ---
+        $ganttothercourses = [];
+        $enrolledcourses = enrol_get_my_courses('id, fullname', 'fullname ASC');
+        if (!empty($enrolledcourses)) {
+            $otherids = array_diff(array_keys($enrolledcourses), [$COURSE->id]);
+            if (!empty($otherids)) {
+                [$insql2, $inparams2] = $DB->get_in_or_equal($otherids);
+                $courseswithblock = $DB->get_records_sql(
+                    "SELECT DISTINCT ctx.instanceid AS courseid
+                       FROM {block_instances} bi
+                       JOIN {context} ctx ON ctx.id = bi.parentcontextid
+                      WHERE bi.blockname = 'bloquecero'
+                        AND ctx.contextlevel = " . CONTEXT_COURSE . "
+                        AND ctx.instanceid $insql2",
+                    $inparams2
+                );
+                foreach ($courseswithblock as $row) {
+                    $cid = (int)$row->courseid;
+                    if (isset($enrolledcourses[$cid])) {
+                        $ganttothercourses[] = [
+                            'id'   => $cid,
+                            'name' => format_string($enrolledcourses[$cid]->fullname),
+                        ];
+                    }
+                }
+            }
+        }
+
         // Justo antes de cerrar el div principal del bloque, añade el HTML del modal:
         $this->content->text .= '
+        <!-- Modal Cronograma Gantt -->
+        <div id="bloquecero-gantt-modal" role="dialog" aria-modal="true" aria-labelledby="bloquecero-gantt-modal-title" style="display:none; position:fixed; z-index:9999; left:0; top:0; width:100vw; height:100vh; background:rgba(0,0,0,0.35); align-items:center; justify-content:center;">
+            <div style="background:#fff; border-radius:10px; padding:20px 24px 24px; max-width:95vw; width:auto; max-height:90vh; box-shadow:0 8px 32px rgba(0,0,0,0.18); position:relative; text-align:left; display:flex; flex-direction:column;">
+                <div style="display:flex; align-items:center; gap:10px; margin-bottom:12px; flex-shrink:0;">
+                    <h2 id="bloquecero-gantt-modal-title" style="margin:0; color:#004D35; font-size:1.3em; flex:1;">' . get_string('gantt', 'block_bloquecero') . '</h2>
+                    <button id="bloquecero-gantt-export-btn" title="' . get_string('ganttexportpdf', 'block_bloquecero') . '" style="background:#004D35; color:#fff; border:none; border-radius:6px; padding:6px 14px; font-size:0.88em; cursor:pointer; display:flex; align-items:center; gap:6px; flex-shrink:0;">
+                        <i class="fa fa-file-pdf-o" aria-hidden="true"></i> ' . get_string('ganttexportpdf', 'block_bloquecero') . '
+                    </button>
+                    <button onclick="bloqueceroModal.close(\'bloquecero-gantt-modal\')" aria-label="' . get_string('close', 'block_bloquecero') . '" style="background:none; border:none; font-size:1.5em; color:#595959; cursor:pointer; line-height:1; padding:0 0 0 4px; flex-shrink:0;">&times;</button>
+                </div>
+                <div id="bloquecero-gantt-courses" style="display:flex; flex-wrap:wrap; gap:6px; margin-bottom:12px; padding-bottom:10px; border-bottom:1px solid #e0e0e0;">
+                    <span style="font-size:0.82em; color:#666; align-self:center; margin-right:4px;">' . get_string('ganttcoursefilter', 'block_bloquecero') . ':</span>
+                    <button class="bloquecero-gantt-pill bloquecero-gantt-pill-active"
+                        data-courseid="' . $COURSE->id . '"
+                        style="background:#004D35; color:#fff; border:none; border-radius:20px; padding:3px 12px; font-size:0.82em; cursor:pointer; white-space:nowrap;">' . format_string($COURSE->fullname) . '</button>'
+                    . implode('', array_map(function ($c) {
+                        return '<button class="bloquecero-gantt-pill"
+                            data-courseid="' . $c['id'] . '"
+                            style="background:#e8f0e4; color:#004D35; border:1px solid #b7c65c; border-radius:20px; padding:3px 12px; font-size:0.82em; cursor:pointer; white-space:nowrap;">'
+                            . htmlspecialchars($c['name']) . '</button>';
+                    }, $ganttothercourses)) . '
+                </div>
+                <div id="bloquecero-gantt-filters" style="display:flex; flex-wrap:wrap; gap:6px; margin-bottom:10px; padding-bottom:10px; border-bottom:1px solid #e0e0e0;">
+                    <span style="font-size:0.82em; color:#666; align-self:center; margin-right:4px;">' . get_string('ganttfilter', 'block_bloquecero') . ':</span>
+                    <button class="bloquecero-gantt-filter bloquecero-gantt-filter-active" data-filter-type="section" style="background:#6B7D2E; color:#fff; border:none; border-radius:20px; padding:3px 12px; font-size:0.82em; cursor:pointer;">' . get_string('ganttfiltersections', 'block_bloquecero') . '</button>
+                    <button class="bloquecero-gantt-filter bloquecero-gantt-filter-active" data-filter-type="assign" style="background:#B8860B; color:#fff; border:none; border-radius:20px; padding:3px 12px; font-size:0.82em; cursor:pointer;">' . get_string('ganttfilterassign', 'block_bloquecero') . '</button>
+                    <button class="bloquecero-gantt-filter bloquecero-gantt-filter-active" data-filter-type="quiz" style="background:#B8860B; color:#fff; border:none; border-radius:20px; padding:3px 12px; font-size:0.82em; cursor:pointer;">' . get_string('ganttfilterquiz', 'block_bloquecero') . '</button>
+                    <button class="bloquecero-gantt-filter bloquecero-gantt-filter-active" data-filter-type="forum" style="background:#B8860B; color:#fff; border:none; border-radius:20px; padding:3px 12px; font-size:0.82em; cursor:pointer;">' . get_string('ganttfilterforum', 'block_bloquecero') . '</button>
+                    <button class="bloquecero-gantt-filter bloquecero-gantt-filter-active" data-filter-type="livesession" style="background:#1565C0; color:#fff; border:none; border-radius:20px; padding:3px 12px; font-size:0.82em; cursor:pointer;">' . get_string('ganttfilterlivesessions', 'block_bloquecero') . '</button>
+                </div>
+                <div id="bloquecero-gantt-loading" style="display:none; text-align:center; padding:20px; color:#666;">
+                    <i class="fa fa-spinner fa-spin" aria-hidden="true"></i> ' . get_string('loading', 'moodle') . '
+                </div>
+                <div id="bloquecero-gantt-content" style="overflow:auto; flex:1;"></div>
+            </div>
+        </div>
         <!-- Modal de Bibliografía -->
         <div id="bloquecero-bibliografia-modal" role="dialog" aria-modal="true" aria-labelledby="bloquecero-bibliografia-modal-title" style="display:none; position:fixed; z-index:9999; left:0; top:0; width:100vw; height:100vh; background:rgba(0,0,0,0.35); align-items:center; justify-content:center;">
             <div style="background:#fff; border-radius:10px; padding:32px 28px; min-width:260px; max-width:90vw; box-shadow:0 8px 32px rgba(0,0,0,0.18); position:relative; text-align:left;">
@@ -3026,6 +3258,285 @@ class block_bloquecero extends block_base {
     <script>
     window.bloquecero_sesionesZoom = ' . json_encode($sesioneszoom) . ';
     window.bloquecero_activitiesData = ' . json_encode($activitiesdata) . ';
+    </script>
+    ';
+
+        // Construir HTML del Gantt.
+        $gantthtml = '';
+        if (!empty($ganttweeks) && (!empty($ganttsections) || !empty($ganttactivities))) {
+            $now = time();
+            // Índice de la semana actual.
+            $currentweekidx = -1;
+            foreach ($ganttweeks as $idx => $wts) {
+                if ($now >= $wts && $now <= $ganttweekends[$idx]) {
+                    $currentweekidx = $idx;
+                    break;
+                }
+            }
+
+            $gantthtml .= '<div style="overflow-x:auto;">';
+            $gantthtml .= '<table class="bloquecero-gantt-table">';
+
+            // Cabecera: semanas.
+            $gantthtml .= '<thead><tr><th class="bloquecero-gantt-sectioncol">' . get_string('section', 'moodle') . '</th>';
+            foreach ($ganttweeks as $idx => $wts) {
+                $weekend = $ganttweekends[$idx];
+                $label = userdate($wts, '%d/%m') . '<br>' . userdate($weekend, '%d/%m');
+                $currentclass = ($idx === $currentweekidx) ? ' bloquecero-gantt-currentweek' : '';
+                $gantthtml .= '<th class="bloquecero-gantt-weekcol' . $currentclass . '">' . $label . '</th>';
+            }
+            $gantthtml .= '</tr></thead>';
+
+            // Agrupar actividades por sección.
+            $activitiesbysection = [];
+            foreach ($ganttactivities as $act) {
+                $activitiesbysection[$act['sectionnum']][] = $act;
+            }
+
+            // Filas: secciones con sus actividades anidadas debajo.
+            $gantthtml .= '<tbody>';
+            foreach ($ganttallsections as $sectionnum => $sec) {
+                $hasactivities = !empty($activitiesbysection[$sectionnum]);
+                $hasdates = ($sec['start'] > 0 && $sec['end'] > 0);
+                // Solo mostrar la sección si tiene fechas o tiene actividades con fechas.
+                if (!$hasdates && !$hasactivities) {
+                    continue;
+                }
+                // Fila de sección.
+                $gantthtml .= '<tr data-gantt-type="section">';
+                $gantthtml .= '<td class="bloquecero-gantt-sectionname">' . htmlspecialchars($sec['name']) . '</td>';
+                foreach ($ganttweeks as $idx => $wts) {
+                    $weekend = $ganttweekends[$idx];
+                    $active = ($hasdates && $sec['start'] <= $weekend && $sec['end'] >= $wts);
+                    $currentclass = ($idx === $currentweekidx) ? ' bloquecero-gantt-currentweek' : '';
+                    $cellclass = 'bloquecero-gantt-cell' . ($active ? ' bloquecero-gantt-active' : '') . $currentclass;
+                    $gantthtml .= '<td class="' . $cellclass . '"></td>';
+                }
+                $gantthtml .= '</tr>';
+                // Filas de actividades anidadas bajo esta sección.
+                if ($hasactivities) {
+                    foreach ($activitiesbysection[$sectionnum] as $act) {
+                        $modtype = htmlspecialchars($act['modname'] ?? 'other');
+                        $hiddenclass = $act['hidden'] ? ' bloquecero-item-hidden' : '';
+                        $gantthtml .= '<tr data-gantt-type="' . $modtype . '" class="' . trim($hiddenclass) . '">';
+                        $gantthtml .= '<td class="bloquecero-gantt-sectionname bloquecero-gantt-activityname">'
+                            . $act['icon'] . ' ' . htmlspecialchars($act['name']) . '</td>';
+                        foreach ($ganttweeks as $idx => $wts) {
+                            $weekend = $ganttweekends[$idx];
+                            $active = ($act['start'] <= $weekend && $act['end'] >= $wts);
+                            $currentclass = ($idx === $currentweekidx) ? ' bloquecero-gantt-currentweek' : '';
+                            $cellclass = 'bloquecero-gantt-cell' . ($active ? ' bloquecero-gantt-activity' : '') . $currentclass;
+                            $gantthtml .= '<td class="' . $cellclass . '"></td>';
+                        }
+                        $gantthtml .= '</tr>';
+                    }
+                }
+            }
+
+            // Fila de sesiones en directo (una sola fila con marcador por semana).
+            if (!empty($sesioneszoom)) {
+                $gantthtml .= '<tr data-gantt-type="livesession">';
+                $gantthtml .= '<td class="bloquecero-gantt-sectionname bloquecero-gantt-sessionrow">'
+                    . get_string('livesessions', 'block_bloquecero') . '</td>';
+                foreach ($ganttweeks as $idx => $wts) {
+                    $weekend = $ganttweekends[$idx] + 1; // Exclusivo: inicio de la semana siguiente.
+                    $currentclass = ($idx === $currentweekidx) ? ' bloquecero-gantt-currentweek' : '';
+                    $weeksessions = array_filter($sesioneszoom, function ($s) use ($wts, $weekend) {
+                        return (int)$s['fecha'] >= $wts && (int)$s['fecha'] < $weekend;
+                    });
+                    if (!empty($weeksessions)) {
+                        $titles = implode('&#10;', array_map(function ($s) {
+                            return htmlspecialchars($s['titulo']) . ' (' . userdate((int)$s['fecha'], '%d/%m %H:%M') . ')';
+                        }, $weeksessions));
+                        $count = count($weeksessions);
+                        $marker = $count > 1 ? $count : '&#9679;';
+                        $gantthtml .= '<td class="bloquecero-gantt-cell bloquecero-gantt-session' . $currentclass
+                            . '" title="' . $titles . '" data-bs-toggle="tooltip" data-bs-placement="top">' . $marker . '</td>';
+                    } else {
+                        $gantthtml .= '<td class="bloquecero-gantt-cell' . $currentclass . '"></td>';
+                    }
+                }
+                $gantthtml .= '</tr>';
+            }
+
+            $gantthtml .= '</tbody></table></div>';
+        }
+
+        $this->content->text .= '
+    <script>
+    document.addEventListener("DOMContentLoaded", function() {
+        var btn = document.getElementById("bloquecero-gantt-btn");
+        var modal = document.getElementById("bloquecero-gantt-modal");
+        var content = document.getElementById("bloquecero-gantt-content");
+        var ganttDefaultHtml = ' . json_encode($gantthtml) . ';
+        var ganttAjaxUrl = ' . json_encode((new moodle_url('/blocks/bloquecero/gantt_ajax.php'))->out(false)) . ';
+        var ganttSesskey = ' . json_encode(sesskey()) . ';
+        // Cache: key = sorted courseids joined by comma, value = html string.
+        var ganttCache = {};
+
+        function ganttActiveCourseIds() {
+            var pills = document.querySelectorAll(".bloquecero-gantt-pill.bloquecero-gantt-pill-active");
+            return Array.from(pills).map(function(p) { return parseInt(p.dataset.courseid, 10); });
+        }
+
+        function ganttRenderForCourses(courseids) {
+            var key = courseids.slice().sort().join(",");
+            var content = document.getElementById("bloquecero-gantt-content");
+            var loading = document.getElementById("bloquecero-gantt-loading");
+
+            // If only current course selected (or no multi-course selection), use pre-rendered html.
+            if (courseids.length === 1 && courseids[0] === ' . (int)$COURSE->id . ') {
+                content.innerHTML = ganttDefaultHtml;
+                return;
+            }
+            if (ganttCache[key]) {
+                content.innerHTML = ganttCache[key];
+                return;
+            }
+            content.innerHTML = "";
+            loading.style.display = "block";
+            var formData = new FormData();
+            formData.append("courseids", JSON.stringify(courseids));
+            formData.append("sesskey", ganttSesskey);
+            fetch(ganttAjaxUrl, { method: "POST", body: formData })
+                .then(function(r) {
+                    if (!r.ok) { throw new Error("HTTP " + r.status); }
+                    return r.text();
+                })
+                .then(function(text) {
+                    loading.style.display = "none";
+                    try {
+                        var data = JSON.parse(text);
+                        ganttCache[key] = data.html || "";
+                        content.innerHTML = ganttCache[key];
+                        applyGanttFilters();
+                    } catch (e) {
+                        console.error("bloquecero gantt_ajax parse error:", e, text);
+                        content.innerHTML = "<p style=\"color:red;\">Error al cargar el diagrama. Consulta la consola del navegador.</p>";
+                    }
+                })
+                .catch(function(err) {
+                    loading.style.display = "none";
+                    console.error("bloquecero gantt_ajax fetch error:", err);
+                    content.innerHTML = "<p style=\"color:red;\">Error de conexión al cargar el diagrama.</p>";
+                });
+        }
+
+        if (btn && modal && content) {
+            content.innerHTML = ganttDefaultHtml;
+            btn.addEventListener("click", function(e) {
+                e.preventDefault();
+                bloqueceroModal.open("bloquecero-gantt-modal");
+            });
+            modal.addEventListener("click", function(e) {
+                if (e.target === modal) bloqueceroModal.close("bloquecero-gantt-modal");
+            });
+        }
+
+        // Pills toggle.
+        document.querySelectorAll(".bloquecero-gantt-pill").forEach(function(pill) {
+            pill.addEventListener("click", function() {
+                var isActive = pill.classList.contains("bloquecero-gantt-pill-active");
+                if (isActive) {
+                    // Only deselect if at least one other pill is active.
+                    var activePills = document.querySelectorAll(".bloquecero-gantt-pill.bloquecero-gantt-pill-active");
+                    if (activePills.length <= 1) return;
+                    pill.classList.remove("bloquecero-gantt-pill-active");
+                    pill.style.background = "#e8f0e4";
+                    pill.style.color = "#004D35";
+                    pill.style.border = "1px solid #b7c65c";
+                } else {
+                    pill.classList.add("bloquecero-gantt-pill-active");
+                    pill.style.background = "#004D35";
+                    pill.style.color = "#fff";
+                    pill.style.border = "none";
+                }
+                ganttRenderForCourses(ganttActiveCourseIds());
+            });
+        });
+
+        // Filter pills (type filter).
+        function applyGanttFilters() {
+            var activeTypes = new Set();
+            document.querySelectorAll(".bloquecero-gantt-filter.bloquecero-gantt-filter-active").forEach(function(p) {
+                activeTypes.add(p.dataset.filterType);
+            });
+            document.querySelectorAll("#bloquecero-gantt-content tr[data-gantt-type]").forEach(function(row) {
+                row.style.display = activeTypes.has(row.dataset.ganttType) ? "" : "none";
+            });
+        }
+
+        document.querySelectorAll(".bloquecero-gantt-filter").forEach(function(pill) {
+            pill.addEventListener("click", function() {
+                var isActive = pill.classList.contains("bloquecero-gantt-filter-active");
+                if (isActive) {
+                    var activePillsNow = document.querySelectorAll(".bloquecero-gantt-filter.bloquecero-gantt-filter-active");
+                    if (activePillsNow.length <= 1) return;
+                    pill.classList.remove("bloquecero-gantt-filter-active");
+                    pill.style.opacity = "0.4";
+                } else {
+                    pill.classList.add("bloquecero-gantt-filter-active");
+                    pill.style.opacity = "1";
+                }
+                applyGanttFilters();
+            });
+        });
+
+        var exportBtn = document.getElementById("bloquecero-gantt-export-btn");
+        if (exportBtn) {
+            exportBtn.addEventListener("click", function() {
+                var tableEl = document.querySelector("#bloquecero-gantt-content .bloquecero-gantt-table");
+                if (!tableEl) return;
+                var activePills = document.querySelectorAll(".bloquecero-gantt-pill.bloquecero-gantt-pill-active");
+                var courseNames = Array.from(activePills).map(function(p) { return p.textContent.trim(); });
+                var courseName = courseNames.join(" · ");
+                var tableHtml = tableEl.outerHTML;
+                var win = window.open("", "_blank", "width=1200,height=700");
+                win.document.write(\'<!DOCTYPE html><html><head><meta charset="utf-8">\' +
+                    \'<title>\' + courseName + \' – ' . get_string('gantt', 'block_bloquecero') . '</title>\' +
+                    \'<style>\' +
+                    \'@page { size: 297mm 210mm; margin: 10mm; }\' +
+                    \'body { font-family: Arial, sans-serif; font-size: 0.78em; margin: 0; padding: 8px; }\' +
+                    \'h1 { font-size: 1em; color: #004D35; margin: 0 0 6px 0; }\' +
+                    \'.gantt-print-notice { background: #fff3cd; border: 1px solid #ffc107; border-radius: 4px; padding: 6px 10px; font-size: 0.9em; margin-bottom: 8px; color: #664d03; }\' +
+                    \'@media print { .gantt-print-notice { display: none; } }\' +
+                    \'.gantt-print-wrapper { width: 100%; }\' +
+                    \'table { border-collapse: collapse; width: 100%; table-layout: auto; white-space: nowrap; }\' +
+                    \'th, td { border: 1px solid #ccc; padding: 4px 6px; text-align: center; vertical-align: middle; font-size: 0.85em; }\' +
+                    \'.bloquecero-gantt-sectioncol, .bloquecero-gantt-sectionname { text-align: left !important; background: #f5f5f5; min-width: 120px; max-width: 160px; white-space: normal; font-weight: 600; }\' +
+                    \'.bloquecero-gantt-activityname { text-align: left !important; padding-left: 18px !important; font-weight: 400; white-space: normal; max-width: 160px; }\' +
+                    \'.bloquecero-gantt-weekcol { min-width: 36px; font-weight: 500; background: #f5f5f5; line-height: 1.1; }\' +
+                    \'.bloquecero-gantt-active { background: #6B7D2E !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }\' +
+                    \'.bloquecero-gantt-activity { background: #B8860B !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }\' +
+                    \'.bloquecero-gantt-currentweek { background: #e8f5e9 !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }\' +
+                    \'.bloquecero-gantt-active.bloquecero-gantt-currentweek { background: #4a5c1a !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }\' +
+                    \'.bloquecero-gantt-activity.bloquecero-gantt-currentweek { background: #8B6008 !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }\' +
+                    \'.bloquecero-gantt-session { background: #1565c0 !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }\' +
+                    \'.bloquecero-gantt-courseheader { background: #004D35 !important; color: #fff !important; font-weight: 700; text-align: left !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }\' +
+                    \'img.activityicon { width: 14px; height: 14px; }\' +
+                    \'</style></head><body>\' +
+                    \'<div class="gantt-print-notice">⚠️ ' . get_string('ganttprintnotice', 'block_bloquecero') . '</div>\' +
+                    \'<h1>\' + courseName + \' – ' . get_string('gantt', 'block_bloquecero') . '</h1>\' +
+                    \'<div class="gantt-print-wrapper">\' + tableHtml + \'</div>\' +
+                    \'<script>\' +
+                    \'window.onload = function() {\' +
+                    \'    var table = document.querySelector("table");\' +
+                    \'    if (table) {\' +
+                    \'        var pageWidthPx = 1047;\' +
+                    \'        var tableWidth = table.scrollWidth;\' +
+                    \'        if (tableWidth > pageWidthPx) {\' +
+                    \'            var scale = pageWidthPx / tableWidth;\' +
+                    \'            document.body.style.zoom = scale;\' +
+                    \'        }\' +
+                    \'    }\' +
+                    \'    window.print();\' +
+                    \'};\' +
+                    \'</\' + \'script>\' +
+                    \'</body></html>\');
+                win.document.close();
+            });
+        }
+    });
     </script>
     ';
 
@@ -3380,6 +3891,19 @@ class block_bloquecero extends block_base {
                     if(btn) btn.style.display = 'none';
                 };
             ");
+        }
+
+        // Inicializa tooltips de Bootstrap 5 para los iconos del menú.
+        $this->page->requires->js_init_code("
+            document.addEventListener('DOMContentLoaded', function() {
+                var tooltipEls = document.querySelectorAll('.udima-menu-link[data-bs-toggle=\"tooltip\"]');
+                tooltipEls.forEach(function(el) {
+                    new bootstrap.Tooltip(el, { trigger: 'hover focus' });
+                });
+            });
+        ");
+
+        if (!$isediting) {
                 // --- Script para expandir tarjeta de sección ---
                 $this->content->text .= '
 
@@ -3585,6 +4109,89 @@ class block_bloquecero extends block_base {
         .bloquecero-vermas-btn:hover {
             text-decoration: underline;
             color: #004D35;
+        }
+        /* Gantt */
+        .bloquecero-gantt-table {
+            border-collapse: collapse;
+            font-size: 0.82em;
+            min-width: 400px;
+            white-space: nowrap;
+        }
+        .bloquecero-gantt-table th,
+        .bloquecero-gantt-table td {
+            border: 1px solid #ddd;
+            padding: 6px 8px;
+            text-align: center;
+            vertical-align: middle;
+        }
+        .bloquecero-gantt-sectioncol {
+            text-align: left !important;
+            font-weight: 600;
+            background: #f5f5f5;
+            min-width: 140px;
+            position: sticky;
+            left: 0;
+            z-index: 1;
+        }
+        .bloquecero-gantt-sectionname {
+            text-align: left !important;
+            background: #fff;
+            position: sticky;
+            left: 0;
+            z-index: 1;
+            max-width: 180px;
+            white-space: normal;
+            font-weight: 500;
+        }
+        .bloquecero-gantt-weekcol {
+            min-width: 52px;
+            font-weight: 500;
+            background: #f5f5f5;
+            line-height: 1.2;
+        }
+        .bloquecero-gantt-cell {
+            min-width: 52px;
+        }
+        .bloquecero-gantt-active {
+            background: #6B7D2E;
+        }
+        .bloquecero-gantt-activity {
+            background: #B8860B;
+        }
+        .bloquecero-gantt-currentweek {
+            background: #e8f5e9 !important;
+        }
+        .bloquecero-gantt-active.bloquecero-gantt-currentweek {
+            background: #4a5c1a !important;
+        }
+        .bloquecero-gantt-activity.bloquecero-gantt-currentweek {
+            background: #8B6008 !important;
+        }
+        .bloquecero-gantt-activityname {
+            font-weight: 400;
+            font-size: 0.9em;
+        }
+        .bloquecero-gantt-session {
+            background: #1565C0;
+            color: #fff;
+            font-size: 0.85em;
+            cursor: default;
+        }
+        .bloquecero-gantt-session.bloquecero-gantt-currentweek {
+            background: #0D47A1 !important;
+        }
+        .bloquecero-gantt-sessionrow {
+            font-style: italic;
+            color: #1565C0;
+        }
+        .bloquecero-gantt-courseheader {
+            background: #004D35 !important;
+            color: #fff !important;
+            font-weight: 700;
+            font-size: 0.9em;
+            text-align: left !important;
+            padding: 5px 8px;
+            letter-spacing: 0.02em;
         }
                     </style>
         ';
