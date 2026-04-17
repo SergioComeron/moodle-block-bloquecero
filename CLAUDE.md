@@ -105,6 +105,11 @@ This is a Moodle block plugin (`block_bloquecero`) that provides a customized co
 - Can use test data mode via `block_zoom_udima/use_testdata` config
 - **Note**: References `block_zoom_udima` config instead of `block_bloquecero` - indicates shared or copied code
 
+**backup/moodle2/** (backup/restore — v0.9+)
+- `backup_bloquecero_block_task.class.php` + `backup_bloquecero_stepslib.php`: exports sessions, bibliography and a `sectionmapping` XML node (section_id → section_number) to `bloquecero.xml`
+- `restore_bloquecero_block_task.class.php` + `restore_bloquecero_stepslib.php`: restores sessions (recreating calendar events if `hadcalendarsync=1`) and bibliography; stores old-id→number map in configdata as `_restore_sectionmap`
+- **Lazy section remap**: block tasks run before course sections exist in the DB, so `after_execute()` cannot resolve destination IDs directly. It saves the map as `_restore_sectionmap` JSON in configdata; `apply_restore_sectionmap()` in `get_content()` applies and removes it on first page load when sections already exist.
+
 ### Database/Permissions
 
 **db/access.php** (capabilities)
@@ -544,7 +549,6 @@ See GitHub issues for full list. Key technical debt:
 1. [#1] Refactor: Separate inline CSS/JS to external files (~3300 lines in one file)
 2. [#2] Refactor: Review block_zoom_udima dependency in fetch_sessions.php
 3. [#3] Feature: Add PHPUnit and Behat automated tests
-4. [#15] Feature: Backup/restore support for block instance data (sessions, bibliography, section scheduling config)
 
 ### Planned Features
 - **Welcome message**: Field in block config for a teacher welcome message, displayed persistently in the block and auto-sent by email to each student at enrolment time via `\core\event\user_enrolment_created` observer + `email_to_user()`
