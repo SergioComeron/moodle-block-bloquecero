@@ -75,18 +75,19 @@ if [ "$PUSH_TO_MASTER" = true ]; then
 
     VERSION_FILE="${PLUGIN_DIR}/version.php"
 
-    # Si el último commit ya es un bump de versión, no hace falta volver a bumpar
+    # Sincronizar tags remotos antes de comprobar (el CI puede haber creado tags nuevos)
+    git -C "${PLUGIN_DIR}" fetch --tags --quiet 2>/dev/null || true
+
+    CURRENT_RELEASE=$(grep "\$plugin->release" "${VERSION_FILE}" | sed "s/.*'\([^']*\)'.*/\1/")
+
+    # Si ya existe el tag v{CURRENT_RELEASE} o el último commit es un bump, no bumpar de nuevo
     LAST_COMMIT=$(git -C "${PLUGIN_DIR}" log -1 --pretty=format:"%s")
-    if [[ "$LAST_COMMIT" == Release:\ bump\ version* ]]; then
-        CURRENT_RELEASE=$(grep "\$plugin->release" "${VERSION_FILE}" | sed "s/.*'\([^']*\)'.*/\1/")
+    TAG_EXISTS=$(git -C "${PLUGIN_DIR}" tag -l "v${CURRENT_RELEASE}")
+    if [[ -n "$TAG_EXISTS" || "$LAST_COMMIT" == Release:\ bump\ version* ]]; then
         echo "✓ Versión ya bumpeada (${CURRENT_RELEASE}). Continuando con el push."
     else
-        # Leer versión actual
-        CURRENT_RELEASE=$(grep "\$plugin->release" "${VERSION_FILE}" | sed "s/.*'\([^']*\)'.*/\1/")
+        # Leer build actual
         CURRENT_BUILD=$(grep "\$plugin->version" "${VERSION_FILE}" | sed 's/[^0-9]*\([0-9]\{10\}\).*/\1/')
-
-        # Sincronizar tags remotos antes de analizar (el CI puede haber creado tags nuevos)
-        git -C "${PLUGIN_DIR}" fetch --tags --quiet 2>/dev/null || true
 
         # Analizar commits desde el último tag para determinar el tipo de bump
         LAST_TAG=$(git -C "${PLUGIN_DIR}" describe --tags --abbrev=0 2>/dev/null || echo "")
