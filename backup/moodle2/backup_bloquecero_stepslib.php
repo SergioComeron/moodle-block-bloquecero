@@ -36,7 +36,8 @@ class backup_bloquecero_block_structure_step extends backup_block_structure_step
 
         $sessions = new backup_nested_element('sessions');
         $session = new backup_nested_element('session', ['id'], [
-            'courseid', 'name', 'sessiondate', 'duration', 'description', 'timecreated', 'timemodified',
+            'courseid', 'name', 'sessiondate', 'duration', 'description',
+            'hadcalendarsync', 'timecreated', 'timemodified',
         ]);
 
         $bibliographies = new backup_nested_element('bibliographies');
@@ -52,7 +53,8 @@ class backup_bloquecero_block_structure_step extends backup_block_structure_step
         $bloquecero->set_source_array([(object)['id' => $blockid]]);
 
         $session->set_source_sql(
-            'SELECT id, courseid, name, sessiondate, duration, description, timecreated, timemodified
+            'SELECT id, courseid, name, sessiondate, duration, description, timecreated, timemodified,
+                    CASE WHEN calendarid IS NOT NULL AND calendarid > 0 THEN 1 ELSE 0 END AS hadcalendarsync
                FROM {block_bloquecero_sessions}
               WHERE blockinstanceid = ?',
             [backup_helper::is_sqlparam($blockid)]
