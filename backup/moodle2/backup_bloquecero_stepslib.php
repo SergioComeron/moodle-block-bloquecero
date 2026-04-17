@@ -30,6 +30,8 @@ class backup_bloquecero_block_structure_step extends backup_block_structure_step
      * Defines the XML structure to be backed up.
      */
     protected function define_structure() {
+        global $DB;
+
         $blockid = $this->task->get_blockid();
 
         $bloquecero = new backup_nested_element('bloquecero', ['id'], null);
