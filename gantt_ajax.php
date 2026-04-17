@@ -217,11 +217,9 @@ function bloquecero_gantt_course_data(stdClass $course, $blockconfig, int $useri
     // --- Live sessions ---
     $sessions = [];
     if ($blockinstanceid) {
-        $now = time();
-        $sessionrecs = $DB->get_records_select(
+        $sessionrecs = $DB->get_records(
             'block_bloquecero_sessions',
-            'blockinstanceid = ? AND sessiondate >= ?',
-            [$blockinstanceid, $now - 7200],
+            ['blockinstanceid' => $blockinstanceid],
             'sessiondate ASC'
         );
         foreach ($sessionrecs as $s) {
