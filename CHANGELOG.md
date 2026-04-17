@@ -5,6 +5,15 @@ Todos los cambios notables en este proyecto serán documentados en este archivo.
 El formato está basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1.0.0/),
 y este proyecto adhiere a [Semantic Versioning](https://semver.org/lang/es/).
 
+## [v0.8] - 2026-04-10
+
+### Documentación
+- actualizar CLAUDE.md con flujo real de push a master y workflows fusionados
+
+### Otros cambios
+- Release: bump version to 0.8
+
+
 ## [v0.7] - 2026-04-10
 
 ### Correcciones
