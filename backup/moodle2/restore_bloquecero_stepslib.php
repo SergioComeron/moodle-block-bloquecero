@@ -100,4 +100,55 @@ class restore_bloquecero_block_structure_step extends restore_structure_step {
 
         $DB->insert_record('block_bloquecero_bibliography', $data);
     }
+
+    /**
+     * Remaps section IDs in configdata after block and sections are both restored.
+     *
+     * Keys like section_enabled_X / section_start_X / section_end_X contain the
+     * old course_section.id. We replace X with the new section ID using Moodle's
+     * restore mapping table.
+     */
+    protected function after_execute() {
+        global $DB;
+
+        $blockid = $this->task->get_blockid();
+        if (!$blockid) {
+            return;
+        }
+
+        $configdata = $DB->get_field('block_instances', 'configdata', ['id' => $blockid]);
+        if (!$configdata) {
+            return;
+        }
+
+        $config = unserialize_object(base64_decode($configdata));
+        if (!is_object($config)) {
+            return;
+        }
+
+        $newconfig = new stdClass();
+        $changed = false;
+
+        foreach ((array)$config as $key => $value) {
+            if (preg_match('/^(section_(?:enabled|start|end)_)(\d+)$/', $key, $m)) {
+                $newsectionid = (int)$this->get_mappingid('course_section', (int)$m[2]);
+                if ($newsectionid) {
+                    $newconfig->{$m[1] . $newsectionid} = $value;
+                    $changed = true;
+                }
+                // Keys with no mapping (section doesn't exist in destination) are dropped.
+            } else {
+                $newconfig->$key = $value;
+            }
+        }
+
+        if ($changed) {
+            $DB->set_field(
+                'block_instances',
+                'configdata',
+                base64_encode(serialize($newconfig)),
+                ['id' => $blockid]
+            );
+        }
+    }
 }
