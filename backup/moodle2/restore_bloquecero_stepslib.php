@@ -50,7 +50,6 @@ class restore_bloquecero_block_structure_step extends restore_structure_step {
      */
     public function process_bloquecero_sectionentry($data) {
         $data = (object)$data;
-        file_put_contents('/tmp/bloquecero_restore.log', '[sectionentry] id=' . $data->id . ' number=' . $data->number . PHP_EOL, FILE_APPEND);
         $this->sectionoldidtonumber[(int)$data->id] = (int)$data->number;
     }
 
@@ -116,19 +115,17 @@ class restore_bloquecero_block_structure_step extends restore_structure_step {
     }
 
     /**
-     * Remaps section IDs in configdata using section numbers collected from the backup XML.
+     * Stores old-section-ID → section-number map as a temporary config key.
      *
-     * Keys like section_enabled_X / section_start_X / section_end_X contain old section IDs.
-     * We map them to destination section IDs by matching section position numbers,
-     * which avoids any dependency on backup_ids_temp.
+     * Block tasks run before sections are restored, so destination section IDs
+     * are not yet in the DB here. We save the map as _restore_sectionmap in
+     * configdata so block_bloquecero::get_content() can apply the remap lazily
+     * on first display, when sections already exist.
      */
     protected function after_execute() {
         global $DB;
 
         $blockid = $this->task->get_blockid();
-        file_put_contents('/tmp/bloquecero_restore.log', '[after_execute] blockid=' . $blockid
-            . ' sectionmap_count=' . count($this->sectionoldidtonumber) . PHP_EOL, FILE_APPEND);
-
         if (!$blockid || empty($this->sectionoldidtonumber)) {
             return;
         }
@@ -143,48 +140,13 @@ class restore_bloquecero_block_structure_step extends restore_structure_step {
             return;
         }
 
-        // Get destination course sections indexed by section number.
-        $courseid = $this->task->get_courseid();
-        file_put_contents('/tmp/bloquecero_restore.log', '[after_execute] courseid=' . $courseid
-            . ' destsections_count=' . count($DB->get_records_menu('course_sections', ['course' => $courseid], '', 'section, id'))
-            . PHP_EOL, FILE_APPEND);
-        $destsections = $DB->get_records_menu('course_sections', ['course' => $courseid], '', 'section, id');
-
-        // Build oldid → newid map via: oldid → number → dest section id.
-        $sectionmap = [];
-        foreach ($this->sectionoldidtonumber as $oldid => $number) {
-            if (isset($destsections[$number])) {
-                $sectionmap[$oldid] = (int)$destsections[$number];
-            }
-        }
-
-        if (empty($sectionmap)) {
-            return;
-        }
-
-        $newconfig = new stdClass();
-        $changed = false;
-
-        foreach ((array)$config as $key => $value) {
-            if (preg_match('/^(section_(?:enabled|start|end)_)(\d+)$/', $key, $m)) {
-                $oldsectionid = (int)$m[2];
-                if (isset($sectionmap[$oldsectionid])) {
-                    $newconfig->{$m[1] . $sectionmap[$oldsectionid]} = $value;
-                    $changed = true;
-                }
-                // Keys with no mapping are dropped (section not present in destination).
-            } else {
-                $newconfig->$key = $value;
-            }
-        }
-
-        if ($changed) {
-            $DB->set_field(
-                'block_instances',
-                'configdata',
-                base64_encode(serialize($newconfig)),
-                ['id' => $blockid]
-            );
-        }
+        // Store map as JSON; get_content() will consume and delete it on first load.
+        $config->_restore_sectionmap = json_encode($this->sectionoldidtonumber);
+        $DB->set_field(
+            'block_instances',
+            'configdata',
+            base64_encode(serialize($config)),
+            ['id' => $blockid]
+        );
     }
 }

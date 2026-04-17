@@ -252,6 +252,65 @@ class block_bloquecero extends block_base {
      *
      * @return stdClass Block content object.
      */
+    /**
+     * Remaps section IDs in configdata after a course restore.
+     *
+     * During restore, block tasks run before course sections exist in the DB, so
+     * after_execute() cannot resolve destination IDs. Instead it stores the
+     * old-id→section-number map as _restore_sectionmap. This method is called on
+     * first page load (when sections already exist) to apply the remap and remove
+     * the temporary key.
+     */
+    protected function apply_restore_sectionmap() {
+        global $DB, $COURSE;
+
+        $oldidtonumber = json_decode($this->config->_restore_sectionmap, true);
+        if (empty($oldidtonumber)) {
+            unset($this->config->_restore_sectionmap);
+            return;
+        }
+
+        $courseid = $COURSE->id;
+        $destsections = $DB->get_records_menu('course_sections', ['course' => $courseid], '', 'section, id');
+
+        $sectionmap = [];
+        foreach ($oldidtonumber as $oldid => $number) {
+            if (isset($destsections[$number])) {
+                $sectionmap[(int)$oldid] = (int)$destsections[$number];
+            }
+        }
+
+        $newconfig = new stdClass();
+        foreach ((array)$this->config as $key => $value) {
+            if ($key === '_restore_sectionmap') {
+                continue;
+            }
+            if (preg_match('/^(section_(?:enabled|start|end)_)(\d+)$/', $key, $m)) {
+                $oldsectionid = (int)$m[2];
+                if (isset($sectionmap[$oldsectionid])) {
+                    $newconfig->{$m[1] . $sectionmap[$oldsectionid]} = $value;
+                }
+                // Keys with no mapping are dropped (section absent in destination).
+            } else {
+                $newconfig->$key = $value;
+            }
+        }
+
+        $blockid = $this->instance->id;
+        $DB->set_field(
+            'block_instances',
+            'configdata',
+            base64_encode(serialize($newconfig)),
+            ['id' => $blockid]
+        );
+        $this->config = $newconfig;
+    }
+
+    /**
+     * Generates and returns the block content.
+     *
+     * @return stdClass|null Block content object, or null when block should not display.
+     */
     public function get_content() {
         // phpcs:disable moodle.Files.LineLength.MaxExceeded
         global $COURSE, $DB, $USER, $CFG, $OUTPUT;
@@ -276,6 +335,11 @@ class block_bloquecero extends block_base {
 
         if ($this->content !== null) {
             return $this->content;
+        }
+
+        // After restore, apply deferred section-ID remap if pending.
+        if (!empty($this->config->_restore_sectionmap)) {
+            $this->apply_restore_sectionmap();
         }
 
         $this->content = new stdClass();
