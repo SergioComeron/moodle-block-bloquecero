@@ -33,6 +33,9 @@ class restore_bloquecero_block_structure_step extends restore_structure_step {
     /** @var array Maps old section ID => section number from the backup XML. */
     protected $sectionoldidtonumber = [];
 
+    /** @var array Maps forum config field name => forum name from the backup XML. */
+    protected $forumfieldmap = [];
+
     /**
      * Defines the XML paths to process during restore.
      */
@@ -41,6 +44,7 @@ class restore_bloquecero_block_structure_step extends restore_structure_step {
             new restore_path_element('bloquecero_session', '/block/bloquecero/sessions/session'),
             new restore_path_element('bloquecero_bibliography', '/block/bloquecero/bibliographies/bibliography'),
             new restore_path_element('bloquecero_sectionentry', '/block/bloquecero/sectionmapping/sectionentry'),
+            new restore_path_element('bloquecero_forumfield', '/block/bloquecero/forummapping/forumfield'),
         ];
     }
 
@@ -51,6 +55,15 @@ class restore_bloquecero_block_structure_step extends restore_structure_step {
     public function process_bloquecero_sectionentry($data) {
         $data = (object)$data;
         $this->sectionoldidtonumber[(int)$data->id] = (int)$data->number;
+    }
+
+    /**
+     * Collects forum field name → forum name from the backup XML.
+     * Used later in after_execute() for lazy forum ID remapping on first page load.
+     */
+    public function process_bloquecero_forumfield($data) {
+        $data = (object)$data;
+        $this->forumfieldmap[$data->fieldname] = $data->forumname;
     }
 
     /**
@@ -126,7 +139,11 @@ class restore_bloquecero_block_structure_step extends restore_structure_step {
         global $DB;
 
         $blockid = $this->task->get_blockid();
-        if (!$blockid || empty($this->sectionoldidtonumber)) {
+        if (!$blockid) {
+            return;
+        }
+
+        if (empty($this->sectionoldidtonumber) && empty($this->forumfieldmap)) {
             return;
         }
 
@@ -140,8 +157,13 @@ class restore_bloquecero_block_structure_step extends restore_structure_step {
             return;
         }
 
-        // Store map as JSON; get_content() will consume and delete it on first load.
-        $config->_restore_sectionmap = json_encode($this->sectionoldidtonumber);
+        // Store maps as JSON; get_content() will consume and delete them on first load.
+        if (!empty($this->sectionoldidtonumber)) {
+            $config->_restore_sectionmap = json_encode($this->sectionoldidtonumber);
+        }
+        if (!empty($this->forumfieldmap)) {
+            $config->_restore_forummap = json_encode($this->forumfieldmap);
+        }
         $DB->set_field(
             'block_instances',
             'configdata',

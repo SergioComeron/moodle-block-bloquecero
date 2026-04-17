@@ -50,12 +50,19 @@ class backup_bloquecero_block_structure_step extends backup_block_structure_step
         $sectionmapping = new backup_nested_element('sectionmapping');
         $sectionentry   = new backup_nested_element('sectionentry', ['id'], ['number']);
 
+        // Forum name map: stores forum field name + forum name so restore can match by name
+        // (forum IDs change on restore and block tasks run before module tasks).
+        $forummapping = new backup_nested_element('forummapping');
+        $forumfield   = new backup_nested_element('forumfield', null, ['fieldname', 'forumname']);
+
         $bloquecero->add_child($sessions);
         $sessions->add_child($session);
         $bloquecero->add_child($bibliographies);
         $bibliographies->add_child($bibliography);
         $bloquecero->add_child($sectionmapping);
         $sectionmapping->add_child($sectionentry);
+        $bloquecero->add_child($forummapping);
+        $forummapping->add_child($forumfield);
 
         $bloquecero->set_source_array([(object)['id' => $blockid]]);
 
@@ -83,6 +90,24 @@ class backup_bloquecero_block_structure_step extends backup_block_structure_step
               WHERE blockinstanceid = ?',
             [backup_helper::is_sqlparam($blockid)]
         );
+
+        // Build forum field → name map from configdata for lazy restore remap.
+        $forumfielddata = [];
+        $configdata = $DB->get_field('block_instances', 'configdata', ['id' => $blockid]);
+        if ($configdata) {
+            $config = unserialize_object(base64_decode($configdata));
+            $courseid = $this->task->get_courseid();
+            foreach (['forumid', 'forumtutoriasid', 'forumestudiantesid'] as $fieldname) {
+                $oldid = isset($config->$fieldname) ? (int)$config->$fieldname : 0;
+                if ($oldid > 0) {
+                    $forumname = $DB->get_field('forum', 'name', ['id' => $oldid, 'course' => $courseid]);
+                    if ($forumname) {
+                        $forumfielddata[] = (object)['fieldname' => $fieldname, 'forumname' => $forumname];
+                    }
+                }
+            }
+        }
+        $forumfield->set_source_array($forumfielddata);
 
         $session->annotate_ids('course', 'courseid');
         $bibliography->annotate_ids('course', 'courseid');

@@ -253,39 +253,54 @@ class block_bloquecero extends block_base {
      * @return stdClass Block content object.
      */
     /**
-     * Remaps section IDs in configdata after a course restore.
+     * Remaps section IDs and forum IDs in configdata after a course restore.
      *
-     * During restore, block tasks run before course sections exist in the DB, so
-     * after_execute() cannot resolve destination IDs. Instead it stores the
-     * old-id→section-number map as _restore_sectionmap. This method is called on
-     * first page load (when sections already exist) to apply the remap and remove
-     * the temporary key.
+     * Block tasks run before sections and forum modules exist in the DB, so
+     * after_execute() stores the maps as _restore_sectionmap / _restore_forummap.
+     * This method is called on first page load (when everything is already restored)
+     * to apply both remaps and remove the temporary keys.
      */
     protected function apply_restore_sectionmap() {
         global $DB, $COURSE;
 
-        $oldidtonumber = json_decode($this->config->_restore_sectionmap, true);
-        if (empty($oldidtonumber)) {
-            unset($this->config->_restore_sectionmap);
-            return;
+        $courseid = $COURSE->id;
+
+        // Build section oldid → newid map via section number.
+        $sectionmap = [];
+        if (!empty($this->config->_restore_sectionmap)) {
+            $oldidtonumber = json_decode($this->config->_restore_sectionmap, true);
+            if (!empty($oldidtonumber)) {
+                $destsections = $DB->get_records_menu('course_sections', ['course' => $courseid], '', 'section, id');
+                foreach ($oldidtonumber as $oldid => $number) {
+                    if (isset($destsections[$number])) {
+                        $sectionmap[(int)$oldid] = (int)$destsections[$number];
+                    }
+                }
+            }
         }
 
-        $courseid = $COURSE->id;
-        $destsections = $DB->get_records_menu('course_sections', ['course' => $courseid], '', 'section, id');
-
-        $sectionmap = [];
-        foreach ($oldidtonumber as $oldid => $number) {
-            if (isset($destsections[$number])) {
-                $sectionmap[(int)$oldid] = (int)$destsections[$number];
+        // Build forum field → new forum ID map via forum name lookup.
+        $forumfieldnewids = [];
+        if (!empty($this->config->_restore_forummap)) {
+            $forumfieldmap = json_decode($this->config->_restore_forummap, true);
+            if (!empty($forumfieldmap)) {
+                foreach ($forumfieldmap as $fieldname => $forumname) {
+                    $newid = $DB->get_field('forum', 'id', ['course' => $courseid, 'name' => $forumname]);
+                    if ($newid) {
+                        $forumfieldnewids[$fieldname] = (int)$newid;
+                    }
+                }
             }
         }
 
         $newconfig = new stdClass();
         foreach ((array)$this->config as $key => $value) {
-            if ($key === '_restore_sectionmap') {
+            if ($key === '_restore_sectionmap' || $key === '_restore_forummap') {
                 continue;
             }
-            if (preg_match('/^(section_(?:enabled|start|end)_)(\d+)$/', $key, $m)) {
+            if (isset($forumfieldnewids[$key])) {
+                $newconfig->$key = $forumfieldnewids[$key];
+            } else if (preg_match('/^(section_(?:enabled|start|end)_)(\d+)$/', $key, $m)) {
                 $oldsectionid = (int)$m[2];
                 if (isset($sectionmap[$oldsectionid])) {
                     $newconfig->{$m[1] . $sectionmap[$oldsectionid]} = $value;
@@ -337,8 +352,8 @@ class block_bloquecero extends block_base {
             return $this->content;
         }
 
-        // After restore, apply deferred section-ID remap if pending.
-        if (!empty($this->config->_restore_sectionmap)) {
+        // After restore, apply deferred section/forum ID remaps if pending.
+        if (!empty($this->config->_restore_sectionmap) || !empty($this->config->_restore_forummap)) {
             $this->apply_restore_sectionmap();
         }
 
