@@ -1691,7 +1691,7 @@ class block_bloquecero extends block_base {
             <div class="bloquecero-info-row"' . $metahide . '>
                 ' . (!empty($metachildlinks) ? '<p class="bloquecero-metachild-notice">' . get_string('metachild_notice', 'block_bloquecero') . '<br>' . implode('<br>', $metachildlinks) . '</p>' : '') . '
                 ' . ($coursedates ? '<p class="bloquecero-header-dates">' . $coursedates . '</p>' : '') . '
-                <p class="bloquecero-header-teachers">' . get_string('teachingteam', 'block_bloquecero') . ': ' . $contactbuttonshtml . '</p>
+                ' . (!empty($contactbuttonshtml) ? '<p class="bloquecero-header-teachers">' . get_string('teachingteam', 'block_bloquecero') . ': ' . $contactbuttonshtml . '</p>' : '') . '
             </div>
             ' . (!empty($this->config->show_september_notice) ? '
             <!-- Aviso convocatoria de septiembre -->
