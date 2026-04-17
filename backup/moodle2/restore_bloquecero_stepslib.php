@@ -50,6 +50,7 @@ class restore_bloquecero_block_structure_step extends restore_structure_step {
      */
     public function process_bloquecero_sectionentry($data) {
         $data = (object)$data;
+        error_log('[bloquecero restore] sectionentry: id=' . $data->id . ' number=' . $data->number);
         $this->sectionoldidtonumber[(int)$data->id] = (int)$data->number;
     }
 
@@ -125,6 +126,9 @@ class restore_bloquecero_block_structure_step extends restore_structure_step {
         global $DB;
 
         $blockid = $this->task->get_blockid();
+        error_log('[bloquecero restore] after_execute: blockid=' . $blockid
+            . ' sectionmap_count=' . count($this->sectionoldidtonumber));
+
         if (!$blockid || empty($this->sectionoldidtonumber)) {
             return;
         }
@@ -141,6 +145,7 @@ class restore_bloquecero_block_structure_step extends restore_structure_step {
 
         // Get destination course sections indexed by section number.
         $courseid = $this->task->get_courseid();
+        error_log('[bloquecero restore] courseid=' . $courseid);
         $destsections = $DB->get_records_menu('course_sections', ['course' => $courseid], '', 'section, id');
 
         // Build oldid → newid map via: oldid → number → dest section id.
