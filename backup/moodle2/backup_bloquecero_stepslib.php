@@ -45,12 +45,29 @@ class backup_bloquecero_block_structure_step extends backup_block_structure_step
             'courseid', 'name', 'url', 'description', 'sortorder', 'timecreated', 'timemodified',
         ]);
 
+        // Section number map: lets the restore find destination section IDs by position number,
+        // independent of any restore mapping tables.
+        $sectionmapping = new backup_nested_element('sectionmapping');
+        $sectionentry   = new backup_nested_element('sectionentry', ['id'], ['number']);
+
         $bloquecero->add_child($sessions);
         $sessions->add_child($session);
         $bloquecero->add_child($bibliographies);
         $bibliographies->add_child($bibliography);
+        $bloquecero->add_child($sectionmapping);
+        $sectionmapping->add_child($sectionentry);
 
         $bloquecero->set_source_array([(object)['id' => $blockid]]);
+
+        $sectionentry->set_source_sql(
+            'SELECT id, section AS number
+               FROM {course_sections}
+              WHERE course = ?
+                AND section > 0
+                AND (component IS NULL OR component <> \'mod_subsection\')
+              ORDER BY section',
+            [backup_helper::is_sqlparam($this->task->get_courseid())]
+        );
 
         $session->set_source_sql(
             'SELECT id, courseid, name, sessiondate, duration, description, timecreated, timemodified,

@@ -30,6 +30,9 @@ require_once($CFG->dirroot . '/calendar/lib.php');
  * Defines the restore structure for block_bloquecero.
  */
 class restore_bloquecero_block_structure_step extends restore_structure_step {
+    /** @var array Maps old section ID => section number from the backup XML. */
+    protected $sectionoldidtonumber = [];
+
     /**
      * Defines the XML paths to process during restore.
      */
@@ -37,7 +40,17 @@ class restore_bloquecero_block_structure_step extends restore_structure_step {
         return [
             new restore_path_element('bloquecero_session', '/block/bloquecero/sessions/session'),
             new restore_path_element('bloquecero_bibliography', '/block/bloquecero/bibliographies/bibliography'),
+            new restore_path_element('bloquecero_sectionentry', '/block/bloquecero/sectionmapping/sectionentry'),
         ];
+    }
+
+    /**
+     * Collects old section ID → section number from the backup XML.
+     * Used later in after_execute() to remap configdata keys by position.
+     */
+    public function process_bloquecero_sectionentry($data) {
+        $data = (object)$data;
+        $this->sectionoldidtonumber[(int)$data->id] = (int)$data->number;
     }
 
     /**
@@ -102,17 +115,17 @@ class restore_bloquecero_block_structure_step extends restore_structure_step {
     }
 
     /**
-     * Remaps section IDs in configdata after block and sections are both restored.
+     * Remaps section IDs in configdata using section numbers collected from the backup XML.
      *
-     * Keys like section_enabled_X / section_start_X / section_end_X contain the
-     * old course_section.id. We replace X with the new section ID by querying
-     * backup_ids_temp directly — more reliable than get_mappingid from after_execute.
+     * Keys like section_enabled_X / section_start_X / section_end_X contain old section IDs.
+     * We map them to destination section IDs by matching section position numbers,
+     * which avoids any dependency on backup_ids_temp.
      */
     protected function after_execute() {
         global $DB;
 
         $blockid = $this->task->get_blockid();
-        if (!$blockid) {
+        if (!$blockid || empty($this->sectionoldidtonumber)) {
             return;
         }
 
@@ -126,35 +139,18 @@ class restore_bloquecero_block_structure_step extends restore_structure_step {
             return;
         }
 
-        // Collect all old section IDs referenced in configdata.
-        $oldsectionids = [];
-        foreach ((array)$config as $key => $value) {
-            if (preg_match('/^section_(?:enabled|start|end)_(\d+)$/', $key, $m)) {
-                $oldsectionids[(int)$m[1]] = true;
-            }
-        }
-        if (empty($oldsectionids)) {
-            return;
-        }
+        // Get destination course sections indexed by section number.
+        $courseid = $this->task->get_courseid();
+        $destsections = $DB->get_records_menu('course_sections', ['course' => $courseid], '', 'section, id');
 
-        // Query backup_ids_temp directly for all section mappings at once.
+        // Build oldid → newid map via: oldid → number → dest section id.
         $sectionmap = [];
-        $restoreid = $this->get_restoreid();
-        [$insql, $inparams] = $DB->get_in_or_equal(array_keys($oldsectionids));
-        array_unshift($inparams, $restoreid);
-        $mappings = $DB->get_records_sql(
-            "SELECT itemid, newitemid
-               FROM {backup_ids_temp}
-              WHERE backupid = ? AND itemname = 'course_section' AND itemid $insql",
-            $inparams
-        );
-        foreach ($mappings as $m) {
-            if ((int)$m->newitemid > 0) {
-                $sectionmap[(int)$m->itemid] = (int)$m->newitemid;
+        foreach ($this->sectionoldidtonumber as $oldid => $number) {
+            if (isset($destsections[$number])) {
+                $sectionmap[$oldid] = (int)$destsections[$number];
             }
         }
 
-        // No mappings found: same-course restore or sections not restored — skip.
         if (empty($sectionmap)) {
             return;
         }
