@@ -35,16 +35,9 @@ class restore_bloquecero_block_structure_step extends restore_structure_step {
      */
     protected function define_structure() {
         return [
-            new restore_path_element('block', '/block', true),
             new restore_path_element('bloquecero_session', '/block/bloquecero/sessions/session'),
             new restore_path_element('bloquecero_bibliography', '/block/bloquecero/bibliographies/bibliography'),
         ];
-    }
-
-    /**
-     * Required by the API but block-level processing is handled by the parent.
-     */
-    public function process_block($data) {
     }
 
     /**
