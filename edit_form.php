@@ -243,7 +243,30 @@ class block_bloquecero_edit_form extends block_edit_form {
      * Set form data (load existing configuration)
      */
     public function set_data($defaults) {
-        global $USER, $COURSE;
+        global $USER, $COURSE, $DB;
+
+        // Auto-detect forums when fields are not yet configured.
+        $config = $this->block->config ?? new stdClass();
+        if (empty($config->forumid)) {
+            $newsforum = $DB->get_record('forum', ['course' => $COURSE->id, 'type' => 'news'], 'id', IGNORE_MISSING);
+            if ($newsforum) {
+                $defaults->config_forumid = $newsforum->id;
+            }
+        }
+        foreach (['forumtutoriasid' => ['tutor'], 'forumestudiantesid' => ['estudiant', 'alumno']] as $field => $keywords) {
+            if (empty($config->$field)) {
+                $courseforums = $DB->get_records('forum', ['course' => $COURSE->id], '', 'id, name');
+                foreach ($courseforums as $forum) {
+                    $namelower = core_text::strtolower($forum->name);
+                    foreach ($keywords as $kw) {
+                        if (strpos($namelower, $kw) !== false) {
+                            $defaults->{"config_$field"} = $forum->id;
+                            break 2;
+                        }
+                    }
+                }
+            }
+        }
 
         if (!empty($this->block->config)) {
             $context = context_course::instance($COURSE->id);
