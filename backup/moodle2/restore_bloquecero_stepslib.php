@@ -105,8 +105,8 @@ class restore_bloquecero_block_structure_step extends restore_structure_step {
      * Remaps section IDs in configdata after block and sections are both restored.
      *
      * Keys like section_enabled_X / section_start_X / section_end_X contain the
-     * old course_section.id. We replace X with the new section ID using Moodle's
-     * restore mapping table.
+     * old course_section.id. We replace X with the new section ID by querying
+     * backup_ids_temp directly — more reliable than get_mappingid from after_execute.
      */
     protected function after_execute() {
         global $DB;
@@ -117,7 +117,7 @@ class restore_bloquecero_block_structure_step extends restore_structure_step {
         }
 
         $configdata = $DB->get_field('block_instances', 'configdata', ['id' => $blockid]);
-        if (!$configdata) {
+        if (empty($configdata)) {
             return;
         }
 
@@ -126,17 +126,50 @@ class restore_bloquecero_block_structure_step extends restore_structure_step {
             return;
         }
 
+        // Collect all old section IDs referenced in configdata.
+        $oldsectionids = [];
+        foreach ((array)$config as $key => $value) {
+            if (preg_match('/^section_(?:enabled|start|end)_(\d+)$/', $key, $m)) {
+                $oldsectionids[(int)$m[1]] = true;
+            }
+        }
+        if (empty($oldsectionids)) {
+            return;
+        }
+
+        // Query backup_ids_temp directly for all section mappings at once.
+        $sectionmap = [];
+        $restoreid = $this->get_restoreid();
+        [$insql, $inparams] = $DB->get_in_or_equal(array_keys($oldsectionids));
+        array_unshift($inparams, $restoreid);
+        $mappings = $DB->get_records_sql(
+            "SELECT itemid, newitemid
+               FROM {backup_ids_temp}
+              WHERE backupid = ? AND itemname = 'course_section' AND itemid $insql",
+            $inparams
+        );
+        foreach ($mappings as $m) {
+            if ((int)$m->newitemid > 0) {
+                $sectionmap[(int)$m->itemid] = (int)$m->newitemid;
+            }
+        }
+
+        // No mappings found: same-course restore or sections not restored — skip.
+        if (empty($sectionmap)) {
+            return;
+        }
+
         $newconfig = new stdClass();
         $changed = false;
 
         foreach ((array)$config as $key => $value) {
             if (preg_match('/^(section_(?:enabled|start|end)_)(\d+)$/', $key, $m)) {
-                $newsectionid = (int)$this->get_mappingid('course_section', (int)$m[2]);
-                if ($newsectionid) {
-                    $newconfig->{$m[1] . $newsectionid} = $value;
+                $oldsectionid = (int)$m[2];
+                if (isset($sectionmap[$oldsectionid])) {
+                    $newconfig->{$m[1] . $sectionmap[$oldsectionid]} = $value;
                     $changed = true;
                 }
-                // Keys with no mapping (section doesn't exist in destination) are dropped.
+                // Keys with no mapping are dropped (section not present in destination).
             } else {
                 $newconfig->$key = $value;
             }
