@@ -44,14 +44,15 @@ $courseids = array_map('intval', $courseids);
 $courseids = array_unique($courseids);
 
 /**
- * Collect Gantt data (sections + activities) for one course.
+ * Collect Gantt data (sections + activities + sessions) for one course.
  *
  * @param stdClass $course  Full course record (needs id, format, startdate, enddate).
  * @param stdClass|null $blockconfig  Unserialized block instance config (may be null).
  * @param int $userid
- * @return array  Keys: coursename, allsections, activities, rangestart, rangeend.
+ * @param int $blockinstanceid  ID of the block_instances row (for session lookup).
+ * @return array  Keys: coursename, allsections, activities, sessions, rangestart, rangeend.
  */
-function bloquecero_gantt_course_data(stdClass $course, $blockconfig, int $userid): array {
+function bloquecero_gantt_course_data(stdClass $course, $blockconfig, int $userid, int $blockinstanceid = 0): array {
     global $DB, $OUTPUT;
 
     $modinfo = get_fast_modinfo($course, $userid);
@@ -213,11 +214,37 @@ function bloquecero_gantt_course_data(stdClass $course, $blockconfig, int $useri
         ];
     }
 
+    // --- Live sessions ---
+    $sessions = [];
+    if ($blockinstanceid) {
+        $now = time();
+        $sessionrecs = $DB->get_records_select(
+            'block_bloquecero_sessions',
+            'blockinstanceid = ? AND sessiondate >= ?',
+            [$blockinstanceid, $now - 7200],
+            'sessiondate ASC'
+        );
+        foreach ($sessionrecs as $s) {
+            $sessions[] = [
+                'titulo' => $s->name,
+                'fecha'  => (int)$s->sessiondate,
+            ];
+            // Extend range to include session date.
+            if ($rangestart === 0 || (int)$s->sessiondate < $rangestart) {
+                $rangestart = (int)$s->sessiondate;
+            }
+            if ((int)$s->sessiondate > $rangeend) {
+                $rangeend = (int)$s->sessiondate;
+            }
+        }
+    }
+
     return [
         'coursename'  => format_string($course->fullname),
         'courseid'    => $course->id,
         'allsections' => $allsections,
         'activities'  => $activities,
+        'sessions'    => $sessions,
         'rangestart'  => $rangestart,
         'rangeend'    => $rangeend,
     ];
@@ -254,7 +281,8 @@ foreach ($courseids as $cid) {
         $blockconfig = unserialize(base64_decode($blockinstance->configdata));
     }
 
-    $data = bloquecero_gantt_course_data($course, $blockconfig, $USER->id);
+    $blockinstanceid = $blockinstance ? (int)$blockinstance->id : 0;
+    $data = bloquecero_gantt_course_data($course, $blockconfig, $USER->id, $blockinstanceid);
 
     if ($data['rangestart'] === 0 && $data['rangeend'] === 0) {
         continue; // No dates at all — skip this course.
@@ -369,6 +397,31 @@ foreach ($coursesdata as $cdata) {
                 $html .= '</tr>';
             }
         }
+    }
+
+    // Sessions row for this course.
+    if (!empty($cdata['sessions'])) {
+        $html .= '<tr data-gantt-type="livesession"><td class="bloquecero-gantt-sectionname bloquecero-gantt-sessionrow">'
+            . get_string('livesessions', 'block_bloquecero') . '</td>';
+        foreach ($ganttweeks as $idx => $wts) {
+            $weekend      = $ganttweekends[$idx] + 1;
+            $currentclass = ($idx === $currentweekidx) ? ' bloquecero-gantt-currentweek' : '';
+            $weeksessions = array_filter($cdata['sessions'], function ($s) use ($wts, $weekend) {
+                return $s['fecha'] >= $wts && $s['fecha'] < $weekend;
+            });
+            if (!empty($weeksessions)) {
+                $titles = implode('&#10;', array_map(function ($s) {
+                    return htmlspecialchars($s['titulo']) . ' (' . userdate($s['fecha'], '%d/%m %H:%M') . ')';
+                }, $weeksessions));
+                $count  = count($weeksessions);
+                $marker = $count > 1 ? $count : '&#9679;';
+                $html .= '<td class="bloquecero-gantt-cell bloquecero-gantt-session' . $currentclass
+                    . '" title="' . $titles . '" data-bs-toggle="tooltip" data-bs-placement="top">' . $marker . '</td>';
+            } else {
+                $html .= '<td class="bloquecero-gantt-cell' . $currentclass . '"></td>';
+            }
+        }
+        $html .= '</tr>';
     }
 }
 
