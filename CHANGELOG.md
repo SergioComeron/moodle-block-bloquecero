@@ -5,6 +5,64 @@ Todos los cambios notables en este proyecto serán documentados en este archivo.
 El formato está basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1.0.0/),
 y este proyecto adhiere a [Semantic Versioning](https://semver.org/lang/es/).
 
+## [v0.10] - 2026-04-17
+
+### Nuevas funcionalidades
+- autodetectar foros al configurar el bloque por primera vez
+- remapear foros (novedades, tutorías, estudiantes) en backup/restore por nombre
+- remap IDs de secciones en configdata durante el restore (#15)
+- recrear eventos de calendario al restaurar sesiones con sync activo
+- añadir soporte backup/restore para sesiones y bibliografía (#15)
+- filtros por tipo de elemento en el modal del Gantt
+- selector multi-asignatura en el modal del diagrama de Gantt
+- botón exportar PDF en el modal del diagrama de Gantt
+- añadir tooltips a los iconos del menú de navegación
+- cronograma Gantt de secciones, actividades y sesiones (Closes #13)
+- destacado automático de sección por fechas programadas (Closes #12)
+
+### Correcciones
+- añadir global $DB en define_structure del backup stepslib
+- ocultar etiqueta 'Teaching team' cuando no hay profesores seleccionados
+- remap de sección en restore usando estrategia lazy (issue #15)
+- remap secciones por número de posición en lugar de backup_ids_temp
+- consultar backup_ids_temp directamente para remap de secciones en restore
+- corregir restore eliminando path /block agrupado que bloqueaba callbacks
+- eliminar filtro de fecha en sesiones del Gantt multi-curso
+- añadir sesiones en directo al Gantt multi-curso (gantt_ajax.php)
+- alinear botón PDF y cerrar en la misma fila del header del modal Gantt
+- eliminar require_once de block_bloquecero en gantt_ajax y mejorar manejo de errores
+- mover consulta ganttothercourses antes de generar el HTML del modal
+- corregir nombre de variable a snake_case para phpcs
+- forzar orientación horizontal en exportación PDF del Gantt
+- escalar diagrama Gantt para que quepa en una sola página A4 al exportar PDF
+- icono del diagrama de Gantt en menú móvil usando FA directamente
+- usar cm.instance en lugar de cm.id para resolver sección padre de subsecciones
+- corregir estilo de código (phpcs)
+- resolver sección padre para actividades en mod_subsection en el Gantt
+- mostrar Gantt aunque no haya secciones con fechas configuradas
+- propagar sectionnum a ganttactivities para agrupación por sección
+- usar DateTime::modify('+1 week') para límites de columna del Gantt
+- timezone en cálculo de semanas del Gantt para formato weeks
+- corregir cálculo de semanas del Gantt con zona horaria del usuario
+- corregir estilo de código (phpcs)
+- corregir estilo de código (phpcs)
+- fetch --tags antes de calcular bump para detectar tags creados por CI
+- fusionar auto-release y release en un único workflow para evitar limitación de GITHUB_TOKEN
+
+### Documentación
+- actualizar CLAUDE.md con backup/restore y lazy sectionmap (issue #15 completada)
+- actualizar CLAUDE.md con Gantt, multi-curso, filtros y tooltips (v0.8)
+- actualizar CLAUDE.md con flujo de versiones, hooks y CI completo
+
+### Otros cambios
+- Release: bump version to 0.10
+- Release: bump version to 0.9
+- tmp: debug con file_put_contents en /tmp/bloquecero_restore.log
+- tmp: añadir error_log para depurar restore de secciones
+- Refactor: agrupar actividades bajo su sección en el Gantt
+- Refactor: separar secciones y actividades en el Gantt (revertir agrupación)
+
+
 ## [v0.8] - 2026-04-10
 
 ### Documentación
