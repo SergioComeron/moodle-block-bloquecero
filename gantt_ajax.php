@@ -282,14 +282,12 @@ foreach ($courseids as $cid) {
     $blockinstanceid = $blockinstance ? (int)$blockinstance->id : 0;
     $data = bloquecero_gantt_course_data($course, $blockconfig, $USER->id, $blockinstanceid);
 
-    if ($data['rangestart'] === 0 && $data['rangeend'] === 0) {
-        continue; // No dates at all — skip this course.
-    }
-
     $coursesdata[] = $data;
 
-    if ($globalrangestart === 0 || $data['rangestart'] < $globalrangestart) {
-        $globalrangestart = $data['rangestart'];
+    if ($data['rangestart'] > 0) {
+        if ($globalrangestart === 0 || $data['rangestart'] < $globalrangestart) {
+            $globalrangestart = $data['rangestart'];
+        }
     }
     if ($data['rangeend'] > $globalrangeend) {
         $globalrangeend = $data['rangeend'];
