@@ -50,6 +50,7 @@ This is a Moodle block plugin (`block_bloquecero`) that provides a customized co
   - Live sessions management - Link to dedicated management page
   - Max activities per section (1-10, default 4)
 - Custom data loading in `set_data()` for editor fields — loads `userschedule_` for all editable teachers based on role
+- **Forum auto-detection** in `set_data()`: if forum fields are empty, pre-selects forums automatically — noticeboard: `type='news'`; tutorías: name contains "tutor"; estudiantes: name contains "estudiant" or "alumno". Case-insensitive. Only fires when the field has no value (manual selections are preserved).
 
 **manage_sessions.php** (live sessions management page)
 - Dedicated interface for managing live sessions
@@ -109,6 +110,8 @@ This is a Moodle block plugin (`block_bloquecero`) that provides a customized co
 - `backup_bloquecero_block_task.class.php` + `backup_bloquecero_stepslib.php`: exports sessions, bibliography and a `sectionmapping` XML node (section_id → section_number) to `bloquecero.xml`
 - `restore_bloquecero_block_task.class.php` + `restore_bloquecero_stepslib.php`: restores sessions (recreating calendar events if `hadcalendarsync=1`) and bibliography; stores old-id→number map in configdata as `_restore_sectionmap`
 - **Lazy section remap**: block tasks run before course sections exist in the DB, so `after_execute()` cannot resolve destination IDs directly. It saves the map as `_restore_sectionmap` JSON in configdata; `apply_restore_sectionmap()` in `get_content()` applies and removes it on first page load when sections already exist.
+- **Forum remap on restore**: backup exports a `forummapping` XML node with `{fieldname, forumname}` per configured forum. `after_execute()` stores `_restore_forummap` JSON in configdata. `apply_restore_sectionmap()` looks up each forum by name in the destination course and updates `forumid`/`forumtutoriasid`/`forumestudiantesid`. Both `_restore_sectionmap` and `_restore_forummap` are consumed and deleted on first page load.
+- **Not remapped on restore**: `config_teacher_selected_{userid}`, `config_userphone_{userid}`, `config_userschedule_{userid}` — user IDs change between sites and are not currently remapped.
 
 ### Database/Permissions
 
@@ -212,6 +215,7 @@ The block extensively hides/shows Moodle UI elements:
 - Enrollment check per course before including data.
 - Block config loaded from `block_instances.configdata` via `unserialize(base64_decode(...))`.
 - `$ganttothercourses` must be built **before** the modal HTML is generated in `get_content()` (variable used in PHP string concatenation).
+- Courses with no dates (rangestart=0, rangeend=0) are **always included** in the combined render — they show their course header row and any sections/activities they have. The global time axis is determined only by courses that do have dates. If no course has dates, returns empty.
 
 **PDF export:**
 - Button in modal header opens a new window with print-optimized HTML.
