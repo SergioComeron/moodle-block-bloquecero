@@ -5,6 +5,21 @@ Todos los cambios notables en este proyecto serán documentados en este archivo.
 El formato está basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1.0.0/),
 y este proyecto adhiere a [Semantic Versioning](https://semver.org/lang/es/).
 
+## [v0.10.2] - 2026-05-04
+
+### Correcciones
+- bump release a 0.10.1 para generar nueva release
+- corregir tipo de columna name de TEXT a CHAR(255) en sesiones y bibliografía
+- incluir curso sin fechas en Gantt multi-curso aunque no tenga secciones configuradas
+- evitar doble bump comprobando si el tag vX.Y ya existe en remoto
+
+### Documentación
+- actualizar CLAUDE.md con autodetección de foros, remap restore y Gantt sin fechas
+
+### Otros cambios
+- Release: bump version to 0.10.2
+
+
 ## [v0.10] - 2026-04-17
 
 ### Nuevas funcionalidades
