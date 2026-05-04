@@ -176,9 +176,12 @@ function xmldb_block_bloquecero_upgrade($oldversion) {
 
     if ($oldversion < 2026050201) {
         // Fix name column type: must be CHAR(255), not TEXT.
+        // Truncate any existing values longer than 255 chars before altering the column.
         foreach (['block_bloquecero_sessions', 'block_bloquecero_bibliography'] as $tablename) {
             $table = new xmldb_table($tablename);
             if ($dbman->table_exists($table)) {
+                $DB->execute("UPDATE {" . $tablename . "} SET name = LEFT(name, 255) WHERE " .
+                    $DB->sql_length('name') . " > 255");
                 $field = new xmldb_field('name', XMLDB_TYPE_CHAR, '255', null, XMLDB_NOTNULL, null, null);
                 if ($dbman->field_exists($table, $field)) {
                     $dbman->change_field_type($table, $field);
