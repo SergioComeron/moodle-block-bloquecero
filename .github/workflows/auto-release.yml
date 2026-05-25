@@ -165,4 +165,4 @@ jobs:
           tag_name: ${{ steps.version.outputs.VERSION }}
           files: bloquecero-${{ steps.version.outputs.VERSION }}.zip
           body_path: release_notes.txt
-          name: "bloquecero ${{ steps.version.outputs.VERSION }}"
+          name: "${{ steps.version.outputs.VERSION }}"
