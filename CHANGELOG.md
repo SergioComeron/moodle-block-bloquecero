@@ -5,6 +5,17 @@ Todos los cambios notables en este proyecto serán documentados en este archivo.
 El formato está basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1.0.0/),
 y este proyecto adhiere a [Semantic Versioning](https://semver.org/lang/es/).
 
+## [v0.10.4] - 2026-05-04
+
+### Correcciones
+- bump release a 0.10.3 para incluir fix truncado name >255 en release
+- truncar name >255 chars antes de cambiar tipo de columna en upgrade
+- truncar name >255 chars antes de cambiar tipo de columna en upgrade
+
+### Otros cambios
+- Release: bump version to 0.10.4
+
+
 ## [v0.10.2] - 2026-05-04
 
 ### Correcciones
