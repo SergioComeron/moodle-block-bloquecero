@@ -192,5 +192,80 @@ function xmldb_block_bloquecero_upgrade($oldversion) {
         upgrade_block_savepoint(true, 2026050201, 'bloquecero');
     }
 
+    if ($oldversion < 2026052301) {
+        // Create block_bloquecero_guides table.
+        $table = new xmldb_table('block_bloquecero_guides');
+
+        $table->add_field('id', XMLDB_TYPE_INTEGER, '10', null, XMLDB_NOTNULL, XMLDB_SEQUENCE, null);
+        $table->add_field('blockinstanceid', XMLDB_TYPE_INTEGER, '10', null, XMLDB_NOTNULL, null, null);
+        $table->add_field('courseid', XMLDB_TYPE_INTEGER, '10', null, XMLDB_NOTNULL, null, null);
+        $table->add_field('name', XMLDB_TYPE_CHAR, '255', null, null, null, null);
+        $table->add_field('url', XMLDB_TYPE_CHAR, '1333', null, XMLDB_NOTNULL, null, null);
+        $table->add_field('sortorder', XMLDB_TYPE_INTEGER, '10', null, null, null, '0');
+        $table->add_field('timecreated', XMLDB_TYPE_INTEGER, '10', null, XMLDB_NOTNULL, null, null);
+        $table->add_field('timemodified', XMLDB_TYPE_INTEGER, '10', null, XMLDB_NOTNULL, null, null);
+
+        $table->add_key('primary', XMLDB_KEY_PRIMARY, ['id']);
+        $table->add_key('blockinstanceid', XMLDB_KEY_FOREIGN, ['blockinstanceid'], 'block_instances', ['id']);
+        $table->add_key('courseid', XMLDB_KEY_FOREIGN, ['courseid'], 'course', ['id']);
+        $table->add_index('courseid_sortorder', XMLDB_INDEX_NOTUNIQUE, ['courseid', 'sortorder']);
+
+        if (!$dbman->table_exists($table)) {
+            $dbman->create_table($table);
+        }
+
+        // Migrate existing guide_url data from block config to new table.
+        $blocks = $DB->get_records('block_instances', ['blockname' => 'bloquecero']);
+        foreach ($blocks as $block) {
+            if (empty($block->configdata)) {
+                continue;
+            }
+            $config = unserialize(base64_decode($block->configdata));
+            if (empty($config) || empty($config->guide_url)) {
+                continue;
+            }
+            $parentcontext = $DB->get_record('context', ['id' => $block->parentcontextid]);
+            if (!$parentcontext || $parentcontext->contextlevel != CONTEXT_COURSE) {
+                continue;
+            }
+            $courseid = $parentcontext->instanceid;
+            $now = time();
+
+            // Old format: guide_url is a plain string.
+            if (is_string($config->guide_url)) {
+                $record = new stdClass();
+                $record->blockinstanceid = $block->id;
+                $record->courseid        = $courseid;
+                $record->name            = !empty($config->guide_label) && is_string($config->guide_label)
+                    ? $config->guide_label : '';
+                $record->url             = $config->guide_url;
+                $record->sortorder       = 0;
+                $record->timecreated     = $now;
+                $record->timemodified    = $now;
+                $DB->insert_record('block_bloquecero_guides', $record);
+            } else if (is_array($config->guide_url)) {
+                // Transitional array format from brief repeat_elements experiment.
+                $labels = is_array($config->guide_label ?? null) ? $config->guide_label : [];
+                foreach ($config->guide_url as $i => $url) {
+                    $url = trim($url);
+                    if (empty($url)) {
+                        continue;
+                    }
+                    $record = new stdClass();
+                    $record->blockinstanceid = $block->id;
+                    $record->courseid        = $courseid;
+                    $record->name            = trim($labels[$i] ?? '');
+                    $record->url             = $url;
+                    $record->sortorder       = $i;
+                    $record->timecreated     = $now;
+                    $record->timemodified    = $now;
+                    $DB->insert_record('block_bloquecero_guides', $record);
+                }
+            }
+        }
+
+        upgrade_block_savepoint(true, 2026052301, 'bloquecero');
+    }
+
     return true;
 }

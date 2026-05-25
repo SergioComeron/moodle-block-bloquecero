@@ -32,12 +32,6 @@ class block_bloquecero_edit_form extends block_edit_form {
 
         $mform->addElement('header', 'configheader', get_string('blocksettings', 'block'));
 
-        // Campo para la URL de la guía docente.
-        $mform->addElement('text', 'config_guide_url', get_string('guide_url', 'block_bloquecero'));
-        $mform->setType('config_guide_url', PARAM_URL);
-        $mform->setDefault('config_guide_url', '');
-        $mform->addHelpButton('config_guide_url', 'guide_url', 'block_bloquecero');
-
         // --- Selector de foro para el tablón de anuncios ---
         // Obtener todos los foros del curso.
         $forums = [];
@@ -237,6 +231,24 @@ class block_bloquecero_edit_form extends block_edit_form {
         $mform->addElement('select', 'config_maxactivitiespersection', get_string('maxactivitiespersection', 'block_bloquecero'), $maxactivitiesoptions);
         $mform->setDefault('config_maxactivitiespersection', 4);
         $mform->addHelpButton('config_maxactivitiespersection', 'maxactivitiespersection', 'block_bloquecero');
+
+        // --- Configuración de guías docentes ---
+        $mform->addElement('header', 'guidesheader', get_string('guides_header', 'block_bloquecero'));
+
+        if ($blockinstanceid) {
+            $manageguidesurl = new moodle_url('/blocks/bloquecero/manage_guides.php', [
+                'courseid' => $COURSE->id,
+                'blockid'  => $blockinstanceid,
+            ]);
+            $manageguideslink = html_writer::link(
+                $manageguidesurl,
+                get_string('manageguides', 'block_bloquecero'),
+                ['target' => '_blank', 'class' => 'btn btn-secondary']
+            );
+            $mform->addElement('static', 'manageguideslink', '', $manageguideslink);
+        } else {
+            $mform->addElement('static', 'manageguidesinfo', '', get_string('saveblockfirst', 'block_bloquecero'));
+        }
     }
 
     /**

@@ -69,4 +69,12 @@ $capabilities = [
             'editingteacher' => CAP_ALLOW,
         ],
     ],
+    'block/bloquecero:manageguides' => [
+        'captype' => 'write',
+        'contextlevel' => CONTEXT_COURSE,
+        'archetypes' => [
+            'manager' => CAP_ALLOW,
+            'editingteacher' => CAP_ALLOW,
+        ],
+    ],
 ];
