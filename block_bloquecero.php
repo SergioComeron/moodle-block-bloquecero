@@ -542,7 +542,7 @@ class block_bloquecero extends block_base {
             }
         }
 
-        $guideurl = !empty($this->config->guide_url) ? $this->config->guide_url : '#';
+        // (guide URLs se construyen desde BD más abajo, antes de la barra de menú)
         // $bibliography_url = !empty($this->config->bibliography_url) ? $this->config->bibliography_url : '#';
 
         $zoomurl = new moodle_url('/path/to/zoom');
@@ -1660,6 +1660,26 @@ class block_bloquecero extends block_base {
             ';
 
         $metahide = $ismetacourse ? ' style="display:none"' : '';
+
+        // Construir enlaces de guías docentes desde BD.
+        $guidelinkshtml    = '';
+        $defaultguidelabel = get_string('teacherguide', 'block_bloquecero');
+        $dbguides = $DB->get_records(
+            'block_bloquecero_guides',
+            ['blockinstanceid' => $this->instance->id, 'courseid' => $COURSE->id],
+            'sortorder ASC'
+        );
+        foreach ($dbguides as $guide) {
+            $label = !empty(trim($guide->name))
+                ? htmlspecialchars(trim($guide->name), ENT_QUOTES)
+                : $defaultguidelabel;
+            $guidelinkshtml .= '
+            <a href="' . htmlspecialchars($guide->url, ENT_QUOTES) . '" class="udima-menu-link" target="_blank"
+               title="' . $label . '" data-bs-toggle="tooltip" data-bs-placement="bottom">
+                ' . $OUTPUT->pix_icon('i/info', '', 'moodle', ['class' => 'menu-icon']) . '
+                <span>' . $label . '</span>
+            </a>';
+        }
         $this->content->text .= '
             <nav class="udima-menu-bar" aria-label="' . get_string('coursemenu', 'block_bloquecero') . '"' . $metahide . '>
             <a href="' . new moodle_url('/grade/report/grader/index.php', ['id' => $COURSE->id]) . '" class="udima-menu-link" title="' . get_string('grades', 'block_bloquecero') . '" data-bs-toggle="tooltip" data-bs-placement="bottom">
@@ -1678,10 +1698,8 @@ class block_bloquecero extends block_base {
                 <i class="fa fa-bar-chart fa-fw menu-icon" aria-hidden="true"></i>
                 <span>' . get_string('gantt', 'block_bloquecero') . '</span>
             </a>' : '') . '
-            <a href="' . $guideurl . '" class="udima-menu-link" target="_blank" title="' . get_string('teacherguide', 'block_bloquecero') . '" data-bs-toggle="tooltip" data-bs-placement="bottom">
-                ' . $OUTPUT->pix_icon('i/info', '', 'moodle', ['class' => 'menu-icon']) . '
-                <span>' . get_string('teacherguide', 'block_bloquecero') . '</span>
-            </a>' . ((has_capability('moodle/course:update', $coursecontext)) ? '
+            ' . $guidelinkshtml . '
+            ' . ((has_capability('moodle/course:update', $coursecontext)) ? '
             <a href="' . (new moodle_url('/course/edit.php', ['id' => $COURSE->id])) . '" class="udima-menu-link" title="' . get_string('settings', 'block_bloquecero') . '" data-bs-toggle="tooltip" data-bs-placement="bottom">
                 ' . $OUTPUT->pix_icon('i/settings', '', 'moodle', ['class' => 'menu-icon']) . '
                 <span>' . get_string('settings', 'block_bloquecero') . '</span>
