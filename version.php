@@ -25,7 +25,7 @@
 defined('MOODLE_INTERNAL') || die();
 
 $plugin->component = 'block_bloquecero';
-$plugin->version = 2026050401;
+$plugin->version = 2026052501;
 $plugin->requires = 2021051700; // Moodle 3.11 o superior.
 $plugin->maturity = MATURITY_STABLE;
-$plugin->release = '0.10.4';
+$plugin->release = '0.11';
