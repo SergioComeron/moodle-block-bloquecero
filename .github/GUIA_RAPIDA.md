@@ -1,8 +1,8 @@
-# 🚀 Guía Rápida - GitHub CLI
+# Guía Rápida - GitHub CLI
 
 ## Comandos más usados
 
-### 📋 Issues
+### Issues
 
 ```bash
 # Listar todos los issues
@@ -27,7 +27,7 @@ gh issue edit 1 --add-assignee @me
 gh issue comment 1 --body "Mensaje"
 ```
 
-### 📊 Proyecto
+### Proyecto
 
 ```bash
 # Ver proyectos
@@ -37,7 +37,7 @@ gh project list --owner SergioComeron
 gh project item-add 1 --owner SergioComeron --url https://github.com/SergioComeron/moodle-block-bloquecero/issues/4
 ```
 
-### 🔖 Labels
+### Labels
 
 ```bash
 # Ver labels
@@ -50,7 +50,7 @@ gh label create "nombre" --color "HEXCOLOR" --description "Descripción"
 gh issue edit 1 --add-label bug
 ```
 
-### 🌿 Pull Requests
+### Pull Requests
 
 ```bash
 # Crear PR desde branch actual
@@ -66,7 +66,7 @@ gh pr view 1
 gh pr merge 1 --squash
 ```
 
-## 💡 Flujo de trabajo típico
+## Flujo de trabajo típico
 
 ### 1. Empezar nueva tarea
 ```bash
@@ -102,7 +102,7 @@ git pull
 git branch -d feature/nueva-funcionalidad
 ```
 
-## 🏷️ Convenciones
+## Convenciones
 
 ### Prefijos de commits
 - `[FEAT]` - Nueva funcionalidad
@@ -118,13 +118,13 @@ En el commit o PR body, usa:
 - `Fixes #123`
 - `Resolves #123`
 
-## 🔗 Enlaces rápidos
+## Enlaces rápidos
 
 - Issues: https://github.com/SergioComeron/moodle-block-bloquecero/issues
 - Proyecto: https://github.com/users/SergioComeron/projects/1
 - Repo: https://github.com/SergioComeron/moodle-block-bloquecero
 
-## 📱 Accesos desde web
+## Accesos desde web
 
 También puedes gestionar todo desde:
 - GitHub.com (interfaz web completa)
