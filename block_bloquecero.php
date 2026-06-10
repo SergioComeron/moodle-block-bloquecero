@@ -1669,20 +1669,44 @@ class block_bloquecero extends block_base {
             ['blockinstanceid' => $this->instance->id, 'courseid' => $COURSE->id],
             'sortorder ASC'
         );
-        foreach ($dbguides as $guide) {
+        $guidecount = count($dbguides);
+        if ($guidecount === 1) {
+            $guide = reset($dbguides);
             $label = !empty(trim($guide->name))
                 ? htmlspecialchars(trim($guide->name), ENT_QUOTES)
                 : $defaultguidelabel;
-            $guidelinkshtml .= '
+            $guidelinkshtml = '
             <a href="' . htmlspecialchars($guide->url, ENT_QUOTES) . '" class="udima-menu-link" target="_blank"
                title="' . $label . '" data-bs-toggle="tooltip" data-bs-placement="bottom">
                 ' . $OUTPUT->pix_icon('i/info', '', 'moodle', ['class' => 'menu-icon']) . '
                 <span>' . $label . '</span>
             </a>';
+        } else if ($guidecount > 1) {
+            $dropdownlabel = get_string('guides_header', 'block_bloquecero');
+            $items = '';
+            foreach ($dbguides as $guide) {
+                $label = !empty(trim($guide->name))
+                    ? htmlspecialchars(trim($guide->name), ENT_QUOTES)
+                    : $defaultguidelabel;
+                $items .= '<li><a class="bloquecero-guide-item" href="'
+                    . htmlspecialchars($guide->url, ENT_QUOTES) . '" target="_blank">'
+                    . $label . '</a></li>';
+            }
+            $guidelinkshtml = '
+            <div class="bloquecero-guide-dropdown">
+                <button class="udima-menu-link bloquecero-guide-toggle" type="button" aria-expanded="false"
+                        title="' . $dropdownlabel . '">
+                    ' . $OUTPUT->pix_icon('i/info', '', 'moodle', ['class' => 'menu-icon']) . '
+                    <span>' . $dropdownlabel . '</span>
+                </button>
+                <ul class="bloquecero-guide-menu" role="menu">
+                    ' . $items . '
+                </ul>
+            </div>';
         }
         $this->content->text .= '
             <nav class="udima-menu-bar" aria-label="' . get_string('coursemenu', 'block_bloquecero') . '"' . $metahide . '>
-            <a href="' . new moodle_url('/grade/report/grader/index.php', ['id' => $COURSE->id]) . '" class="udima-menu-link" title="' . get_string('grades', 'block_bloquecero') . '" data-bs-toggle="tooltip" data-bs-placement="bottom">
+            <a href="' . (has_capability('gradereport/grader:view', $coursecontext) ? new moodle_url('/grade/report/grader/index.php', ['id' => $COURSE->id]) : new moodle_url('/grade/report/user/index.php', ['id' => $COURSE->id])) . '" class="udima-menu-link" title="' . get_string('grades', 'block_bloquecero') . '" data-bs-toggle="tooltip" data-bs-placement="bottom">
                 ' . $OUTPUT->pix_icon('t/grades', '', 'moodle', ['class' => 'menu-icon']) . '
                 <span>' . get_string('grades', 'block_bloquecero') . '</span>
             </a>
@@ -2408,6 +2432,50 @@ class block_bloquecero extends block_base {
                         height: 20px;
                         font-size: 1.15em;
                         margin-right: 0;
+                    }
+                }
+                .bloquecero-guide-dropdown {
+                    display: flex;
+                    align-items: center;
+                }
+                .bloquecero-guide-toggle::after {
+                    content: "▾";
+                    font-size: 0.75em;
+                    margin-left: 3px;
+                    line-height: 1;
+                }
+                .bloquecero-guide-menu {
+                    display: none;
+                    position: fixed;
+                    z-index: 9999;
+                    min-width: 200px;
+                    list-style: none;
+                    margin: 2px 0 0 0;
+                    padding: 4px 0;
+                    background: #fff;
+                    border: 1px solid #E2EDE4;
+                    border-radius: 6px;
+                    box-shadow: 0 4px 16px rgba(0,0,0,0.12);
+                }
+                .bloquecero-guide-menu.bloquecero-guide-open {
+                    display: block;
+                }
+                .bloquecero-guide-item {
+                    color: #0C3B2E !important;
+                    font-size: 0.97em;
+                    padding: 7px 16px;
+                    display: block;
+                    text-decoration: none !important;
+                    white-space: nowrap;
+                }
+                .bloquecero-guide-item:hover,
+                .bloquecero-guide-item:focus {
+                    background: #f0f5f1;
+                    color: #3D7A1C !important;
+                }
+                @media (max-width: 800px) {
+                    .bloquecero-guide-toggle::after {
+                        display: none;
                     }
                 }
 
@@ -3990,14 +4058,44 @@ class block_bloquecero extends block_base {
             ");
         }
 
-        // Inicializa tooltips de Bootstrap 5 para los iconos del menú.
+        // Inicializa tooltips (Bootstrap AMD) y dropdown custom de guías.
         $this->page->requires->js_init_code("
-            document.addEventListener('DOMContentLoaded', function() {
+            require(['theme_boost/index'], function(Bootstrap) {
                 var tooltipEls = document.querySelectorAll('.udima-menu-link[data-bs-toggle=\"tooltip\"]');
                 tooltipEls.forEach(function(el) {
-                    new bootstrap.Tooltip(el, { trigger: 'hover focus' });
+                    new Bootstrap.Tooltip(el, { trigger: 'hover focus' });
                 });
             });
+            // Dropdown custom con position:fixed para escapar del overflow del nav.
+            (function() {
+                var toggle = document.querySelector('.bloquecero-guide-toggle');
+                var menu   = document.querySelector('.bloquecero-guide-menu');
+                if (!toggle || !menu) return;
+                toggle.addEventListener('click', function(e) {
+                    e.stopPropagation();
+                    var open = menu.classList.contains('bloquecero-guide-open');
+                    if (open) {
+                        menu.classList.remove('bloquecero-guide-open');
+                        toggle.setAttribute('aria-expanded', 'false');
+                    } else {
+                        var rect = toggle.getBoundingClientRect();
+                        menu.style.top  = rect.bottom + 'px';
+                        menu.style.left = rect.left + 'px';
+                        menu.classList.add('bloquecero-guide-open');
+                        toggle.setAttribute('aria-expanded', 'true');
+                    }
+                });
+                document.addEventListener('click', function() {
+                    menu.classList.remove('bloquecero-guide-open');
+                    toggle.setAttribute('aria-expanded', 'false');
+                });
+                document.addEventListener('keydown', function(e) {
+                    if (e.key === 'Escape') {
+                        menu.classList.remove('bloquecero-guide-open');
+                        toggle.setAttribute('aria-expanded', 'false');
+                    }
+                });
+            })();
         ");
 
         if (!$isediting) {
