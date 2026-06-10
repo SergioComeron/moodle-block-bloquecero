@@ -2,7 +2,7 @@
 
 Gracias por tu interés en contribuir a Bloquecero!
 
-## 🚀 Flujo de trabajo
+## Flujo de trabajo
 
 ### 1. Branches
 - `master` - rama principal estable
@@ -44,7 +44,7 @@ Antes de empezar a trabajar:
 4. Crea el PR apuntando a `dev`
 5. Incluye: `Co-Authored-By: Warp <agent@warp.dev>` si usaste IA
 
-## 🧪 Testing
+## Testing
 
 Antes de crear un PR:
 1. Instala el plugin en Moodle local
@@ -52,7 +52,7 @@ Antes de crear un PR:
 3. Verifica en diferentes navegadores si cambias UI
 4. Revisa la consola del navegador para errores JS
 
-## 📋 Checklist de PR
+## Checklist de PR
 
 - [ ] El código sigue los estándares de Moodle
 - [ ] Se han probado los cambios localmente
@@ -61,7 +61,7 @@ Antes de crear un PR:
 - [ ] Los strings están en archivos de idioma
 - [ ] El PR apunta a `dev`
 
-## 🎨 Estilo de código
+## Estilo de código
 
 Sigue las [Moodle Coding Guidelines](https://moodledev.io/general/development/policies/codingstyle):
 - Indentación: 4 espacios
@@ -69,6 +69,6 @@ Sigue las [Moodle Coding Guidelines](https://moodledev.io/general/development/po
 - JavaScript: camelCase
 - CSS: kebab-case
 
-## 💬 ¿Preguntas?
+## ¿Preguntas?
 
 Abre un issue con la etiqueta `question` o contacta al mantenedor.
