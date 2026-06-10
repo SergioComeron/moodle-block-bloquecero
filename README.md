@@ -46,6 +46,50 @@ Haz clic en el icono de configuración del bloque para:
 2. Añade, edita o elimina sesiones
 3. Opcionalmente sincroniza con el calendario del curso
 
+### Despliegue masivo por categoría (CLI)
+
+Para añadir el bloque a todos los cursos de una categoría (y sus subcategorías) de
+una sola vez, usa el script CLI `cli/add_block_to_category.php`. Debe ejecutarse
+desde el servidor con un usuario con permisos sobre los archivos de Moodle.
+
+```bash
+# Simular (no escribe nada) sobre la categoría con id 12:
+php blocks/bloquecero/cli/add_block_to_category.php --category=12 --dry-run
+
+# Aplicar, colocando el bloque en la zona content-upper:
+php blocks/bloquecero/cli/add_block_to_category.php --category=12 --region=content-upper
+
+# Usar el idnumber de la categoría en lugar del id:
+php blocks/bloquecero/cli/add_block_to_category.php --idnumber=GRADO_INF --dry-run
+
+# Forzar la zona también en cursos que ya tienen el bloque en otra región
+# (incluida una colocación manual de un profesor):
+php blocks/bloquecero/cli/add_block_to_category.php --category=12 --region=content-upper --move-existing
+```
+
+**Opciones:**
+
+| Opción | Descripción |
+|---|---|
+| `-c`, `--category=ID` | Id de la categoría a procesar (incluye todas sus descendientes). |
+| `-i`, `--idnumber=TEXT` | Idnumber de la categoría, como alternativa a `--category`. |
+| `-r`, `--region=NAME` | Zona (nombre interno) donde se coloca el bloque. Por defecto `side-pre`. |
+| `-w`, `--weight=N` | Peso/orden dentro de la zona. Por defecto `-10` (arriba). |
+| `-m`, `--move-existing` | Fuerza a la zona indicada los cursos que ya tienen el bloque en otra región (actualiza `block_instances.defaultregion` y los overrides de `block_positions`). Sin este flag, los existentes se respetan. |
+| `-d`, `--dry-run` | Muestra qué haría sin escribir en la base de datos. |
+| `-h`, `--help` | Muestra la ayuda. |
+
+**Notas:**
+
+- El bloque es de instancia única por curso: el script **no duplica** y es
+  **idempotente** (puedes relanzarlo sin riesgo).
+- Usa siempre el **nombre interno** de la zona, no la etiqueta visible. Con el tema
+  **Boost Union** las zonas disponibles incluyen `content-upper`, `content-lower`,
+  `outside-top`, `outside-bottom`, `outside-left`, `outside-right`, `header`,
+  `footer-left/center/right` y `offcanvas-left/center/right`. La zona elegida debe
+  estar **habilitada** en los ajustes del tema para el layout de curso; si no, el
+  bloque se inserta pero queda oculto. El script avisa cuando detecta este caso.
+
 ## 🔧 Requisitos
 
 - Moodle 3.11 o superior
