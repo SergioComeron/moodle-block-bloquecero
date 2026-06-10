@@ -90,6 +90,20 @@ php blocks/bloquecero/cli/add_block_to_category.php --category=12 --region=conte
   estar **habilitada** en los ajustes del tema para el layout de curso; si no, el
   bloque se inserta pero queda oculto. El script avisa cuando detecta este caso.
 
+## Enfoque: bloque vs theme
+
+Esta funcionalidad está implementada como **bloque** y no como theme de forma
+deliberada. El motivo principal es el **despliegue selectivo**: el bloque se aplica
+solo a los cursos elegidos (por ejemplo, los de una categoría mediante el script
+CLI), mientras que un theme se aplica de forma global al sitio, categoría o usuario.
+Además, el bloque mantiene configuración y datos propios por curso (profesores,
+foros, guías, sesiones, bibliografía) y es independiente del theme del sitio.
+
+A futuro se valora convertir el bloque en un theme cuando el objetivo sea un
+aspecto uniforme en todo el sitio. El punto a rediseñar en ese caso sería la
+manipulación del layout, que hoy se hace por JavaScript; la estética actual ya se
+apoya en la región `content-upper` de Boost Union.
+
 ## Requisitos
 
 - Moodle 3.11 o superior
