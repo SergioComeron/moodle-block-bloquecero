@@ -5,7 +5,7 @@
 
 Bloque personalizado para Moodle que proporciona una interfaz mejorada de cabecera de curso con información de profesores, navegación por secciones, integración de foros, bibliografía y sesiones en vivo.
 
-## 🌟 Características
+## Características
 
 - **Información de profesores**: Muestra fotos, datos de contacto y horarios de tutorías
 - **Navegación por secciones**: Carrusel interactivo para explorar semanas/temas del curso
@@ -15,7 +15,7 @@ Bloque personalizado para Moodle que proporciona una interfaz mejorada de cabece
 - **Integración Zoom**: Muestra sesiones programadas vía API
 - **Personalización visual**: Imagen de fondo configurable para el header
 
-## 📦 Instalación
+## Instalación
 
 1. Descarga o clona este repositorio
 2. Copia la carpeta a `{tu-moodle}/blocks/bloquecero`
@@ -23,7 +23,7 @@ Bloque personalizado para Moodle que proporciona una interfaz mejorada de cabece
 4. Ve a "Administración del sitio" → "Notificaciones"
 5. Sigue las instrucciones de instalación
 
-## 🚀 Uso
+## Uso
 
 ### Añadir el bloque a un curso
 
@@ -90,37 +90,36 @@ php blocks/bloquecero/cli/add_block_to_category.php --category=12 --region=conte
   estar **habilitada** en los ajustes del tema para el layout de curso; si no, el
   bloque se inserta pero queda oculto. El script avisa cuando detecta este caso.
 
-## 🔧 Requisitos
+## Requisitos
 
 - Moodle 3.11 o superior
 - PHP 7.4+
 - (Opcional) Plugin `block_zoom_udima` para integración con Zoom
 
-## 📖 Documentación
+## Documentación
 
-- [CLAUDE.md](CLAUDE.md) - Documentación técnica completa para desarrollo
 - [CONTRIBUTING.md](CONTRIBUTING.md) - Guía de contribución
 - [CHANGELOG.md](CHANGELOG.md) - Historial de cambios
 
-## 🐛 Issues y sugerencias
+## Issues y sugerencias
 
 Usa el [sistema de issues de GitHub](https://github.com/SergioComeron/moodle-block-bloquecero/issues) para:
 - Reportar bugs
 - Solicitar nuevas funcionalidades
 - Proponer mejoras
 
-## 🤝 Contribuir
+## Contribuir
 
 Las contribuciones son bienvenidas! Lee [CONTRIBUTING.md](CONTRIBUTING.md) para conocer el proceso.
 
-## 📊 Proyecto
+## Proyecto
 
 Sigue el progreso del desarrollo en el [tablero del proyecto](https://github.com/users/SergioComeron/projects/1).
 
-## 📄 Licencia
+## Licencia
 
 GPL v3 - Ver [LICENSE](LICENSE) para más detalles.
 
-## ✨ Autor
+## Autor
 
-Desarrollado con ❤️ para mejorar la experiencia en cursos Moodle.
+Desarrollado para mejorar la experiencia en cursos Moodle.
