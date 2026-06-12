@@ -842,10 +842,9 @@ class block_bloquecero extends block_base {
 
         $sectioncards = [];
         $sectioncount = 0;
+        $sec0label = '';
         foreach ($modinfo->get_section_info_all() as $section) {
-            if ($section->section == 0) {
-                continue;
-            }
+            $issection0 = ($section->section == 0);
             if (!$section->uservisible) {
                 continue;
             }
@@ -854,7 +853,9 @@ class block_bloquecero extends block_base {
             }
             $sectionurl = new moodle_url('/course/section.php', ['id' => $section->id]);
             $course = $modinfo->get_course();
-            if ($course->format == 'weeks' && empty($section->name)) {
+            if ($issection0) {
+                $sectiontitle = format_string($section->name ?: get_string('general', 'moodle'));
+            } else if ($course->format == 'weeks' && empty($section->name)) {
                 $startdate = $course->startdate;
                 $weekduration = 7 * 24 * 60 * 60;
                 $sectionstart = $startdate + (($section->section - 1) * $weekduration);
@@ -1000,30 +1001,49 @@ class block_bloquecero extends block_base {
             }
             // print_r($allactivitiesarray);
             // Guardar el contenido HTML de las actividades para esta sección con un id único
-            $sectionid = 'section-activities-' . $sectioncount;
+            $sectionid = $issection0 ? 'section-activities-sec0' : 'section-activities-' . $sectioncount;
             $sectionsactivitiesdata[$sectionid] = $activitieslistfull;
             // print_r($sectionsactivitiesdata);
-            // Colores alternos por índice de tarjeta
-            $tarjetacolores = [
-                ['bg' => '#F2F5F3', 'linea' => '#B7C65C'], // gris verdoso claro
-                ['bg' => '#F8FBED', 'linea' => '#B7C65C'], // verde clarito
-                ['bg' => '#FAFAFA', 'linea' => '#B7C65C'], // blanco-gris
-            ];
-            $tarjetaidx = $sectioncount % count($tarjetacolores);
-            $bgcolor = $tarjetacolores[$tarjetaidx]['bg'];
-            $linecolor = $tarjetacolores[$tarjetaidx]['linea'];
+            // Colores alternos por índice de tarjeta (sección 0 usa color especial)
+            if ($issection0) {
+                $bgcolor = '#EEF6F1';
+                $linecolor = '#004D35';
+            } else {
+                $tarjetacolores = [
+                    ['bg' => '#F2F5F3', 'linea' => '#B7C65C'], // gris verdoso claro
+                    ['bg' => '#F8FBED', 'linea' => '#B7C65C'], // verde clarito
+                    ['bg' => '#FAFAFA', 'linea' => '#B7C65C'], // blanco-gris
+                ];
+                $tarjetaidx = $sectioncount % count($tarjetacolores);
+                $bgcolor = $tarjetacolores[$tarjetaidx]['bg'];
+                $linecolor = $tarjetacolores[$tarjetaidx]['linea'];
+            }
 
-            // Badge destacado si corresponde
+            // Badge destacado si corresponde (sección 0 nunca tiene badge)
             $badge = null;
-            if ($format === 'weeks' && $section->section == $todaysection) {
-                $badge = get_string('current', 'block_bloquecero');
-            } else if ($format === 'topics' && $section->section == $highlightedsection) {
-                $badge = get_string('highlighted', 'block_bloquecero');
+            if (!$issection0) {
+                if ($format === 'weeks' && $section->section == $todaysection) {
+                    $badge = get_string('current', 'block_bloquecero');
+                } else if ($format === 'topics' && $section->section == $highlightedsection) {
+                    $badge = get_string('highlighted', 'block_bloquecero');
+                }
             }
 
             // Construir la tarjeta como string (con badge si corresponde)
             $hiddenclass = (!$section->visible && $canviewhidden) ? ' bloquecero-item-hidden' : '';
-            $cardhtml = '<div class="bloquecero-section-card' . $hiddenclass . '" style="background: ' . $bgcolor . '">';
+            $cardhtml = '<div class="bloquecero-section-card' . ($issection0 ? ' bloquecero-section0-card' : '') . $hiddenclass . '" style="background: ' . $bgcolor . '">';
+            if ($issection0) {
+                // El rotulo vertical va fuera de la tarjeta: es un overlay fijo en el borde
+                // izquierdo del carrusel donde "aterrizan" las letras del titulo al caer.
+                $plaintitle0 = strip_tags($sectiontitle);
+                $chars0 = preg_split('//u', $plaintitle0, -1, PREG_SPLIT_NO_EMPTY);
+                $labelspans = '';
+                foreach ($chars0 as $ci => $char0) {
+                    $escaped0 = $char0 === ' ' ? '&nbsp;' : htmlspecialchars($char0);
+                    $labelspans .= '<span class="sec0-vlabel-letter" data-li="' . $ci . '">' . $escaped0 . '</span>';
+                }
+                $sec0label = '<span class="sec0-vertical-label" aria-hidden="true" title="' . htmlspecialchars($plaintitle0) . '">' . $labelspans . '</span>';
+            }
             if ($hiddenclass) {
                 $cardhtml .= '<span class="bloquecero-hidden-badge">' . get_string('hiddenfromstudents', 'moodle') . '</span>';
             }
@@ -1032,7 +1052,7 @@ class block_bloquecero extends block_base {
             }
             $cardhtml .= '
                 <div class="bloquecero-section-header-flex" style="display:flex;flex-direction:column;width:100%;gap:4px;margin-bottom:8px;">
-                    <div style="min-width:0;overflow:hidden;">' . (function () use ($sectionurl, $sectiontitle, $section, $sectionschedulemap) {
+                    <div style="min-width:0;overflow:' . ($issection0 ? 'visible' : 'hidden') . ';">' . (function () use ($sectionurl, $sectiontitle, $section, $sectionschedulemap, $issection0) {
                         $titleattr = htmlspecialchars(strip_tags($sectiontitle));
                         $tooltipattrs = '';
                 if (isset($sectionschedulemap[$section->id])) {
@@ -1041,6 +1061,16 @@ class block_bloquecero extends block_base {
                     $tooltiptext = htmlspecialchars($datestart . ' – ' . $dateend);
                     $titleattr   = $tooltiptext;
                     $tooltipattrs = ' data-bs-toggle="tooltip" data-bs-placement="top"';
+                }
+                if ($issection0) {
+                    $plaintitle = strip_tags($sectiontitle);
+                    $chars = preg_split('//u', $plaintitle, -1, PREG_SPLIT_NO_EMPTY);
+                    $spans = '';
+                    foreach ($chars as $ci => $char) {
+                        $escaped = $char === ' ' ? '&nbsp;' : htmlspecialchars($char);
+                        $spans .= '<span class="sec0-letter" data-li="' . $ci . '" aria-hidden="true">' . $escaped . '</span>';
+                    }
+                    return '<a href="' . $sectionurl . '" class="bloquecero-section-number sec0-title-link" title="' . $titleattr . '"' . $tooltipattrs . '><span class="sr-only">' . htmlspecialchars($plaintitle) . '</span>' . $spans . '</a>';
                 }
                         return '<a href="' . $sectionurl . '" class="bloquecero-section-number" title="' . $titleattr . '"' . $tooltipattrs . '>' . $sectiontitle . '</a>';
             })() . '</div>
@@ -1064,19 +1094,24 @@ class block_bloquecero extends block_base {
             $cardhtml .= '
             </div>';
 
-            // Añadir todas las tarjetas al mismo array, sin separar.
+            // Todas las tarjetas van al carrusel; la seccion 0 es la primera y viaja
+            // con el scroll (la empuja la siguiente tarjeta hacia el muro izquierdo).
             $sectioncards[] = $cardhtml;
-            $sectioncount++;
+            if (!$issection0) {
+                $sectioncount++;
+            }
         }
         $sectionscarousel .= implode('', $sectioncards);
         $sectionscarousel .= '</div>';
 
         // Envolver el carrusel en un contenedor con botones laterales
         $carouselcontainer = '
-            <div class="carousel-container" role="region" aria-label="' . get_string('coursesections', 'block_bloquecero') . '" aria-roledescription="carousel" style="position: relative; display: flex; align-items: center; margin-bottom: 20px; padding: 0 40px;">
-                 <button class="carousel-btn carousel-btn-left" onclick="scrollCarousel(-1)" aria-label="' . get_string('previoussection', 'block_bloquecero') . '">&#10094;</button>
-                 ' . $sectionscarousel . '
-                 <button class="carousel-btn carousel-btn-right" onclick="scrollCarousel(1)" aria-label="' . get_string('nextsection', 'block_bloquecero') . '">&#10095;</button>
+            <div class="carousel-container" role="region" aria-label="' . get_string('coursesections', 'block_bloquecero') . '" aria-roledescription="carousel" style="position: relative; display: flex; align-items: stretch; margin-bottom: 20px;">
+                 <div class="carousel-scrollable-wrapper" style="position: relative; flex: 1 1 0; min-width: 0; padding: 0 40px; box-sizing: border-box;">
+                     ' . $sec0label . '
+                     ' . $sectionscarousel . '
+                     <button class="carousel-btn carousel-btn-right" onclick="scrollCarousel(1)" aria-label="' . get_string('nextsection', 'block_bloquecero') . '">&#10095;</button>
+                 </div>
             </div>
         ';
 
@@ -1901,6 +1936,11 @@ class block_bloquecero extends block_base {
             </style>
             ' . ((has_capability('block/bloquecero:viewcourse', $coursecontext)) ? $togglebuttonhtml : '') . '
             <script>
+            // Clave de sesion por curso para recordar si el curso esta mostrado u oculto.
+            var bloquecero_storekey = \'bloquecero_showcourse_' . $COURSE->id . '\';
+            function bloquecero_savestate(shown) {
+                try { sessionStorage.setItem(bloquecero_storekey, shown ? \'1\' : \'0\'); } catch (e) {}
+            }
             window.bloquecero_toggle = function() {
                 var btn = document.getElementById(\'bloquecero-mostrarcurso-btn\');
                 var region = document.getElementById(\'region-main\');
@@ -1934,6 +1974,7 @@ class block_bloquecero extends block_base {
                         btn.classList.toggle(\'cerrado\', !isHidden);
                     }
                     if(btntext) btntext.innerHTML = \'' . $strhidecourse . '\';
+                    bloquecero_savestate(true);
                 } else {
                     if(btn) { btn.classList.remove(\'open\'); btn.setAttribute(\'aria-expanded\', \'false\'); }
                     if(btntext) btntext.innerHTML = \'' . $strshowcourse . '\';
@@ -1954,13 +1995,23 @@ class block_bloquecero extends block_base {
                     });
                     // Cambia texto a "mostrar curso"
                     if(btntext) btntext.innerHTML = \'' . $strshowcourse . '\';
+                    bloquecero_savestate(false);
                 }
             };
-            // Al cargar, oculta el curso y ajusta el botón
+            // Al cargar, aplica la preferencia guardada en la sesion (oculto por defecto).
             document.addEventListener(\'DOMContentLoaded\', function() {
                 var region = document.getElementById(\'region-main\');
-                var btnicon = document.getElementById(\'bloquecero-mostrarcurso-icon\');
+                var btn = document.getElementById(\'bloquecero-mostrarcurso-btn\');
                 var btntext = document.getElementById(\'bloquecero-mostrarcurso-text\');
+                var shown = false;
+                try { shown = sessionStorage.getItem(bloquecero_storekey) === \'1\'; } catch (e) {}
+                if (shown) {
+                    // El usuario habia mostrado el curso en esta sesion: mantenerlo visible.
+                    if (region) region.style.display = \'\';
+                    if (btn) { btn.classList.add(\'open\'); btn.setAttribute(\'aria-expanded\', \'true\'); }
+                    if(btntext) btntext.innerHTML = \'' . $strhidecourse . '\';
+                    return;
+                }
                 if (region) region.style.display = \'none\';
                 // Los bloques laterales siempre visibles
                 [
@@ -2011,6 +2062,57 @@ class block_bloquecero extends block_base {
             .bloquecero-section-card {
                 position: relative;
             }
+            .bloquecero-section0-card {
+                border-left: 4px solid #004D35;
+            }
+            .sec0-vertical-label {
+                position: absolute;
+                left: 0;
+                top: 0;
+                bottom: 24px; /* alineado con la base de las tarjetas (margin-bottom 24px) */
+                width: 36px;
+                display: none;
+                z-index: 5;
+                background: #EEF6F1;
+                /* border-right porque rotate(180deg) lo muestra visualmente a la izquierda */
+                border-right: 4px solid #004D35;
+                border-radius: 3px;
+                box-shadow: 0 0 14px rgba(0,77,53,0.12);
+                writing-mode: vertical-rl;
+                transform: rotate(180deg);
+                white-space: nowrap;
+                overflow: hidden;
+                font-size: 0.9em;
+                font-weight: 400;
+                color: #6B7D2E;
+                letter-spacing: 0.05em;
+                align-items: center;
+                justify-content: center;
+                cursor: pointer;
+            }
+            .sec0-vlabel-letter {
+                opacity: 0;
+                transition: opacity 0.15s linear;
+            }
+            .sec0-title-link {
+                white-space: nowrap;
+                display: inline-block;
+            }
+            .sec0-letter {
+                display: inline-block;
+            }
+            /* Clon que vuela desde el titulo hasta su hueco del rotulo vertical */
+            .sec0-flying-letter {
+                position: absolute;
+                z-index: 7;
+                pointer-events: none;
+                color: #6B7D2E;
+                font-weight: 400;
+                letter-spacing: 0.05em;
+                transition: transform 0.55s cubic-bezier(0.55, 0, 0.75, 0.4);
+                will-change: transform;
+            }
+
             .forum-card:hover {
                 transform: scale(1.05);
                 box-shadow: 0 6px 10px rgba(0, 0, 0, 0.15);
@@ -2051,7 +2153,7 @@ class block_bloquecero extends block_base {
                     transition: background 0.2s, color 0.2s, border-color 0.2s;
                 }
                 .carousel-container {
-                    padding: 0 40px;
+                    padding: 0;
                     box-sizing: border-box;
                 }
                 .carousel-btn {
@@ -2931,7 +3033,7 @@ class block_bloquecero extends block_base {
                     font-size: 0.92em;
                     text-align: right;
                 }
-                .carousel-container {
+                .carousel-scrollable-wrapper {
                     padding: 0 22px !important;
                 }
                 .carousel-btn {
@@ -3078,7 +3180,7 @@ class block_bloquecero extends block_base {
 
                 function scrollCarousel(direction) {
                     var carousel = document.querySelector(".sections-carousel");
-                    var card = carousel.querySelector(".section-card");
+                    var card = carousel.querySelector(".bloquecero-section-card");
                     var scrollAmount = card ? card.offsetWidth + 18 : 240;
                     carousel.scrollBy({ left: direction * scrollAmount, behavior: "smooth" });
                     setTimeout(updateCarouselArrows, 500);
@@ -3115,15 +3217,11 @@ class block_bloquecero extends block_base {
                     var carousel = document.querySelector(".sections-carousel");
                     var leftArrow = document.querySelector(".carousel-btn-left");
                     var rightArrow = document.querySelector(".carousel-btn-right");
-                    if (carousel.scrollLeft <= 0) {
-                        leftArrow.style.display = "none";
-                    } else {
-                        leftArrow.style.display = "block";
+                    if (leftArrow) {
+                        leftArrow.style.display = (carousel.scrollLeft <= 0) ? "none" : "block";
                     }
-                    if (carousel.scrollWidth <= carousel.clientWidth + carousel.scrollLeft) {
-                        rightArrow.style.display = "none";
-                    } else {
-                        rightArrow.style.display = "block";
+                    if (rightArrow) {
+                        rightArrow.style.display = (carousel.scrollWidth <= carousel.clientWidth + carousel.scrollLeft) ? "none" : "block";
                     }
                 }
                 window.addEventListener("load", updateCarouselArrows);
@@ -3150,7 +3248,7 @@ class block_bloquecero extends block_base {
             <script>
                 function scrollCarousel(direction) {
                     var carousel = document.querySelector(".sections-carousel");
-                    var card = carousel.querySelector(".section-card");
+                    var card = carousel.querySelector(".bloquecero-section-card");
                     var scrollAmount = card ? card.offsetWidth + 18 : 240;
                     carousel.scrollBy({ left: direction * scrollAmount, behavior: "smooth" });
                     setTimeout(updateCarouselArrows, 500);
@@ -3216,20 +3314,148 @@ class block_bloquecero extends block_base {
                     var carousel = document.querySelector(".sections-carousel");
                     var leftArrow = document.querySelector(".carousel-btn-left");
                     var rightArrow = document.querySelector(".carousel-btn-right");
-                    if (carousel.scrollLeft <= 0) {
-                        leftArrow.style.display = "none";
-                    } else {
-                        leftArrow.style.display = "block";
+                    if (leftArrow) {
+                        leftArrow.style.display = (carousel.scrollLeft <= 0) ? "none" : "block";
                     }
-                    if (carousel.scrollWidth <= carousel.clientWidth + carousel.scrollLeft) {
-                        rightArrow.style.display = "none";
-                    } else {
-                        rightArrow.style.display = "block";
+                    if (rightArrow) {
+                        rightArrow.style.display = (carousel.scrollWidth <= carousel.clientWidth + carousel.scrollLeft) ? "none" : "block";
                     }
                 }
                 window.addEventListener(\'load\', updateCarouselArrows);
                 window.addEventListener(\'resize\', updateCarouselArrows);
                 document.querySelector(".sections-carousel").addEventListener(\'scroll\', updateCarouselArrows);
+                (function() {
+                    var carousel   = document.querySelector(".sections-carousel");
+                    var sec0       = document.querySelector(".bloquecero-section0-card");
+                    var wrapper    = document.querySelector(".carousel-scrollable-wrapper");
+                    if (!carousel || !sec0 || !wrapper) return;
+                    var stripW     = 36;
+                    var letters    = Array.from(sec0.querySelectorAll(".sec0-letter"));
+                    var lbl        = wrapper.querySelector(".sec0-vertical-label");
+                    var lblLetters = lbl ? Array.from(lbl.querySelectorAll(".sec0-vlabel-letter")) : [];
+                    var measured   = false;
+                    var letterGeo  = [];
+                    var fallen     = letters.map(function() { return false; });
+                    var flights    = {};
+
+                    // Posicion de cada letra dentro del contenido del carrusel: la tarjeta General
+                    // viaja con el scroll, asi que la letra i choca con el muro izquierdo (el strip
+                    // de 36px) cuando scrollLeft alcanza geo.start.
+                    function measure() {
+                        var carouselRect = carousel.getBoundingClientRect();
+                        var sl0 = carousel.scrollLeft;
+                        // Alinear el strip con el borde izquierdo del carrusel (respeta el
+                        // padding del wrapper en cualquier breakpoint)
+                        if (lbl) {
+                            lbl.style.left = (carouselRect.left - wrapper.getBoundingClientRect().left).toFixed(1) + "px";
+                        }
+                        letterGeo = letters.map(function(letter) {
+                            var r  = letter.getBoundingClientRect();
+                            var x0 = r.left - carouselRect.left + sl0; // coord. fija en el contenido
+                            return { start: Math.max(1, x0 - stripW) };
+                        });
+                        measured = true;
+                    }
+
+                    function cancelFlight(i) {
+                        if (flights[i]) {
+                            clearTimeout(flights[i].timer);
+                            if (flights[i].clone) flights[i].clone.remove();
+                            delete flights[i];
+                        }
+                    }
+
+                    // La letra se despega del titulo y cae con aceleracion (gravedad) hasta su
+                    // hueco exacto en el rotulo vertical, girando -90 grados por el camino.
+                    function fall(i) {
+                        var letter = letters[i];
+                        var target = lblLetters[i];
+                        if (!letter || !target) return;
+                        cancelFlight(i);
+                        var wrapRect = wrapper.getBoundingClientRect();
+                        var sRect = letter.getBoundingClientRect();
+                        var tRect = target.getBoundingClientRect();
+                        letter.style.opacity = "0";
+                        if (sRect.width === 0 || tRect.width === 0) {
+                            target.style.opacity = "1";
+                            return;
+                        }
+                        // El despegue es siempre desde el muro: con scroll rapido la letra ya
+                        // ha pasado de largo y el clon apareceria fuera por la izquierda.
+                        var wallX = carousel.getBoundingClientRect().left + stripW;
+                        var startLeft = Math.max(sRect.left, wallX);
+                        var clone = document.createElement("span");
+                        clone.className = "sec0-flying-letter";
+                        clone.textContent = letter.textContent;
+                        clone.style.left = (startLeft - wrapRect.left).toFixed(1) + "px";
+                        clone.style.top  = (sRect.top - wrapRect.top).toFixed(1) + "px";
+                        wrapper.appendChild(clone);
+                        var dx = (tRect.left + tRect.width / 2) - (startLeft + sRect.width / 2);
+                        var dy = (tRect.top + tRect.height / 2) - (sRect.top + sRect.height / 2);
+                        // Doble rAF para que la transicion arranque desde la posicion inicial
+                        requestAnimationFrame(function() {
+                            requestAnimationFrame(function() {
+                                clone.style.transform = "translate(" + dx.toFixed(1) + "px," + dy.toFixed(1) + "px) rotate(-90deg)";
+                            });
+                        });
+                        flights[i] = { clone: clone, timer: setTimeout(function() {
+                            target.style.opacity = "1";
+                            clone.remove();
+                            delete flights[i];
+                        }, 580) };
+                    }
+
+                    // Vuelta atras: la letra reaparece en el titulo y se apaga en el rotulo
+                    function rise(i) {
+                        cancelFlight(i);
+                        if (lblLetters[i]) lblLetters[i].style.opacity = "0";
+                        if (letters[i]) letters[i].style.opacity = "";
+                    }
+
+                    function apply(sl) {
+                        if (!measured) return;
+                        if (lbl) lbl.style.display = sl > 0 ? "flex" : "none";
+                        var queue = [];
+                        letters.forEach(function(letter, i) {
+                            var nowFallen = sl >= letterGeo[i].start;
+                            if (nowFallen === fallen[i]) return;
+                            fallen[i] = nowFallen;
+                            if (nowFallen) {
+                                queue.push(i);
+                            } else {
+                                rise(i);
+                            }
+                        });
+                        // Si varias letras chocan a la vez, caen escalonadas en cascada
+                        queue.forEach(function(i, k) {
+                            if (k === 0) {
+                                fall(i);
+                            } else {
+                                setTimeout(function() { if (fallen[i]) fall(i); }, k * 90);
+                            }
+                        });
+                    }
+
+                    carousel.addEventListener("scroll", function() {
+                        apply(carousel.scrollLeft);
+                    });
+
+                    window.addEventListener("load", function() {
+                        measure();
+                        apply(carousel.scrollLeft);
+                    });
+
+                    window.addEventListener("resize", function() {
+                        measure();
+                        apply(carousel.scrollLeft);
+                    });
+
+                    if (lbl) {
+                        lbl.addEventListener("click", function() {
+                            carousel.scrollTo({ left: 0, behavior: "smooth" });
+                        });
+                    }
+                })();
                 // Navegación por teclado del carrusel
                 var carouselContainer = document.querySelector(\'.carousel-container\');
                 if (carouselContainer) {
@@ -3985,6 +4211,11 @@ class block_bloquecero extends block_base {
             // Inyecta JS para ocultar todo menos este bloque al cargar la página
             $this->page->requires->js_init_code("
                 document.addEventListener('DOMContentLoaded', function() {
+                    // Respetar la preferencia de sesion: si el usuario habia mostrado el
+                    // curso, no volver a ocultarlo al recargar.
+                    var bloqueceroShown = false;
+                    try { bloqueceroShown = sessionStorage.getItem('bloquecero_showcourse_" . $COURSE->id . "') === '1'; } catch (e) {}
+                    if (bloqueceroShown) { return; }
                     var region = document.getElementById('region-main');
                     if (region) region.style.display = 'none';
 
