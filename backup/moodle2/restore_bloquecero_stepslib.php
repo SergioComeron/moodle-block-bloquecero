@@ -43,6 +43,7 @@ class restore_bloquecero_block_structure_step extends restore_structure_step {
         return [
             new restore_path_element('bloquecero_session', '/block/bloquecero/sessions/session'),
             new restore_path_element('bloquecero_bibliography', '/block/bloquecero/bibliographies/bibliography'),
+            new restore_path_element('bloquecero_guide', '/block/bloquecero/guides/guide'),
             new restore_path_element('bloquecero_sectionentry', '/block/bloquecero/sectionmapping/sectionentry'),
             new restore_path_element('bloquecero_forumfield', '/block/bloquecero/forummapping/forumfield'),
         ];
@@ -125,6 +126,26 @@ class restore_bloquecero_block_structure_step extends restore_structure_step {
         unset($data->id);
 
         $DB->insert_record('block_bloquecero_bibliography', $data);
+    }
+
+    /**
+     * Restores a teaching guide entry.
+     */
+    public function process_bloquecero_guide($data) {
+        global $DB;
+
+        if (!$this->task->get_blockid()) {
+            return;
+        }
+
+        $data = (object)$data;
+        $data->blockinstanceid = $this->task->get_blockid();
+        $data->courseid        = $this->task->get_courseid();
+        $data->timecreated     = isset($data->timecreated) ? (int)$data->timecreated : time();
+        $data->timemodified    = time();
+        unset($data->id);
+
+        $DB->insert_record('block_bloquecero_guides', $data);
     }
 
     /**

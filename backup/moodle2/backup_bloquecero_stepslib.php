@@ -47,6 +47,11 @@ class backup_bloquecero_block_structure_step extends backup_block_structure_step
             'courseid', 'name', 'url', 'description', 'sortorder', 'timecreated', 'timemodified',
         ]);
 
+        $guides = new backup_nested_element('guides');
+        $guide = new backup_nested_element('guide', ['id'], [
+            'courseid', 'name', 'url', 'sortorder', 'timecreated', 'timemodified',
+        ]);
+
         // Section number map: lets the restore find destination section IDs by position number,
         // independent of any restore mapping tables.
         $sectionmapping = new backup_nested_element('sectionmapping');
@@ -61,6 +66,8 @@ class backup_bloquecero_block_structure_step extends backup_block_structure_step
         $sessions->add_child($session);
         $bloquecero->add_child($bibliographies);
         $bibliographies->add_child($bibliography);
+        $bloquecero->add_child($guides);
+        $guides->add_child($guide);
         $bloquecero->add_child($sectionmapping);
         $sectionmapping->add_child($sectionentry);
         $bloquecero->add_child($forummapping);
@@ -93,6 +100,13 @@ class backup_bloquecero_block_structure_step extends backup_block_structure_step
             [backup_helper::is_sqlparam($blockid)]
         );
 
+        $guide->set_source_sql(
+            'SELECT id, courseid, name, url, sortorder, timecreated, timemodified
+               FROM {block_bloquecero_guides}
+              WHERE blockinstanceid = ?',
+            [backup_helper::is_sqlparam($blockid)]
+        );
+
         // Build forum field → name map from configdata for lazy restore remap.
         $forumfielddata = [];
         $configdata = $DB->get_field('block_instances', 'configdata', ['id' => $blockid]);
@@ -113,6 +127,7 @@ class backup_bloquecero_block_structure_step extends backup_block_structure_step
 
         $session->annotate_ids('course', 'courseid');
         $bibliography->annotate_ids('course', 'courseid');
+        $guide->annotate_ids('course', 'courseid');
 
         return $this->prepare_block_structure($bloquecero);
     }
