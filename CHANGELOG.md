@@ -5,6 +5,26 @@ Todos los cambios notables en este proyecto serán documentados en este archivo.
 El formato está basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1.0.0/),
 y este proyecto adhiere a [Semantic Versioning](https://semver.org/lang/es/).
 
+## [v0.12] - 2026-06-15
+
+### Nuevas funcionalidades
+- respaldar y restaurar guías docentes en backup/restore
+- animar título de la sección general y recordar estado del curso
+- script CLI para añadir el bloque a cursos por categoría
+- dropdown para guías docentes múltiples y calificaciones según capacidad
+
+### Documentación
+- quitar emoticonos de GUIA_RAPIDA
+- quitar emoticonos del CONTRIBUTING
+- documentar enfoque bloque vs theme y despliegue selectivo
+- quitar emoticonos del README y el enlace roto a CLAUDE.md
+
+### Otros cambios
+- Release: bump version to 0.12
+- chore: ignorar ficheros de contexto de IA (CLAUDE.md, AGENTS.md)
+- chore: dejar de versionar CLAUDE.md y AGENTS.md (contexto IA solo local)
+
+
 ## [v0.11] - 2026-05-25
 
 ### Nuevas funcionalidades
