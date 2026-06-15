@@ -1,3 +1,7 @@
 # Claude Code local settings (permisos específicos de cada máquina)
 .claude/settings.local.json
 vendor/
+
+# Ficheros de contexto para herramientas de IA (solo uso local, no se publican)
+CLAUDE.md
+AGENTS.md
