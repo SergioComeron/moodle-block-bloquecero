@@ -5,6 +5,19 @@ Todos los cambios notables en este proyecto serán documentados en este archivo.
 El formato está basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1.0.0/),
 y este proyecto adhiere a [Semantic Versioning](https://semver.org/lang/es/).
 
+## [v0.11] - 2026-05-25
+
+### Nuevas funcionalidades
+- guías docentes múltiples gestionadas desde página dedicada
+- guías docentes múltiples gestionadas desde página dedicada
+
+### Correcciones
+- renombrar releases de GitHub eliminando prefijo bloquecero
+
+### Otros cambios
+- Release: bump version to 0.11
+
+
 ## [v0.10.4] - 2026-05-04
 
 ### Correcciones
