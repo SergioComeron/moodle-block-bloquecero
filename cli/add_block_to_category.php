@@ -40,6 +40,9 @@ require_once($CFG->libdir . '/clilib.php');
         'help'     => false,
         'category' => null,
         'idnumber' => null,
+        'shortname' => null,
+        'shortnames' => null,
+        'search' => null,
         'region'        => 'side-pre',
         'weight'        => -10,
         'dry-run'       => false,
@@ -49,6 +52,9 @@ require_once($CFG->libdir . '/clilib.php');
         'h' => 'help',
         'c' => 'category',
         'i' => 'idnumber',
+        's' => 'shortname',
+        'n' => 'shortnames',
+        'q' => 'search',
         'r' => 'region',
         'w' => 'weight',
         'd' => 'dry-run',
@@ -61,7 +67,14 @@ if ($unrecognised) {
     cli_error(get_string('cliunknowoption', 'admin', $unrecognised));
 }
 
-$help = "Add the bloquecero block to all courses in a category and its subcategories.
+$help = "Add the bloquecero block to courses selected by category and/or shortname.
+
+Courses are selected by the UNION of the given filters: a course matches if it
+belongs to the chosen category (or its subcategories), OR its shortname starts
+with the given --shortname prefix, OR its shortname is in the --shortnames list,
+OR it is returned by the --search term (the same search used by Moodle's course
+management page: shortname, fullname, idnumber and summary). At least one selector
+(--category, --idnumber, --shortname, --shortnames or --search) must be provided.
 
 The block is only added to courses that do not already have an instance of it
 (bloquecero allows a single instance per course).
@@ -69,6 +82,18 @@ The block is only added to courses that do not already have an instance of it
 Options:
   -c, --category=ID    Category id to process (the category and all its descendants).
   -i, --idnumber=TEXT  Category idnumber, as an alternative to --category.
+  -s, --shortname=TEXT Course shortname PREFIX (literal). Selects every course whose
+                       shortname starts with this text. The value is matched
+                       literally: '%' and '_' are NOT wildcards here. Can be used
+                       alone or combined with --category/--idnumber (union).
+  -n, --shortnames=LIST Comma-separated list of EXACT course shortnames (e.g.
+                       'MAT101,FIS202,QUI303'). Selects each course whose shortname
+                       matches exactly. Surrounding spaces are trimmed; empty items
+                       ignored. Combined with the other selectors (union).
+  -q, --search=TEXT    Free-text course search, identical to the search box in
+                       Moodle's course management page (matches shortname, fullname,
+                       idnumber and summary, across the whole site). Selects every
+                       matching course. Combined with the other selectors (union).
   -r, --region=NAME    Block region (internal name) where the block is placed.
                        Default: side-pre.
   -w, --weight=N       Block weight (ordering within the region). Default: -10 (top).
@@ -91,27 +116,49 @@ Examples:
   php add_block_to_category.php --category=12
   php add_block_to_category.php --category=12 --region=content-upper
   php add_block_to_category.php --idnumber=GRADO_INF --dry-run
+  php add_block_to_category.php --shortname=2000-01_5
+  php add_block_to_category.php --category=12 --shortname=2000-01_5 --dry-run
+  php add_block_to_category.php --shortnames=MAT101,FIS202,QUI303
+  php add_block_to_category.php --category=12 --shortnames=MAT101,FIS202 --dry-run
+  php add_block_to_category.php --search=Plantilla-5008- --dry-run
 ";
 
-if ($options['help'] || (empty($options['category']) && empty($options['idnumber']))) {
+$hascategory = !empty($options['category']) || !empty($options['idnumber']);
+$hasshortname = !empty($options['shortname']);
+$hassearch = ($options['search'] !== null && trim($options['search']) !== '');
+
+// Parse the exact-shortnames list (comma-separated, trimmed, no empties).
+$shortnames = [];
+if (!empty($options['shortnames'])) {
+    $shortnames = array_values(array_filter(
+        array_map('trim', explode(',', $options['shortnames'])),
+        'strlen'
+    ));
+}
+$hasshortnames = !empty($shortnames);
+
+if ($options['help'] || (!$hascategory && !$hasshortname && !$hasshortnames && !$hassearch)) {
     cli_writeln($help);
     exit(0);
 }
 
-// Resolve the target category.
-if (!empty($options['idnumber'])) {
-    $catid = $DB->get_field('course_categories', 'id', ['idnumber' => $options['idnumber']], IGNORE_MISSING);
-    if (!$catid) {
-        cli_error("No category found with idnumber '{$options['idnumber']}'.");
+// Resolve the target category (optional when filtering only by shortname).
+$rootcategory = null;
+if ($hascategory) {
+    if (!empty($options['idnumber'])) {
+        $catid = $DB->get_field('course_categories', 'id', ['idnumber' => $options['idnumber']], IGNORE_MISSING);
+        if (!$catid) {
+            cli_error("No category found with idnumber '{$options['idnumber']}'.");
+        }
+    } else {
+        $catid = (int)$options['category'];
     }
-} else {
-    $catid = (int)$options['category'];
-}
 
-try {
-    $rootcategory = core_course_category::get($catid, MUST_EXIST, true);
-} catch (Exception $e) {
-    cli_error("Category with id {$catid} not found.");
+    try {
+        $rootcategory = core_course_category::get($catid, MUST_EXIST, true);
+    } catch (Exception $e) {
+        cli_error("Category with id {$catid} not found.");
+    }
 }
 
 // Make sure the block plugin is installed.
@@ -137,28 +184,91 @@ if (array_key_exists('boost_union', core_component::get_plugin_list('theme'))) {
     }
 }
 
-// Collect the category and all its descendants.
-$categoryids = array_merge([$rootcategory->id], $rootcategory->get_all_children_ids());
+// Collect the category and all its descendants (if a category filter was given).
+$categoryids = [];
+if ($rootcategory) {
+    $categoryids = array_merge([$rootcategory->id], $rootcategory->get_all_children_ids());
+}
 
-cli_heading('block_bloquecero - add to category');
-cli_writeln("Root category : {$rootcategory->get_formatted_name()} (id {$rootcategory->id})");
-cli_writeln("Categories    : " . count($categoryids) . " (including subcategories)");
+// Resolve the free-text search to a list of course ids, using the very same engine
+// as Moodle's course management page (matches shortname, fullname, idnumber and
+// summary). The search honours the current user's capabilities: in CLI there is no
+// authenticated user, so hidden courses (and often the whole result set) would be
+// filtered out. Switch to an administrator so it matches what staff see in the UI.
+// We call get_courses_search() directly to bypass the user-agnostic coursecat cache.
+$searchids = [];
+if ($hassearch) {
+    if ($admin = get_admin()) {
+        \core\session\manager::set_user($admin);
+    }
+    $searchterms = preg_split('|\s+|', trim($options['search']), 0, PREG_SPLIT_NO_EMPTY);
+    $searchtotal = 0;
+    $found = get_courses_search($searchterms, 'c.sortorder ASC', 0, 9999999, $searchtotal);
+    $searchids = array_values(array_map('intval', array_keys($found)));
+}
+
+cli_heading('block_bloquecero - add block to courses');
+if ($rootcategory) {
+    cli_writeln("Root category : {$rootcategory->get_formatted_name()} (id {$rootcategory->id})");
+    cli_writeln("Categories    : " . count($categoryids) . " (including subcategories)");
+}
+if ($hasshortname) {
+    cli_writeln("Shortname like: {$options['shortname']}* (literal prefix)");
+}
+if ($hasshortnames) {
+    cli_writeln("Shortnames in : " . count($shortnames) . " (" . implode(', ', $shortnames) . ")");
+}
+if ($hassearch) {
+    cli_writeln("Search        : '" . trim($options['search']) . "' (" . count($searchids) . " course(s) matched)");
+}
 cli_writeln("Region/Weight : {$region} / {$weight}");
 cli_writeln("Mode          : " . ($dryrun ? 'DRY-RUN (no changes)' : 'LIVE') . PHP_EOL);
 
-// Fetch all courses in those categories (excluding the site course).
-[$insql, $inparams] = $DB->get_in_or_equal($categoryids, SQL_PARAMS_NAMED);
-$inparams['siteid'] = SITEID;
+// Build the course selector as the UNION (OR) of the requested filters.
+$selectors = [];
+$params = [];
+
+if (!empty($categoryids)) {
+    [$insql, $inparams] = $DB->get_in_or_equal($categoryids, SQL_PARAMS_NAMED, 'cat');
+    $selectors[] = "category {$insql}";
+    $params += $inparams;
+}
+
+if ($hasshortname) {
+    // Treat the value as a LITERAL prefix: escape LIKE wildcards ('%' and '_')
+    // so they match verbatim, then append '%' to match "starts with".
+    $params['shortname'] = $DB->sql_like_escape($options['shortname']) . '%';
+    $selectors[] = $DB->sql_like('shortname', ':shortname', false);
+}
+
+if ($hasshortnames) {
+    [$snsql, $snparams] = $DB->get_in_or_equal($shortnames, SQL_PARAMS_NAMED, 'sn');
+    $selectors[] = "shortname {$snsql}";
+    $params += $snparams;
+}
+
+if (!empty($searchids)) {
+    [$sidsql, $sidparams] = $DB->get_in_or_equal($searchids, SQL_PARAMS_NAMED, 'sid');
+    $selectors[] = "id {$sidsql}";
+    $params += $sidparams;
+}
+
+if (empty($selectors)) {
+    cli_writeln('No courses matched the given filters. Nothing to do.');
+    exit(0);
+}
+
+$params['siteid'] = SITEID;
 $courses = $DB->get_records_select(
     'course',
-    "category {$insql} AND id <> :siteid",
-    $inparams,
+    '(' . implode(' OR ', $selectors) . ') AND id <> :siteid',
+    $params,
     'sortorder ASC',
     'id, fullname, shortname, category'
 );
 
 if (!$courses) {
-    cli_writeln('No courses found in the selected categories. Nothing to do.');
+    cli_writeln('No courses found for the selected filters. Nothing to do.');
     exit(0);
 }
 

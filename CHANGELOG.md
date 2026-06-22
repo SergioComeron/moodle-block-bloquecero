@@ -5,6 +5,14 @@ Todos los cambios notables en este proyecto serán documentados en este archivo.
 El formato está basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1.0.0/),
 y este proyecto adhiere a [Semantic Versioning](https://semver.org/lang/es/).
 
+## [Unreleased]
+
+### Nuevas funcionalidades
+- CLI `add_block_to_category.php`: nueva opción `--shortname` para seleccionar cursos por prefijo literal de shortname
+- CLI `add_block_to_category.php`: nueva opción `--shortnames` para seleccionar cursos por lista de shortnames exactos
+- CLI `add_block_to_category.php`: nueva opción `--search` con la misma búsqueda libre de la página de gestión de cursos de Moodle
+- los selectores del CLI (categoría, prefijo, lista y búsqueda) se combinan en unión
+
 ## [v0.11] - 2026-05-25
 
 ### Nuevas funcionalidades
