@@ -43,7 +43,7 @@ require_once($CFG->libdir . '/clilib.php');
         'shortname' => null,
         'shortnames' => null,
         'search' => null,
-        'region'        => 'side-pre',
+        'region'        => 'content-upper',
         'weight'        => -10,
         'dry-run'       => false,
         'move-existing' => false,
@@ -95,7 +95,7 @@ Options:
                        idnumber and summary, across the whole site). Selects every
                        matching course. Combined with the other selectors (union).
   -r, --region=NAME    Block region (internal name) where the block is placed.
-                       Default: side-pre.
+                       Default: content-upper.
   -w, --weight=N       Block weight (ordering within the region). Default: -10 (top).
   -m, --move-existing  Force courses that already have the block into the given
                        region, even if a teacher moved it elsewhere. Updates

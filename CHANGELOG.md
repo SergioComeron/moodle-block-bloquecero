@@ -13,6 +13,9 @@ y este proyecto adhiere a [Semantic Versioning](https://semver.org/lang/es/).
 - CLI `add_block_to_category.php`: nueva opción `--search` con la misma búsqueda libre de la página de gestión de cursos de Moodle
 - los selectores del CLI (categoría, prefijo, lista y búsqueda) se combinan en unión
 
+### Otros cambios
+- CLI `add_block_to_category.php`: la región por defecto pasa de `side-pre` a `content-upper`
+
 ## [v0.11] - 2026-05-25
 
 ### Nuevas funcionalidades

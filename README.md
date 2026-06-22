@@ -94,7 +94,7 @@ php blocks/bloquecero/cli/add_block_to_category.php --category=12 --region=conte
 | `-s`, `--shortname=TEXT` | Prefijo **literal** del shortname: selecciona los cursos cuyo shortname empieza por ese texto. `%` y `_` se tratan como literales (no comodines). |
 | `-n`, `--shortnames=LIST` | Lista de shortnames **exactos** separados por comas (p. ej. `MAT101,FIS202`). Se recortan espacios y se ignoran los vacíos. |
 | `-q`, `--search=TEXT` | Búsqueda libre idéntica a la del buscador de la gestión de cursos de Moodle (busca en shortname, fullname, idnumber y summary en todo el sitio). |
-| `-r`, `--region=NAME` | Zona (nombre interno) donde se coloca el bloque. Por defecto `side-pre`. |
+| `-r`, `--region=NAME` | Zona (nombre interno) donde se coloca el bloque. Por defecto `content-upper`. |
 | `-w`, `--weight=N` | Peso/orden dentro de la zona. Por defecto `-10` (arriba). |
 | `-m`, `--move-existing` | Fuerza a la zona indicada los cursos que ya tienen el bloque en otra región (actualiza `block_instances.defaultregion` y los overrides de `block_positions`). Sin este flag, los existentes se respetan. |
 | `-d`, `--dry-run` | Muestra qué haría sin escribir en la base de datos. |
