@@ -1145,7 +1145,7 @@ class block_bloquecero extends block_base {
             [$insql, $inparams] = $DB->get_in_or_equal(array_values($gradedmodules));
             $inparams[] = $USER->id;
             $usergraderows = $DB->get_records_sql(
-                "SELECT gi.itemmodule, gi.iteminstance
+                "SELECT gi.id, gi.itemmodule, gi.iteminstance
                    FROM {grade_items} gi
                    JOIN {grade_grades} gg ON gg.itemid = gi.id
                   WHERE gi.id $insql AND gg.userid = ? AND gg.finalgrade IS NOT NULL",
@@ -1578,6 +1578,32 @@ class block_bloquecero extends block_base {
             </script>
             ';
 
+        // --- BOTONES MOD_DIRECTOS: solo si el curso tiene una instancia del módulo directos ---
+        $directosbuttons = '';
+        $directosmodinfo = get_fast_modinfo($COURSE);
+        foreach ($directosmodinfo->get_instances_of('directos') as $directoscm) {
+            if (!$directoscm->uservisible) {
+                continue;
+            }
+            $directosliveurl = new moodle_url('/mod/directos/view.php', ['id' => $directoscm->id]);
+            $directosrecordingsurl = new moodle_url('/mod/directos/records.php', ['id' => $directoscm->id]);
+            $directosbuttons = '
+            <div class="sesiones-directo-footer">
+            <hr class="sesiones-directo-divider">
+            <div class="sesiones-directo-footer-actions">
+                <a href="' . $directosliveurl . '" class="sesiones-directo-calendaricon">
+                    <svg width="15" height="15" viewBox="0 0 24 24" aria-hidden="true" style="flex-shrink:0;"><circle cx="12" cy="12" r="3.2" fill="currentColor"/><path d="M7.05 7.05a7 7 0 0 0 0 9.9M16.95 7.05a7 7 0 0 1 0 9.9M4.22 4.22a11 11 0 0 0 0 15.56M19.78 4.22a11 11 0 0 1 0 15.56" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>
+                    <span>' . get_string('directos_livelink', 'block_bloquecero') . '</span>
+                </a>
+                <a href="' . $directosrecordingsurl . '" class="sesiones-directo-calendaricon">
+                    <svg width="15" height="15" viewBox="0 0 24 24" aria-hidden="true" style="flex-shrink:0;"><rect x="2.5" y="6.5" width="13" height="11" rx="2" fill="currentColor"/><path d="M16 10.5l5-2.8v8.6l-5-2.8z" fill="currentColor"/></svg>
+                    <span>' . get_string('directos_recordingslink', 'block_bloquecero') . '</span>
+                </a>
+            </div>
+            </div>';
+            break;
+        }
+
         // --- SESIONES EN DIRECTO: genera el bloque con selector de semana ---
         // Calcular semanas para las sesiones (solo si hay sesiones)
         $sesionesdirecto = '
@@ -1600,6 +1626,7 @@ class block_bloquecero extends block_base {
             <div class="sesiones-directo-container">
                 <div id="sesiones-list-content"></div>
             </div>
+            ' . $directosbuttons . '
         </div>
         <script>
         document.addEventListener("DOMContentLoaded", function(){
@@ -1749,6 +1776,11 @@ class block_bloquecero extends block_base {
                 ' . $OUTPUT->pix_icon('i/users', '', 'moodle', ['class' => 'menu-icon']) . '
                 <span>' . get_string('participants', 'block_bloquecero') . '</span>
             </a>
+            ' . ((has_capability('report/courseradar:view', $coursecontext) || is_enrolled($coursecontext, null, '', true)) ? '
+            <a href="' . (new moodle_url('/report/courseradar/index.php', ['id' => $COURSE->id])) . '" class="udima-menu-link" title="' . get_string('courseradar', 'block_bloquecero') . '" data-bs-toggle="tooltip" data-bs-placement="bottom">
+                ' . $OUTPUT->pix_icon('i/report', '', 'moodle', ['class' => 'menu-icon']) . '
+                <span>' . get_string('courseradar', 'block_bloquecero') . '</span>
+            </a>' : '') . '
             <a href="#" id="bloquecero-bibliografia-btn" class="udima-menu-link" title="' . get_string('bibliography', 'block_bloquecero') . '" data-bs-toggle="tooltip" data-bs-placement="bottom">
                 ' . $OUTPUT->pix_icon('book', '', 'moodle', ['class' => 'menu-icon']) . '
                 <span>' . get_string('bibliography', 'block_bloquecero') . '</span>
@@ -1762,7 +1794,17 @@ class block_bloquecero extends block_base {
             <a href="' . (new moodle_url('/course/edit.php', ['id' => $COURSE->id])) . '" class="udima-menu-link" title="' . get_string('settings', 'block_bloquecero') . '" data-bs-toggle="tooltip" data-bs-placement="bottom">
                 ' . $OUTPUT->pix_icon('i/settings', '', 'moodle', ['class' => 'menu-icon']) . '
                 <span>' . get_string('settings', 'block_bloquecero') . '</span>
-            </a>' : '') .
+            </a>' : '') . '
+            <div class="bloquecero-menu-more" style="display:none;">
+                <button type="button" class="udima-menu-link bloquecero-menu-more-toggle" aria-expanded="false" aria-haspopup="true" title="' . get_string('moremenu', 'block_bloquecero') . '">
+                    <i class="fa fa-ellipsis-h fa-fw menu-icon" aria-hidden="true"></i>
+                    <span>' . get_string('moremenu', 'block_bloquecero') . '</span>
+                </button>
+                <div class="bloquecero-menu-more-list" role="menu"></div>
+            </div>
+            <button type="button" id="bloquecero-tour-btn" class="udima-menu-link bloquecero-tour-btn" title="' . get_string('tour_help', 'block_bloquecero') . '" aria-label="' . get_string('tour_help', 'block_bloquecero') . '">
+                <i class="fa fa-question-circle fa-fw menu-icon" aria-hidden="true"></i>
+            </button>' .
             '</nav>
             <div class="bloquecero-main-wrapper" style="padding: 0 20px; font-family: Arial, sans-serif;">
             <!-- Resto del contenido del bloque -->
@@ -1851,6 +1893,9 @@ class block_bloquecero extends block_base {
                 font-size: 0.97em;
                 min-width: 0;
             }
+            .sesiones-directo-maincard {
+                --bc-cardpad: 10px;
+            }
             .calendario-actividades-header h3,
             .sesiones-directo-header h3 {
                 font-size: 1.07em;
@@ -1882,6 +1927,9 @@ class block_bloquecero extends block_base {
                 font-size: 0.96em;
                 padding: 12px 8px !important;
                 min-width: 0;
+            }
+            .sesiones-directo-maincard {
+                --bc-cardpad: 8px;
             }
             .calendario-actividades-header h3,
             .sesiones-directo-header h3 {
@@ -2451,7 +2499,8 @@ class block_bloquecero extends block_base {
                 }
                 .udima-menu-bar {
                     display: flex;
-                    gap: 28px;
+                    flex-wrap: nowrap;
+                    gap: 22px;
                     justify-content: flex-start;
                     align-items: center;
                     padding: 8px 24px 0 24px;
@@ -2459,22 +2508,7 @@ class block_bloquecero extends block_base {
                     margin-bottom: 8px;
                     border-bottom: 1.5px solid #E2EDE4;
                     min-height: 38px;
-                    flex-wrap: nowrap;
-                    overflow-x: auto;
-                    overflow-y: hidden;
-                    white-space: nowrap;
-                    scrollbar-width: thin;
-                    scrollbar-color: #B7C65C #f0f0f0;
-                }
-                .udima-menu-bar::-webkit-scrollbar {
-                    height: 6px;
-                }
-                .udima-menu-bar::-webkit-scrollbar-thumb {
-                    background: #B7C65C;
-                    border-radius: 3px;
-                }
-                .udima-menu-bar::-webkit-scrollbar-track {
-                    background: #f0f0f0;
+                    overflow: hidden;
                 }
                 .udima-menu-link {
                     display: flex;
@@ -2492,6 +2526,11 @@ class block_bloquecero extends block_base {
                     box-shadow: none;
                     position: relative;
                     height: 36px;
+                    white-space: nowrap;
+                    flex-shrink: 0;
+                }
+                .udima-menu-link span {
+                    white-space: nowrap;
                 }
                 .udima-menu-link .menu-icon {
                     width: 18px;
@@ -2515,8 +2554,6 @@ class block_bloquecero extends block_base {
                     .udima-menu-bar {
                         gap: 4px;
                         justify-content: flex-start;
-                        overflow-x: visible;
-                        white-space: normal;
                         padding: 4px 8px;
                     }
                     .udima-menu-link {
@@ -2579,6 +2616,162 @@ class block_bloquecero extends block_base {
                     .bloquecero-guide-toggle::after {
                         display: none;
                     }
+                }
+
+                /* Menú de desbordamiento "Más" del menú superior. */
+                .bloquecero-menu-more {
+                    display: flex;
+                    align-items: center;
+                    flex-shrink: 0;
+                }
+                .bloquecero-menu-more-toggle::after {
+                    content: "▾";
+                    font-size: 0.75em;
+                    margin-left: 3px;
+                    line-height: 1;
+                }
+                .bloquecero-menu-more-list {
+                    display: none;
+                    position: fixed;
+                    z-index: 9999;
+                    min-width: 210px;
+                    margin-top: 2px;
+                    padding: 6px;
+                    background: #fff;
+                    border: 1px solid #E2EDE4;
+                    border-radius: 8px;
+                    box-shadow: 0 4px 16px rgba(0,0,0,0.12);
+                    flex-direction: column;
+                    gap: 2px;
+                }
+                .bloquecero-menu-more-list.bloquecero-menu-more-open {
+                    display: flex;
+                }
+                .bloquecero-menu-more-list .udima-menu-link {
+                    width: 100%;
+                    height: auto;
+                    justify-content: flex-start;
+                    padding: 8px 12px;
+                    gap: 10px;
+                    border-radius: 6px;
+                }
+                .bloquecero-menu-more-list .udima-menu-link span {
+                    display: inline;
+                }
+                .bloquecero-menu-more-list .udima-menu-link .menu-icon {
+                    margin-right: 0;
+                }
+                .bloquecero-menu-more-list .udima-menu-link:hover,
+                .bloquecero-menu-more-list .udima-menu-link:focus {
+                    background: #F2F6EC;
+                    border-bottom: none;
+                    color: #3D7A1C;
+                }
+                .bloquecero-menu-more-list .bloquecero-guide-dropdown {
+                    width: 100%;
+                }
+                @media (max-width: 800px) {
+                    .bloquecero-menu-more-toggle::after {
+                        display: none;
+                    }
+                }
+
+                /* Botón de ayuda / tour (pinned a la derecha del menú). */
+                .bloquecero-tour-btn {
+                    margin-left: auto;
+                    cursor: pointer;
+                    color: #6B7D2E;
+                }
+                .bloquecero-tour-btn .menu-icon {
+                    color: #6B7D2E;
+                }
+                /* Tour guiado del bloque. */
+                .bloquecero-tour-overlay {
+                    position: fixed;
+                    inset: 0;
+                    z-index: 10000;
+                    background: transparent;
+                    cursor: pointer;
+                }
+                .bloquecero-tour-highlight {
+                    position: fixed;
+                    z-index: 10001;
+                    border-radius: 8px;
+                    box-shadow: 0 0 0 9999px rgba(12,59,46,0.55), 0 0 0 3px #B7C65C;
+                    pointer-events: none;
+                }
+                .bloquecero-tour-pop {
+                    position: fixed;
+                    z-index: 10002;
+                    width: 320px;
+                    max-width: calc(100vw - 24px);
+                    background: #fff;
+                    border-radius: 10px;
+                    box-shadow: 0 8px 30px rgba(0,0,0,0.28);
+                    padding: 18px 18px 14px 18px;
+                    font-family: Arial, sans-serif;
+                }
+                .bloquecero-tour-pop h4 {
+                    margin: 0 28px 8px 0;
+                    color: #0C3B2E;
+                    font-size: 1.05em;
+                    font-weight: 700;
+                }
+                .bloquecero-tour-pop p {
+                    margin: 0 0 14px 0;
+                    color: #333;
+                    font-size: 0.92em;
+                    line-height: 1.5;
+                }
+                .bloquecero-tour-actions {
+                    display: flex;
+                    align-items: center;
+                    justify-content: space-between;
+                    gap: 10px;
+                }
+                .bloquecero-tour-count {
+                    font-size: 0.8em;
+                    color: #888;
+                }
+                .bloquecero-tour-btns {
+                    display: flex;
+                    gap: 8px;
+                }
+                .bloquecero-tour-pop button {
+                    cursor: pointer;
+                    border-radius: 20px;
+                    font-weight: 600;
+                    font-size: 0.85em;
+                    padding: 6px 16px;
+                    border: 1px solid #B7C65C;
+                    transition: background 0.15s, color 0.15s;
+                }
+                .bloquecero-tour-prev {
+                    background: #fff;
+                    color: #6B7D2E;
+                }
+                .bloquecero-tour-prev:hover {
+                    background: #F2F6EC;
+                }
+                .bloquecero-tour-next {
+                    background: #6B7D2E;
+                    color: #fff;
+                    border-color: #6B7D2E;
+                }
+                .bloquecero-tour-next:hover {
+                    background: #586a26;
+                }
+                .bloquecero-tour-close {
+                    position: absolute;
+                    top: 8px;
+                    right: 10px;
+                    background: none !important;
+                    border: none !important;
+                    padding: 0 !important;
+                    font-size: 1.3em;
+                    line-height: 1;
+                    color: #999;
+                    cursor: pointer;
                 }
 
                 .moodle-toggle-centering {
@@ -2718,6 +2911,7 @@ class block_bloquecero extends block_base {
             <style>
             /* Sesiones en directo (igual que calendario, pero .sesiones-directo-*) */
             .sesiones-directo-maincard {
+                --bc-cardpad: 22px;
                 min-height: 180px;
                 height: 100%;
                 display: flex;
@@ -2851,6 +3045,34 @@ class block_bloquecero extends block_base {
                 width: 100%;
                 padding: 0;
                 margin: 0;
+            }
+            .sesiones-directo-footer {
+                margin-top: auto;
+            }
+            .sesiones-directo-divider {
+                border: none;
+                border-top: 1px solid #ddd;
+                /* Sangrado negativo (= padding de la tarjeta) para llegar a los bordes. */
+                margin: 16px calc(var(--bc-cardpad, 22px) * -1) 12px;
+            }
+            .sesiones-directo-footer-actions {
+                display: flex;
+                flex-wrap: wrap;
+                align-items: center;
+                justify-content: flex-end;
+                gap: 8px;
+                text-align: right;
+            }
+            .sesiones-directo-footer-actions .sesiones-directo-calendaricon {
+                margin-left: 0;
+                display: inline-flex;
+                vertical-align: middle;
+            }
+            a.sesiones-directo-calendaricon {
+                text-decoration: none;
+            }
+            a.sesiones-directo-calendaricon:hover {
+                text-decoration: none;
             }
             #sesiones-list-content ul {
                 padding-left: 0;
@@ -4003,6 +4225,35 @@ class block_bloquecero extends block_base {
 
         // Añade el script JS para el modal de sesiones fuera de cualquier echo PHP (como HTML, después del modal y antes del cierre del div)
         $this->content->text .= '<script>var bloqueceroI18n = ' . json_encode($blocqueroi18n) . ';</script>';
+
+        // Pasos del tour guiado del bloque (se filtran en JS según existan en la página).
+        // La preferencia guarda la versión del tour ya visto por el usuario; si se
+        // hace un nuevo rediseño, basta subir TOUR_VERSION para que vuelva a mostrarse.
+        $tourversion = 1;
+        $tourseen = (int) get_user_preferences('block_bloquecero_tour_seen', 0);
+        $tourdata = [
+            'autostart' => ($tourseen < $tourversion),
+            'prefname'  => 'block_bloquecero_tour_seen',
+            'version'   => $tourversion,
+            'i18n' => [
+                'next'  => get_string('tour_next', 'block_bloquecero'),
+                'prev'  => get_string('tour_prev', 'block_bloquecero'),
+                'done'  => get_string('tour_done', 'block_bloquecero'),
+                'close' => get_string('close', 'block_bloquecero'),
+                'step'  => get_string('tour_steplabel', 'block_bloquecero'),
+            ],
+            'steps' => [
+                ['sel' => '.udima-menu-bar', 'title' => get_string('tour_menu_title', 'block_bloquecero'), 'text' => get_string('tour_menu_text', 'block_bloquecero')],
+                ['sel' => '.bloquecero-header-responsive', 'title' => get_string('tour_header_title', 'block_bloquecero'), 'text' => get_string('tour_header_text', 'block_bloquecero')],
+                ['sel' => '.bloquecero-info-row', 'title' => get_string('tour_team_title', 'block_bloquecero'), 'text' => get_string('tour_team_text', 'block_bloquecero')],
+                ['sel' => '.bloquecero-tabs', 'title' => get_string('tour_forums_title', 'block_bloquecero'), 'text' => get_string('tour_forums_text', 'block_bloquecero')],
+                ['sel' => '.carousel-container', 'title' => get_string('tour_sections_title', 'block_bloquecero'), 'text' => get_string('tour_sections_text', 'block_bloquecero')],
+                ['sel' => '.sesiones-directo-maincard', 'title' => get_string('tour_sessions_title', 'block_bloquecero'), 'text' => get_string('tour_sessions_text', 'block_bloquecero')],
+                ['sel' => '.calendario-actividades-maincard', 'title' => get_string('tour_activities_title', 'block_bloquecero'), 'text' => get_string('tour_activities_text', 'block_bloquecero')],
+                ['sel' => '#bloquecero-mostrarcurso-btn', 'title' => get_string('tour_togglecourse_title', 'block_bloquecero'), 'text' => get_string('tour_togglecourse_text', 'block_bloquecero')],
+            ],
+        ];
+        $this->content->text .= '<script>var bloqueceroTour = ' . json_encode($tourdata) . ';</script>';
         $this->content->text .= '
     <script>
         document.addEventListener("DOMContentLoaded", function() {
@@ -4185,7 +4436,11 @@ class block_bloquecero extends block_base {
                             \'</div></td>\' +
                             \'<td style="padding:12px;color:#555;white-space:nowrap;vertical-align:top;">\' +
                             \'<div style="font-weight:500;color:#333;">\' + dateString + \'</div>\' +
-                            \'<div style="font-size:0.9em;color:#666;margin-top:3px;">&#128336; \' + timeString + (durStr ? \' &nbsp;·&nbsp; &#9201; \' + durStr : \'\') + \'</div>\' +
+                            \'<div style="font-size:0.9em;color:#666;margin-top:3px;display:flex;align-items:center;gap:5px;flex-wrap:wrap;">\' +
+                            \'<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#666" stroke-width="2" aria-hidden="true" style="flex-shrink:0;"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2" stroke-linecap="round" stroke-linejoin="round"/></svg>\' +
+                            \'<span>\' + timeString + \'</span>\' +
+                            (durStr ? \'<span aria-hidden="true">&middot;</span><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#666" stroke-width="2" aria-hidden="true" style="flex-shrink:0;"><circle cx="12" cy="13" r="8"/><path d="M12 9v4M9 2h6M12 5V2" stroke-linecap="round"/></svg><span>\' + durStr + \'</span>\' : \'\') +
+                            \'</div>\' +
                             \'</td>\' +
                             \'</tr>\';
                     }
@@ -4326,6 +4581,203 @@ class block_bloquecero extends block_base {
                         toggle.setAttribute('aria-expanded', 'false');
                     }
                 });
+            })();
+            // Menú superior: mover a 'Más' los enlaces que no quepan en una sola fila.
+            (function() {
+                var nav = document.querySelector('.udima-menu-bar');
+                if (!nav) return;
+                var more = nav.querySelector('.bloquecero-menu-more');
+                if (!more) return;
+                var moreList = more.querySelector('.bloquecero-menu-more-list');
+                var moreToggle = more.querySelector('.bloquecero-menu-more-toggle');
+                // Elementos gestionados (todos los hijos del nav menos el contenedor 'Más'), en orden original.
+                var items = Array.prototype.filter.call(nav.children, function(c) { return c !== more && c.id !== 'bloquecero-tour-btn'; });
+                function fits() { return nav.scrollWidth <= nav.clientWidth + 1; }
+                function closeMore() {
+                    moreList.classList.remove('bloquecero-menu-more-open');
+                    moreToggle.setAttribute('aria-expanded', 'false');
+                }
+                function layout() {
+                    closeMore();
+                    // Restaurar todos los elementos al nav (antes de 'Más').
+                    items.forEach(function(el) { nav.insertBefore(el, more); });
+                    moreList.innerHTML = '';
+                    more.style.display = 'none';
+                    if (fits()) return;
+                    // Hay desbordamiento: mostrar 'Más' y mover desde el final hasta que quepa.
+                    more.style.display = '';
+                    for (var i = items.length - 1; i >= 0; i--) {
+                        if (fits()) break;
+                        moreList.insertBefore(items[i], moreList.firstChild);
+                    }
+                    if (!moreList.children.length) more.style.display = 'none';
+                }
+                var raf;
+                function schedule() {
+                    if (raf) cancelAnimationFrame(raf);
+                    raf = requestAnimationFrame(layout);
+                }
+                moreToggle.addEventListener('click', function(e) {
+                    e.stopPropagation();
+                    if (moreList.classList.contains('bloquecero-menu-more-open')) {
+                        closeMore();
+                    } else {
+                        var rect = moreToggle.getBoundingClientRect();
+                        moreList.style.top = rect.bottom + 'px';
+                        moreList.style.left = 'auto';
+                        moreList.style.right = (window.innerWidth - rect.right) + 'px';
+                        moreList.classList.add('bloquecero-menu-more-open');
+                        moreToggle.setAttribute('aria-expanded', 'true');
+                    }
+                });
+                document.addEventListener('click', closeMore);
+                document.addEventListener('keydown', function(e) { if (e.key === 'Escape') closeMore(); });
+                window.addEventListener('resize', schedule);
+                layout();
+            })();
+            // Tour guiado del bloque.
+            (function() {
+                var data = window.bloqueceroTour;
+                if (!data || !data.steps) return;
+                var i18n = data.i18n || {};
+                var trigger = document.getElementById('bloquecero-tour-btn');
+                var overlay, highlight, pop, steps, idx, raf;
+
+                function build() {
+                    overlay = document.createElement('div');
+                    overlay.className = 'bloquecero-tour-overlay';
+                    highlight = document.createElement('div');
+                    highlight.className = 'bloquecero-tour-highlight';
+                    pop = document.createElement('div');
+                    pop.className = 'bloquecero-tour-pop';
+                    document.body.appendChild(overlay);
+                    document.body.appendChild(highlight);
+                    document.body.appendChild(pop);
+                    overlay.addEventListener('click', stop);
+                    window.addEventListener('scroll', reposition, true);
+                    window.addEventListener('resize', reposition);
+                    document.addEventListener('keydown', onKey);
+                }
+                function stop() {
+                    if (overlay) { overlay.remove(); }
+                    if (highlight) { highlight.remove(); }
+                    if (pop) { pop.remove(); }
+                    overlay = highlight = pop = null;
+                    window.removeEventListener('scroll', reposition, true);
+                    window.removeEventListener('resize', reposition);
+                    document.removeEventListener('keydown', onKey);
+                }
+                function markSeen() {
+                    try { localStorage.setItem('bloquecero_tour_seen', String(data.version)); } catch (e) {}
+                    if (window.M && M.util && M.util.set_user_preference) {
+                        M.util.set_user_preference(data.prefname, data.version);
+                    }
+                }
+                function onKey(e) {
+                    if (e.key === 'Escape') { stop(); }
+                    else if (e.key === 'ArrowRight') { go(1); }
+                    else if (e.key === 'ArrowLeft') { go(-1); }
+                }
+                function go(delta) {
+                    var n = idx + delta;
+                    if (n < 0) { return; }
+                    if (n >= steps.length) { stop(); return; }
+                    show(n);
+                }
+                function currentEl() {
+                    return (steps && steps[idx]) ? document.querySelector(steps[idx].sel) : null;
+                }
+                function reposition() {
+                    if (raf) { cancelAnimationFrame(raf); }
+                    raf = requestAnimationFrame(function() {
+                        var el = currentEl();
+                        if (el) { measure(el); }
+                    });
+                }
+                function measure(el) {
+                    if (!highlight) { return; }
+                    var r = el.getBoundingClientRect();
+                    var pad = 6;
+                    highlight.style.top = (r.top - pad) + 'px';
+                    highlight.style.left = (r.left - pad) + 'px';
+                    highlight.style.width = (r.width + pad * 2) + 'px';
+                    highlight.style.height = (r.height + pad * 2) + 'px';
+                    var pr = pop.getBoundingClientRect();
+                    var margin = 12;
+                    var top = r.bottom + margin;
+                    if (top + pr.height > window.innerHeight - 8) { top = r.top - pr.height - margin; }
+                    if (top < 8) { top = 8; }
+                    var left = r.left;
+                    if (left + pr.width > window.innerWidth - 8) { left = window.innerWidth - pr.width - 8; }
+                    if (left < 8) { left = 8; }
+                    pop.style.top = top + 'px';
+                    pop.style.left = left + 'px';
+                }
+                function render(step, n) {
+                    var label = (i18n.step || '').replace('__C__', (n + 1)).replace('__T__', steps.length);
+                    var isLast = (n === steps.length - 1);
+                    pop.innerHTML = '';
+                    var close = document.createElement('button');
+                    close.className = 'bloquecero-tour-close';
+                    close.setAttribute('aria-label', i18n.close || 'Close');
+                    close.innerHTML = '&times;';
+                    close.addEventListener('click', stop);
+                    var h = document.createElement('h4');
+                    h.textContent = step.title;
+                    var p = document.createElement('p');
+                    p.textContent = step.text;
+                    var actions = document.createElement('div');
+                    actions.className = 'bloquecero-tour-actions';
+                    var count = document.createElement('span');
+                    count.className = 'bloquecero-tour-count';
+                    count.textContent = label;
+                    var btns = document.createElement('div');
+                    btns.className = 'bloquecero-tour-btns';
+                    if (n > 0) {
+                        var prev = document.createElement('button');
+                        prev.className = 'bloquecero-tour-prev';
+                        prev.textContent = i18n.prev || 'Prev';
+                        prev.addEventListener('click', function() { go(-1); });
+                        btns.appendChild(prev);
+                    }
+                    var next = document.createElement('button');
+                    next.className = 'bloquecero-tour-next';
+                    next.textContent = isLast ? (i18n.done || 'Done') : (i18n.next || 'Next');
+                    next.addEventListener('click', function() { go(1); });
+                    btns.appendChild(next);
+                    actions.appendChild(count);
+                    actions.appendChild(btns);
+                    pop.appendChild(close);
+                    pop.appendChild(h);
+                    pop.appendChild(p);
+                    pop.appendChild(actions);
+                }
+                function show(n) {
+                    idx = n;
+                    var el = currentEl();
+                    if (!el) { go(1); return; }
+                    el.scrollIntoView({behavior: 'smooth', block: 'center'});
+                    render(steps[n], n);
+                    setTimeout(function() { measure(el); }, 240);
+                }
+                function start() {
+                    if (overlay) { return; }
+                    steps = data.steps.filter(function(s) { return document.querySelector(s.sel); });
+                    if (!steps.length) { return; }
+                    idx = 0;
+                    markSeen();
+                    build();
+                    show(0);
+                }
+                if (trigger) {
+                    trigger.addEventListener('click', function(e) { e.preventDefault(); start(); });
+                }
+                // Auto-arranque solo si el usuario no ha visto esta versión del tour (preferencia de servidor).
+                var auto = !!data.autostart;
+                try { if (localStorage.getItem('bloquecero_tour_seen') === String(data.version)) { auto = false; } } catch (e) {}
+                if (auto) {
+                    setTimeout(start, 900);
+                }
             })();
         ");
 

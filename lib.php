@@ -73,3 +73,23 @@ function block_bloquecero_pluginfile($course, $cm, $context, $filearea, $args, $
     // ✅ Si llega aquí, lo sirve.
     send_stored_file($file, 0, 0, $forcedownload, $options);
 }
+
+/**
+ * Define las preferencias de usuario gestionadas por block_bloquecero.
+ *
+ * Registra la preferencia del tour guiado para poder fijarla vía AJAX
+ * (M.util.set_user_preference). Guarda la versión del tour ya visto por el
+ * usuario, de modo que persiste entre asignaturas y dispositivos.
+ *
+ * @return array
+ */
+function block_bloquecero_user_preferences(): array {
+    return [
+        'block_bloquecero_tour_seen' => [
+            'type' => PARAM_INT,
+            'null' => NULL_NOT_ALLOWED,
+            'default' => 0,
+            'permissioncallback' => [core_user::class, 'is_current_user'],
+        ],
+    ];
+}
