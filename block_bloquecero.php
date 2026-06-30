@@ -854,7 +854,8 @@ class block_bloquecero extends block_base {
             $sectionurl = new moodle_url('/course/section.php', ['id' => $section->id]);
             $course = $modinfo->get_course();
             if ($issection0) {
-                $sectiontitle = format_string($section->name ?: get_string('general', 'moodle'));
+                // La seccion 0 siempre se muestra como "General", aunque le hayan cambiado el nombre.
+                $sectiontitle = get_string('general', 'moodle');
             } else if ($course->format == 'weeks' && empty($section->name)) {
                 $startdate = $course->startdate;
                 $weekduration = 7 * 24 * 60 * 60;
@@ -1033,16 +1034,10 @@ class block_bloquecero extends block_base {
             $hiddenclass = (!$section->visible && $canviewhidden) ? ' bloquecero-item-hidden' : '';
             $cardhtml = '<div class="bloquecero-section-card' . ($issection0 ? ' bloquecero-section0-card' : '') . $hiddenclass . '" style="background: ' . $bgcolor . '">';
             if ($issection0) {
-                // El rotulo vertical va fuera de la tarjeta: es un overlay fijo en el borde
-                // izquierdo del carrusel donde "aterrizan" las letras del titulo al caer.
+                // Rotulo vertical fijo en el borde izquierdo del carrusel: mantiene visible
+                // la seccion General cuando las demas tarjetas se desplazan con el scroll.
                 $plaintitle0 = strip_tags($sectiontitle);
-                $chars0 = preg_split('//u', $plaintitle0, -1, PREG_SPLIT_NO_EMPTY);
-                $labelspans = '';
-                foreach ($chars0 as $ci => $char0) {
-                    $escaped0 = $char0 === ' ' ? '&nbsp;' : htmlspecialchars($char0);
-                    $labelspans .= '<span class="sec0-vlabel-letter" data-li="' . $ci . '">' . $escaped0 . '</span>';
-                }
-                $sec0label = '<span class="sec0-vertical-label" aria-hidden="true" title="' . htmlspecialchars($plaintitle0) . '">' . $labelspans . '</span>';
+                $sec0label = '<span class="sec0-vertical-label" aria-hidden="true" title="' . htmlspecialchars($plaintitle0) . '">' . htmlspecialchars($plaintitle0) . '</span>';
             }
             if ($hiddenclass) {
                 $cardhtml .= '<span class="bloquecero-hidden-badge">' . get_string('hiddenfromstudents', 'moodle') . '</span>';
@@ -1052,7 +1047,7 @@ class block_bloquecero extends block_base {
             }
             $cardhtml .= '
                 <div class="bloquecero-section-header-flex" style="display:flex;flex-direction:column;width:100%;gap:4px;margin-bottom:8px;">
-                    <div style="min-width:0;overflow:' . ($issection0 ? 'visible' : 'hidden') . ';">' . (function () use ($sectionurl, $sectiontitle, $section, $sectionschedulemap, $issection0) {
+                    <div style="min-width:0;overflow:hidden;">' . (function () use ($sectionurl, $sectiontitle, $section, $sectionschedulemap) {
                         $titleattr = htmlspecialchars(strip_tags($sectiontitle));
                         $tooltipattrs = '';
                 if (isset($sectionschedulemap[$section->id])) {
@@ -1061,16 +1056,6 @@ class block_bloquecero extends block_base {
                     $tooltiptext = htmlspecialchars($datestart . ' – ' . $dateend);
                     $titleattr   = $tooltiptext;
                     $tooltipattrs = ' data-bs-toggle="tooltip" data-bs-placement="top"';
-                }
-                if ($issection0) {
-                    $plaintitle = strip_tags($sectiontitle);
-                    $chars = preg_split('//u', $plaintitle, -1, PREG_SPLIT_NO_EMPTY);
-                    $spans = '';
-                    foreach ($chars as $ci => $char) {
-                        $escaped = $char === ' ' ? '&nbsp;' : htmlspecialchars($char);
-                        $spans .= '<span class="sec0-letter" data-li="' . $ci . '" aria-hidden="true">' . $escaped . '</span>';
-                    }
-                    return '<a href="' . $sectionurl . '" class="bloquecero-section-number sec0-title-link" title="' . $titleattr . '"' . $tooltipattrs . '><span class="sr-only">' . htmlspecialchars($plaintitle) . '</span>' . $spans . '</a>';
                 }
                         return '<a href="' . $sectionurl . '" class="bloquecero-section-number" title="' . $titleattr . '"' . $tooltipattrs . '>' . $sectiontitle . '</a>';
             })() . '</div>
@@ -1109,6 +1094,7 @@ class block_bloquecero extends block_base {
             <div class="carousel-container" role="region" aria-label="' . get_string('coursesections', 'block_bloquecero') . '" aria-roledescription="carousel" style="position: relative; display: flex; align-items: stretch; margin-bottom: 20px;">
                  <div class="carousel-scrollable-wrapper" style="position: relative; flex: 1 1 0; min-width: 0; padding: 0 40px; box-sizing: border-box;">
                      ' . $sec0label . '
+                     <button class="carousel-btn carousel-btn-left" onclick="scrollCarousel(-1)" aria-label="' . get_string('previoussection', 'block_bloquecero') . '">&#10094;</button>
                      ' . $sectionscarousel . '
                      <button class="carousel-btn carousel-btn-right" onclick="scrollCarousel(1)" aria-label="' . get_string('nextsection', 'block_bloquecero') . '">&#10095;</button>
                  </div>
@@ -2138,28 +2124,6 @@ class block_bloquecero extends block_base {
                 justify-content: center;
                 cursor: pointer;
             }
-            .sec0-vlabel-letter {
-                opacity: 0;
-                transition: opacity 0.15s linear;
-            }
-            .sec0-title-link {
-                white-space: nowrap;
-                display: inline-block;
-            }
-            .sec0-letter {
-                display: inline-block;
-            }
-            /* Clon que vuela desde el titulo hasta su hueco del rotulo vertical */
-            .sec0-flying-letter {
-                position: absolute;
-                z-index: 7;
-                pointer-events: none;
-                color: #6B7D2E;
-                font-weight: 400;
-                letter-spacing: 0.05em;
-                transition: transform 0.55s cubic-bezier(0.55, 0, 0.75, 0.4);
-                will-change: transform;
-            }
 
             .forum-card:hover {
                 transform: scale(1.05);
@@ -2235,6 +2199,7 @@ class block_bloquecero extends block_base {
                 }
                 .carousel-btn-left {
                     left: 0;
+                    z-index: 6; /* por encima del rotulo vertical de la seccion General */
                 }
                 .carousel-btn-right {
                     right: 0;
@@ -2898,6 +2863,10 @@ class block_bloquecero extends block_base {
                     margin-top: 0;
                     display: block;
                     height: auto;
+                    min-width: 0;
+                    /* Partir URLs/cadenas largas sin espacios para que no desborden la tarjeta */
+                    overflow-wrap: anywhere;
+                    word-break: break-word;
                 }
                 .bloquecero-section-content ul {
                     padding-left: 0;
@@ -2906,6 +2875,12 @@ class block_bloquecero extends block_base {
                 }
                 .bloquecero-section-content li {
                     margin-bottom: 12px;
+                    overflow-wrap: anywhere;
+                    word-break: break-word;
+                }
+                .bloquecero-section-content li a {
+                    overflow-wrap: anywhere;
+                    word-break: break-word;
                 }
             </style>
             <style>
@@ -3546,137 +3521,27 @@ class block_bloquecero extends block_base {
                 window.addEventListener(\'load\', updateCarouselArrows);
                 window.addEventListener(\'resize\', updateCarouselArrows);
                 document.querySelector(".sections-carousel").addEventListener(\'scroll\', updateCarouselArrows);
+                // Rotulo vertical de la seccion General: visible (fijo a la izquierda) al
+                // desplazar el carrusel; clic vuelve al inicio. Sin animacion de letras.
                 (function() {
-                    var carousel   = document.querySelector(".sections-carousel");
-                    var sec0       = document.querySelector(".bloquecero-section0-card");
-                    var wrapper    = document.querySelector(".carousel-scrollable-wrapper");
-                    if (!carousel || !sec0 || !wrapper) return;
-                    var stripW     = 36;
-                    var letters    = Array.from(sec0.querySelectorAll(".sec0-letter"));
-                    var lbl        = wrapper.querySelector(".sec0-vertical-label");
-                    var lblLetters = lbl ? Array.from(lbl.querySelectorAll(".sec0-vlabel-letter")) : [];
-                    var measured   = false;
-                    var letterGeo  = [];
-                    var fallen     = letters.map(function() { return false; });
-                    var flights    = {};
-
-                    // Posicion de cada letra dentro del contenido del carrusel: la tarjeta General
-                    // viaja con el scroll, asi que la letra i choca con el muro izquierdo (el strip
-                    // de 36px) cuando scrollLeft alcanza geo.start.
-                    function measure() {
+                    var carousel = document.querySelector(".sections-carousel");
+                    var wrapper  = document.querySelector(".carousel-scrollable-wrapper");
+                    if (!carousel || !wrapper) return;
+                    var lbl = wrapper.querySelector(".sec0-vertical-label");
+                    if (!lbl) return;
+                    function alignLabel() {
                         var carouselRect = carousel.getBoundingClientRect();
-                        var sl0 = carousel.scrollLeft;
-                        // Alinear el strip con el borde izquierdo del carrusel (respeta el
-                        // padding del wrapper en cualquier breakpoint)
-                        if (lbl) {
-                            lbl.style.left = (carouselRect.left - wrapper.getBoundingClientRect().left).toFixed(1) + "px";
-                        }
-                        letterGeo = letters.map(function(letter) {
-                            var r  = letter.getBoundingClientRect();
-                            var x0 = r.left - carouselRect.left + sl0; // coord. fija en el contenido
-                            return { start: Math.max(1, x0 - stripW) };
-                        });
-                        measured = true;
+                        lbl.style.left = (carouselRect.left - wrapper.getBoundingClientRect().left).toFixed(1) + "px";
                     }
-
-                    function cancelFlight(i) {
-                        if (flights[i]) {
-                            clearTimeout(flights[i].timer);
-                            if (flights[i].clone) flights[i].clone.remove();
-                            delete flights[i];
-                        }
+                    function update() {
+                        lbl.style.display = carousel.scrollLeft > 0 ? "flex" : "none";
                     }
-
-                    // La letra se despega del titulo y cae con aceleracion (gravedad) hasta su
-                    // hueco exacto en el rotulo vertical, girando -90 grados por el camino.
-                    function fall(i) {
-                        var letter = letters[i];
-                        var target = lblLetters[i];
-                        if (!letter || !target) return;
-                        cancelFlight(i);
-                        var wrapRect = wrapper.getBoundingClientRect();
-                        var sRect = letter.getBoundingClientRect();
-                        var tRect = target.getBoundingClientRect();
-                        letter.style.opacity = "0";
-                        if (sRect.width === 0 || tRect.width === 0) {
-                            target.style.opacity = "1";
-                            return;
-                        }
-                        // El despegue es siempre desde el muro: con scroll rapido la letra ya
-                        // ha pasado de largo y el clon apareceria fuera por la izquierda.
-                        var wallX = carousel.getBoundingClientRect().left + stripW;
-                        var startLeft = Math.max(sRect.left, wallX);
-                        var clone = document.createElement("span");
-                        clone.className = "sec0-flying-letter";
-                        clone.textContent = letter.textContent;
-                        clone.style.left = (startLeft - wrapRect.left).toFixed(1) + "px";
-                        clone.style.top  = (sRect.top - wrapRect.top).toFixed(1) + "px";
-                        wrapper.appendChild(clone);
-                        var dx = (tRect.left + tRect.width / 2) - (startLeft + sRect.width / 2);
-                        var dy = (tRect.top + tRect.height / 2) - (sRect.top + sRect.height / 2);
-                        // Doble rAF para que la transicion arranque desde la posicion inicial
-                        requestAnimationFrame(function() {
-                            requestAnimationFrame(function() {
-                                clone.style.transform = "translate(" + dx.toFixed(1) + "px," + dy.toFixed(1) + "px) rotate(-90deg)";
-                            });
-                        });
-                        flights[i] = { clone: clone, timer: setTimeout(function() {
-                            target.style.opacity = "1";
-                            clone.remove();
-                            delete flights[i];
-                        }, 580) };
-                    }
-
-                    // Vuelta atras: la letra reaparece en el titulo y se apaga en el rotulo
-                    function rise(i) {
-                        cancelFlight(i);
-                        if (lblLetters[i]) lblLetters[i].style.opacity = "0";
-                        if (letters[i]) letters[i].style.opacity = "";
-                    }
-
-                    function apply(sl) {
-                        if (!measured) return;
-                        if (lbl) lbl.style.display = sl > 0 ? "flex" : "none";
-                        var queue = [];
-                        letters.forEach(function(letter, i) {
-                            var nowFallen = sl >= letterGeo[i].start;
-                            if (nowFallen === fallen[i]) return;
-                            fallen[i] = nowFallen;
-                            if (nowFallen) {
-                                queue.push(i);
-                            } else {
-                                rise(i);
-                            }
-                        });
-                        // Si varias letras chocan a la vez, caen escalonadas en cascada
-                        queue.forEach(function(i, k) {
-                            if (k === 0) {
-                                fall(i);
-                            } else {
-                                setTimeout(function() { if (fallen[i]) fall(i); }, k * 90);
-                            }
-                        });
-                    }
-
-                    carousel.addEventListener("scroll", function() {
-                        apply(carousel.scrollLeft);
+                    carousel.addEventListener("scroll", update);
+                    window.addEventListener("load", function() { alignLabel(); update(); });
+                    window.addEventListener("resize", function() { alignLabel(); update(); });
+                    lbl.addEventListener("click", function() {
+                        carousel.scrollTo({ left: 0, behavior: "smooth" });
                     });
-
-                    window.addEventListener("load", function() {
-                        measure();
-                        apply(carousel.scrollLeft);
-                    });
-
-                    window.addEventListener("resize", function() {
-                        measure();
-                        apply(carousel.scrollLeft);
-                    });
-
-                    if (lbl) {
-                        lbl.addEventListener("click", function() {
-                            carousel.scrollTo({ left: 0, behavior: "smooth" });
-                        });
-                    }
                 })();
                 // Navegación por teclado del carrusel
                 var carouselContainer = document.querySelector(\'.carousel-container\');
