@@ -4096,6 +4096,20 @@ class block_bloquecero extends block_base {
         // hace un nuevo rediseño, basta subir TOUR_VERSION para que vuelva a mostrarse.
         $tourversion = 1;
         $tourseen = (int) get_user_preferences('block_bloquecero_tour_seen', 0);
+        $toursteps = [
+            ['sel' => '.udima-menu-bar', 'title' => get_string('tour_menu_title', 'block_bloquecero'), 'text' => get_string('tour_menu_text', 'block_bloquecero')],
+            ['sel' => '.bloquecero-header-responsive', 'title' => get_string('tour_header_title', 'block_bloquecero'), 'text' => get_string('tour_header_text', 'block_bloquecero')],
+            ['sel' => '.bloquecero-info-row', 'title' => get_string('tour_team_title', 'block_bloquecero'), 'text' => get_string('tour_team_text', 'block_bloquecero')],
+            ['sel' => '.bloquecero-tabs', 'title' => get_string('tour_forums_title', 'block_bloquecero'), 'text' => get_string('tour_forums_text', 'block_bloquecero')],
+            ['sel' => '.carousel-container', 'title' => get_string('tour_sections_title', 'block_bloquecero'), 'text' => get_string('tour_sections_text', 'block_bloquecero')],
+            ['sel' => '.sesiones-directo-maincard', 'title' => get_string('tour_sessions_title', 'block_bloquecero'), 'text' => get_string('tour_sessions_text', 'block_bloquecero')],
+            ['sel' => '.calendario-actividades-maincard', 'title' => get_string('tour_activities_title', 'block_bloquecero'), 'text' => get_string('tour_activities_text', 'block_bloquecero')],
+        ];
+        // El paso del toggle "mostrar curso" solo aplica a quien puede usarlo (profesores);
+        // los estudiantes no ven el boton, asi que tampoco deben verlo en el tour.
+        if (has_capability('block/bloquecero:viewcourse', $coursecontext)) {
+            $toursteps[] = ['sel' => '#bloquecero-mostrarcurso-btn', 'title' => get_string('tour_togglecourse_title', 'block_bloquecero'), 'text' => get_string('tour_togglecourse_text', 'block_bloquecero')];
+        }
         $tourdata = [
             'autostart' => ($tourseen < $tourversion),
             'prefname'  => 'block_bloquecero_tour_seen',
@@ -4107,16 +4121,7 @@ class block_bloquecero extends block_base {
                 'close' => get_string('close', 'block_bloquecero'),
                 'step'  => get_string('tour_steplabel', 'block_bloquecero'),
             ],
-            'steps' => [
-                ['sel' => '.udima-menu-bar', 'title' => get_string('tour_menu_title', 'block_bloquecero'), 'text' => get_string('tour_menu_text', 'block_bloquecero')],
-                ['sel' => '.bloquecero-header-responsive', 'title' => get_string('tour_header_title', 'block_bloquecero'), 'text' => get_string('tour_header_text', 'block_bloquecero')],
-                ['sel' => '.bloquecero-info-row', 'title' => get_string('tour_team_title', 'block_bloquecero'), 'text' => get_string('tour_team_text', 'block_bloquecero')],
-                ['sel' => '.bloquecero-tabs', 'title' => get_string('tour_forums_title', 'block_bloquecero'), 'text' => get_string('tour_forums_text', 'block_bloquecero')],
-                ['sel' => '.carousel-container', 'title' => get_string('tour_sections_title', 'block_bloquecero'), 'text' => get_string('tour_sections_text', 'block_bloquecero')],
-                ['sel' => '.sesiones-directo-maincard', 'title' => get_string('tour_sessions_title', 'block_bloquecero'), 'text' => get_string('tour_sessions_text', 'block_bloquecero')],
-                ['sel' => '.calendario-actividades-maincard', 'title' => get_string('tour_activities_title', 'block_bloquecero'), 'text' => get_string('tour_activities_text', 'block_bloquecero')],
-                ['sel' => '#bloquecero-mostrarcurso-btn', 'title' => get_string('tour_togglecourse_title', 'block_bloquecero'), 'text' => get_string('tour_togglecourse_text', 'block_bloquecero')],
-            ],
+            'steps' => $toursteps,
         ];
         $this->content->text .= '<script>var bloqueceroTour = ' . json_encode($tourdata) . ';</script>';
         $this->content->text .= '
