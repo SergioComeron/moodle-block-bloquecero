@@ -19,6 +19,7 @@ namespace block_bloquecero\hook;
 use advanced_testcase;
 use context_course;
 use core\hook\output\before_standard_top_of_body_html_generation;
+use PHPUnit\Framework\Attributes\CoversClass;
 
 /**
  * Tests for block_bloquecero hook callbacks.
@@ -27,8 +28,8 @@ use core\hook\output\before_standard_top_of_body_html_generation;
  * @category   test
  * @copyright  2025 Sergio Comerón <info@sergiocomeron.com>
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
- * @coversDefaultClass \block_bloquecero\hook\callbacks
  */
+#[CoversClass(callbacks::class)]
 final class callbacks_test extends advanced_testcase {
     /**
      * Devuelve un objeto hook vacío para usar en los tests.
@@ -40,8 +41,6 @@ final class callbacks_test extends advanced_testcase {
 
     /**
      * No debe inyectar CSS en la página principal del sitio (SITEID).
-     *
-     * @covers ::before_standard_top_of_body_html
      */
     public function test_no_output_on_site_home(): void {
         global $COURSE;
@@ -58,8 +57,6 @@ final class callbacks_test extends advanced_testcase {
 
     /**
      * No debe inyectar CSS en un curso que no tiene el bloque instalado.
-     *
-     * @covers ::before_standard_top_of_body_html
      */
     public function test_no_output_without_block(): void {
         global $COURSE;
@@ -77,8 +74,6 @@ final class callbacks_test extends advanced_testcase {
 
     /**
      * Debe inyectar el CSS cuando el bloque está instalado en el curso.
-     *
-     * @covers ::before_standard_top_of_body_html
      */
     public function test_output_with_block_installed(): void {
         global $COURSE, $DB;
