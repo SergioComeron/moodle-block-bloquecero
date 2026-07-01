@@ -4539,7 +4539,18 @@ class block_bloquecero extends block_base {
                 }
                 function markSeen() {
                     try { localStorage.setItem('bloquecero_tour_seen', String(data.version)); } catch (e) {}
-                    if (window.M && M.util && M.util.set_user_preference) {
+                    // Guarda la preferencia server-side. M.util.set_user_preference se elimino
+                    // en Moodle 5.x, asi que usamos el modulo AMD core_user/repository (existe en
+                    // 4.5 y 5.2) y dejamos el metodo antiguo como fallback.
+                    if (window.require) {
+                        require(['core_user/repository'], function(UserRepo) {
+                            UserRepo.setUserPreference(data.prefname, data.version);
+                        }, function() {
+                            if (window.M && M.util && M.util.set_user_preference) {
+                                M.util.set_user_preference(data.prefname, data.version);
+                            }
+                        });
+                    } else if (window.M && M.util && M.util.set_user_preference) {
                         M.util.set_user_preference(data.prefname, data.version);
                     }
                 }
