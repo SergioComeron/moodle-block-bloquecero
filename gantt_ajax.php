@@ -28,7 +28,7 @@
 
 define('AJAX_SCRIPT', true);
 
-require_once(__DIR__ . '/../../config.php');
+require_once(dirname($_SERVER['SCRIPT_FILENAME'], 3) . '/config.php');
 
 require_login();
 require_sesskey();
