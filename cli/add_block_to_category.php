@@ -31,7 +31,42 @@
 
 define('CLI_SCRIPT', true);
 
-require(__DIR__ . '/../../../config.php');
+// The block is symlinked into Moodle in the standalone layout, so __DIR__ resolves to the
+// real repo path and the classic require(__DIR__.'/../../../config.php') fails. We locate
+// config.php dynamically (env override BLOCK_BLOQUECERO_MOODLE_ROOT, then known installs).
+// This must run before config.php is included, so the MoodleInternal sniff is disabled here.
+// phpcs:disable moodle.Files.MoodleInternal
+/**
+ * Locate Moodle's config.php across standalone/symlinked layouts.
+ *
+ * @return string absolute path to config.php
+ */
+function block_bloquecero_locate_config() {
+    $candidates = [__DIR__ . '/../../../config.php'];
+    $envroot = getenv('BLOCK_BLOQUECERO_MOODLE_ROOT');
+    if (!empty($envroot)) {
+        $candidates[] = rtrim($envroot, '/') . '/config.php';
+    }
+    $knownroots = [
+        getenv('HOME') . '/moodles/stable_502/moodle',
+        getenv('HOME') . '/moodles/stable_501/moodle',
+        getenv('HOME') . '/moodles/stable_405/moodle',
+    ];
+    foreach ($knownroots as $knownroot) {
+        $candidates[] = $knownroot . '/config.php';
+    }
+    foreach ($candidates as $candidate) {
+        if (is_file($candidate)) {
+            return $candidate;
+        }
+    }
+    fwrite(STDERR, "No se pudo localizar config.php de Moodle.\n"
+        . "Ejecuta desde una instalacion real o exporta BLOCK_BLOQUECERO_MOODLE_ROOT=/ruta/a/moodle\n");
+    exit(1);
+}
+
+require(block_bloquecero_locate_config());
+// phpcs:enable moodle.Files.MoodleInternal
 require_once($CFG->libdir . '/clilib.php');
 
 // Get the cli options.
