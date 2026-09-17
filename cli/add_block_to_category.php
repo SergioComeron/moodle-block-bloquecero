@@ -78,6 +78,7 @@ require_once($CFG->libdir . '/clilib.php');
         'shortname' => null,
         'shortnames' => null,
         'search' => null,
+        'where' => null,
         'region'        => 'content-upper',
         'weight'        => -10,
         'dry-run'       => false,
@@ -108,8 +109,9 @@ Courses are selected by the UNION of the given filters: a course matches if it
 belongs to the chosen category (or its subcategories), OR its shortname starts
 with the given --shortname prefix, OR its shortname is in the --shortnames list,
 OR it is returned by the --search term (the same search used by Moodle's course
-management page: shortname, fullname, idnumber and summary). At least one selector
-(--category, --idnumber, --shortname, --shortnames or --search) must be provided.
+management page: shortname, fullname, idnumber and summary), OR it matches the
+raw SQL condition given in --where. At least one selector (--category,
+--idnumber, --shortname, --shortnames, --search or --where) must be provided.
 
 The block is only added to courses that do not already have an instance of it
 (bloquecero allows a single instance per course).
@@ -129,6 +131,14 @@ Options:
                        Moodle's course management page (matches shortname, fullname,
                        idnumber and summary, across the whole site). Selects every
                        matching course. Combined with the other selectors (union).
+      --where=SQL      Raw SQL condition applied to the course table (the WHERE
+                       part only, without the 'WHERE' keyword). Column names refer
+                       to the course table directly, e.g.
+                       \"shortname LIKE '2000-01_5%'\" or
+                       \"visible = 1 AND startdate > 1735689600\". Standard SQL
+                       LIKE wildcards apply ('%' any string, '_' any single char).
+                       Combined with the other selectors (union). CLI-only: the
+                       condition is executed as-is, so mind your quoting.
   -r, --region=NAME    Block region (internal name) where the block is placed.
                        Default: content-upper.
   -w, --weight=N       Block weight (ordering within the region). Default: -10 (top).
@@ -156,11 +166,13 @@ Examples:
   php add_block_to_category.php --shortnames=MAT101,FIS202,QUI303
   php add_block_to_category.php --category=12 --shortnames=MAT101,FIS202 --dry-run
   php add_block_to_category.php --search=Plantilla-5008- --dry-run
+  php add_block_to_category.php --where=\"shortname LIKE '2000-01_5%'\" --dry-run
 ";
 
 $hascategory = !empty($options['category']) || !empty($options['idnumber']);
 $hasshortname = !empty($options['shortname']);
 $hassearch = ($options['search'] !== null && trim($options['search']) !== '');
+$haswhere = ($options['where'] !== null && trim($options['where']) !== '');
 
 // Parse the exact-shortnames list (comma-separated, trimmed, no empties).
 $shortnames = [];
@@ -172,7 +184,7 @@ if (!empty($options['shortnames'])) {
 }
 $hasshortnames = !empty($shortnames);
 
-if ($options['help'] || (!$hascategory && !$hasshortname && !$hasshortnames && !$hassearch)) {
+if ($options['help'] || (!$hascategory && !$hasshortname && !$hasshortnames && !$hassearch && !$haswhere)) {
     cli_writeln($help);
     exit(0);
 }
@@ -242,6 +254,17 @@ if ($hassearch) {
     $searchids = array_values(array_map('intval', array_keys($found)));
 }
 
+// Validate the raw SQL condition early with a cheap COUNT, so a syntax error or a
+// wrong column name produces a clear message before anything else runs.
+$wherecount = 0;
+if ($haswhere) {
+    try {
+        $wherecount = $DB->count_records_select('course', '(' . $options['where'] . ')');
+    } catch (Exception $e) {
+        cli_error("Invalid --where condition: " . $e->getMessage());
+    }
+}
+
 cli_heading('block_bloquecero - add block to courses');
 if ($rootcategory) {
     cli_writeln("Root category : {$rootcategory->get_formatted_name()} (id {$rootcategory->id})");
@@ -255,6 +278,9 @@ if ($hasshortnames) {
 }
 if ($hassearch) {
     cli_writeln("Search        : '" . trim($options['search']) . "' (" . count($searchids) . " course(s) matched)");
+}
+if ($haswhere) {
+    cli_writeln("Where         : " . trim($options['where']) . " ({$wherecount} course(s) matched)");
 }
 cli_writeln("Region/Weight : {$region} / {$weight}");
 cli_writeln("Mode          : " . ($dryrun ? 'DRY-RUN (no changes)' : 'LIVE') . PHP_EOL);
@@ -286,6 +312,10 @@ if (!empty($searchids)) {
     [$sidsql, $sidparams] = $DB->get_in_or_equal($searchids, SQL_PARAMS_NAMED, 'sid');
     $selectors[] = "id {$sidsql}";
     $params += $sidparams;
+}
+
+if ($haswhere) {
+    $selectors[] = '(' . $options['where'] . ')';
 }
 
 if (empty($selectors)) {
