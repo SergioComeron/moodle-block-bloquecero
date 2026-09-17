@@ -5,6 +5,18 @@ Todos los cambios notables en este proyecto serán documentados en este archivo.
 El formato está basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1.0.0/),
 y este proyecto adhiere a [Semantic Versioning](https://semver.org/lang/es/).
 
+## [v0.14] - 2026-09-17
+
+### Nuevas funcionalidades
+- opción --where para filtrar cursos con SQL
+
+### Correcciones
+- eliminar phpunit.xml propio que rompía CI (sin bootstrap de Moodle)
+
+### Otros cambios
+- Release: bump version to 0.14
+
+
 ## [v0.13] - 2026-07-07
 
 ### Nuevas funcionalidades
