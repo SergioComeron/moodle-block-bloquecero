@@ -7,6 +7,12 @@ y este proyecto adhiere a [Semantic Versioning](https://semver.org/lang/es/).
 
 ## [v0.15] - 2026-09-17
 
+### Otros cambios
+- Release: bump version to 0.15
+
+
+## [v0.15] - 2026-09-17
+
 ### Nuevas funcionalidades
 - Reutilizar `showcategories` de Zoom UDIMA para decidir en qué cursos aplica bloquecero
 - Las pastillas «Sesiones en directo» y «Grabaciones» del pie de la tarjeta apuntan a Zoom UDIMA cuando el curso tiene bloquecero y la categoría está en `showcategories`; si no, siguen yendo a `mod_directos`
