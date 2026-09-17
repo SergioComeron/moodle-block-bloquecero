@@ -16,6 +16,9 @@
 
 namespace block_bloquecero\hook;
 
+use block_bloquecero\category_filter;
+use block_bloquecero\zoom_cards;
+
 /**
  * Hook callbacks for block_bloquecero.
  *
@@ -25,31 +28,24 @@ namespace block_bloquecero\hook;
  */
 class callbacks {
     /**
-     * Hides the course index drawer on course pages where the block is installed.
+     * Hides the course index drawer on course pages where bloquecero applies.
+     *
+     * Applies when the course has a bloquecero instance, or when Zoom UDIMA
+     * categories are reused and this course is in that list. Also hides the
+     * Zoom UDIMA block when bloquecero is embedding its two entry cards.
      *
      * @param \core\hook\output\before_standard_top_of_body_html_generation $hook
      */
     public static function before_standard_top_of_body_html(
         \core\hook\output\before_standard_top_of_body_html_generation $hook
     ): void {
-        global $COURSE, $DB;
+        global $COURSE;
 
-        if (empty($COURSE) || $COURSE->id == SITEID) {
+        if (!category_filter::should_show($COURSE ?? null)) {
             return;
         }
 
-        $coursecontext = \context_course::instance($COURSE->id);
-        $hasblock = $DB->record_exists('block_instances', [
-            'blockname'       => 'bloquecero',
-            'parentcontextid' => $coursecontext->id,
-        ]);
-
-        if (!$hasblock) {
-            return;
-        }
-
-        $hook->add_html('<style>
-        #courseindex-drawer,
+        $css = '#courseindex-drawer,
         .courseindex,
         .drawer-toggler.drawer-left-toggle { display: none !important; }
         @media (min-width: 768px) {
@@ -59,7 +55,18 @@ class callbacks {
                 visibility: visible !important;
             }
             .drawers-backdrop { display: none !important; }
+        }';
+        // require_once: el classmap de Moodle no ve clases nuevas hasta purgar caché.
+        if (!class_exists(zoom_cards::class, false)) {
+            $zoomcardsfile = dirname(__DIR__) . '/zoom_cards.php';
+            if (is_readable($zoomcardsfile)) {
+                require_once($zoomcardsfile);
+            }
         }
-    </style>');
+        if (class_exists(zoom_cards::class, false) && zoom_cards::should_show($COURSE ?? null)) {
+            $css .= '.block_zoom_udima { display: none !important; }';
+        }
+
+        $hook->add_html('<style>' . $css . '</style>');
     }
 }

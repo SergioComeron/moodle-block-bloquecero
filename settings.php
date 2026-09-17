@@ -25,6 +25,13 @@
 defined('MOODLE_INTERNAL') || die;
 
 if ($ADMIN->fulltree) {
+    $settings->add(new admin_setting_configcheckbox(
+        'block_bloquecero/reusezoomcategories',
+        get_string('reusezoomcategories', 'block_bloquecero'),
+        get_string('reusezoomcategories_desc', 'block_bloquecero'),
+        1
+    ));
+
     $settings->add(new admin_setting_configstoredfile(
         'block_bloquecero/header_bg_img',
         get_string('header_bg_img', 'block_bloquecero'),

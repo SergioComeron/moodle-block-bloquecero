@@ -5,6 +5,20 @@ Todos los cambios notables en este proyecto serán documentados en este archivo.
 El formato está basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1.0.0/),
 y este proyecto adhiere a [Semantic Versioning](https://semver.org/lang/es/).
 
+## [v0.15] - 2026-09-17
+
+### Nuevas funcionalidades
+- Reutilizar `showcategories` de Zoom UDIMA para decidir en qué cursos aplica bloquecero
+- Las pastillas «Sesiones en directo» y «Grabaciones» del pie de la tarjeta apuntan a Zoom UDIMA cuando el curso tiene bloquecero y la categoría está en `showcategories`; si no, siguen yendo a `mod_directos`
+- Esas dos entradas se pintan como tarjetas rectangulares de Zoom UDIMA (icono y título; el subtítulo va en el tooltip)
+- La tarjeta de sesiones en directo (y el Gantt) muestra también los eventos creados por `local_sincronizador_eventos`
+- Si una sesión manual y una del sincronizador coinciden en fecha y hora (mismo minuto), se muestra una sola
+- Sesiones en directo por `courseid` aunque no haya instancia del bloque en el curso
+
+### Otros cambios
+- Release: bump version to 0.15
+
+
 ## [v0.14] - 2026-09-17
 
 ### Nuevas funcionalidades

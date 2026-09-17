@@ -73,6 +73,27 @@ final class callbacks_test extends advanced_testcase {
     }
 
     /**
+     * Debe inyectar CSS si el curso está en las categorías de Zoom UDIMA, sin instancia.
+     */
+    public function test_output_when_zoom_category_matches_without_block(): void {
+        global $COURSE;
+
+        $this->resetAfterTest();
+
+        $course = $this->getDataGenerator()->create_course();
+        $COURSE = $course;
+        set_config('showcategories', (string) $course->category, 'block_zoom_udima');
+
+        $hook = $this->make_hook();
+        callbacks::before_standard_top_of_body_html($hook);
+
+        $output = $hook->get_output();
+        $this->assertStringContainsString('<style>', $output);
+        $this->assertStringContainsString('#courseindex-drawer', $output);
+        $this->assertStringNotContainsString('.block_zoom_udima', $output);
+    }
+
+    /**
      * Debe inyectar el CSS cuando el bloque está instalado en el curso.
      */
     public function test_output_with_block_installed(): void {
@@ -105,5 +126,44 @@ final class callbacks_test extends advanced_testcase {
         $this->assertStringContainsString('<style>', $output);
         $this->assertStringContainsString('#courseindex-drawer', $output);
         $this->assertStringContainsString('display: none !important', $output);
+        $this->assertStringNotContainsString('.block_zoom_udima', $output);
+    }
+
+    /**
+     * Con bloquecero y categorías de Zoom, oculta el bloque Zoom UDIMA (las tarjetas van en bloquecero).
+     */
+    public function test_hides_zoom_udima_when_cards_are_embedded(): void {
+        global $COURSE, $DB;
+
+        $this->resetAfterTest();
+
+        if (!\block_bloquecero\zoom_cards::zoom_plugin_available()) {
+            $this->markTestSkipped('block_zoom_udima is not installed');
+        }
+
+        $course = $this->getDataGenerator()->create_course();
+        $COURSE = $course;
+        set_config('showcategories', (string) $course->category, 'block_zoom_udima');
+
+        $coursecontext = context_course::instance($course->id);
+        $DB->insert_record('block_instances', (object)[
+            'blockname'        => 'bloquecero',
+            'parentcontextid'  => $coursecontext->id,
+            'showinsubcontexts' => 0,
+            'requiredbytheme'  => 0,
+            'pagetypepattern'  => 'course-view-*',
+            'defaultregion'    => 'side-pre',
+            'defaultweight'    => 0,
+            'configdata'       => '',
+            'timecreated'      => time(),
+            'timemodified'     => time(),
+        ]);
+
+        $hook = $this->make_hook();
+        callbacks::before_standard_top_of_body_html($hook);
+
+        $output = $hook->get_output();
+        $this->assertStringContainsString('.block_zoom_udima', $output);
+        $this->assertStringContainsString('#courseindex-drawer', $output);
     }
 }

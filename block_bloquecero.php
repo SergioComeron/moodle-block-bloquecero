@@ -94,6 +94,13 @@ class block_bloquecero extends block_base {
             $courseid = $this->page->course->id;
             $course   = $DB->get_record('course', ['id' => $courseid], '*', MUST_EXIST);
 
+            // Fecha de cierre elegida por el profesor (fin del día seleccionado, 23:59).
+            $rawenddate = !empty($data->september_enddate)
+                ? (int)$data->september_enddate
+                : mktime(0, 0, 0, 8, 31, (int)date('Y'));
+            $enddate = mktime(23, 59, 0, (int)date('n', $rawenddate), (int)date('j', $rawenddate), (int)date('Y', $rawenddate));
+            $enddatestr = userdate($enddate, get_string('strftimedate', 'langconfig'));
+
             // -------------------------------------------------------
             // 1. Enviar anuncio al Tablón de Anuncios
             // -------------------------------------------------------
@@ -105,7 +112,7 @@ class block_bloquecero extends block_base {
                     $discussion->course        = $course->id;
                     $discussion->forum         = $forum->id;
                     $discussion->name          = get_string('sept_announcement_subject', 'block_bloquecero');
-                    $discussion->message       = get_string('sept_announcement_body', 'block_bloquecero');
+                    $discussion->message       = get_string('sept_announcement_body', 'block_bloquecero', $enddatestr);
                     $discussion->messageformat = FORMAT_HTML;
                     $discussion->messagetrust  = 0;
                     $discussion->mailnow       = 1;
@@ -182,24 +189,23 @@ class block_bloquecero extends block_base {
             }
 
             // -------------------------------------------------------
-            // 4. Ampliar plazos de actividades y controles al 31 de agosto
+            // 4. Ampliar plazos de actividades y controles a la fecha
+            // de cierre elegida por el profesor ($enddate, calculado arriba).
             // -------------------------------------------------------
-            $aug31 = mktime(23, 59, 0, 8, 31, (int)date('Y'));
-
             $assigns = $DB->get_records('assign', ['course' => $course->id]);
             foreach ($assigns as $assign) {
                 if (!empty($assign->duedate)) {
-                    $DB->set_field('assign', 'duedate', $aug31, ['id' => $assign->id]);
+                    $DB->set_field('assign', 'duedate', $enddate, ['id' => $assign->id]);
                 }
                 if (!empty($assign->cutoffdate)) {
-                    $DB->set_field('assign', 'cutoffdate', $aug31, ['id' => $assign->id]);
+                    $DB->set_field('assign', 'cutoffdate', $enddate, ['id' => $assign->id]);
                 }
             }
 
             $quizzes = $DB->get_records('quiz', ['course' => $course->id]);
             foreach ($quizzes as $quiz) {
                 if (!empty($quiz->timeclose)) {
-                    $DB->set_field('quiz', 'timeclose', $aug31, ['id' => $quiz->id]);
+                    $DB->set_field('quiz', 'timeclose', $enddate, ['id' => $quiz->id]);
                 }
             }
 
@@ -1312,31 +1318,24 @@ class block_bloquecero extends block_base {
         // --- SESIONES EN DIRECTO ---
         // Preparar sesiones en directo desde la base de datos (PRIMERO, antes de calcular semanas)
         $sesioneszoom = [];
-        $blockinstanceid = $this->instance->id ?? 0;
+        $blockinstanceid = (int) ($this->instance->id ?? 0);
+        $sessions = \block_bloquecero\category_filter::get_sessions((int) $COURSE->id, $blockinstanceid);
 
-        if ($blockinstanceid) {
-            $sessions = $DB->get_records(
-                'block_bloquecero_sessions',
-                ['blockinstanceid' => $blockinstanceid, 'courseid' => $COURSE->id],
-                'sessiondate ASC'
-            );
-
-            foreach ($sessions as $session) {
-                $calendarurl = '';
-                if (!empty($session->calendarid)) {
-                    $calendarurl = (new moodle_url('/calendar/view.php', [
-                        'view' => 'day',
-                        'time' => $session->sessiondate,
-                    ]))->out(false);
-                }
-                $sesioneszoom[] = [
-                    'titulo' => $session->name,
-                    'fecha' => $session->sessiondate,
-                    'duracion' => (int)($session->duration ?? 0),
-                    'descripcion' => !empty($session->description) ? format_text($session->description, FORMAT_HTML) : '',
-                    'calendarurl' => $calendarurl,
-                ];
+        foreach ($sessions as $session) {
+            $calendarurl = '';
+            if (!empty($session->calendarid)) {
+                $calendarurl = (new moodle_url('/calendar/view.php', [
+                    'view' => 'day',
+                    'time' => $session->sessiondate,
+                ]))->out(false);
             }
+            $sesioneszoom[] = [
+                'titulo' => $session->name,
+                'fecha' => $session->sessiondate,
+                'duracion' => (int)($session->duration ?? 0),
+                'descripcion' => !empty($session->description) ? format_text($session->description, FORMAT_HTML) : '',
+                'calendarurl' => $calendarurl,
+            ];
         }
 
         // Incorporar sesiones al rango del Gantt y generar columnas semanales.
@@ -1564,30 +1563,34 @@ class block_bloquecero extends block_base {
             </script>
             ';
 
-        // --- BOTONES MOD_DIRECTOS: solo si el curso tiene una instancia del módulo directos ---
-        $directosbuttons = '';
-        $directosmodinfo = get_fast_modinfo($COURSE);
-        foreach ($directosmodinfo->get_instances_of('directos') as $directoscm) {
-            if (!$directoscm->uservisible) {
-                continue;
+        // Tarjetas del pie (estilo Zoom UDIMA): Zoom si aplica; si no, mod_directos.
+        if (!class_exists(\block_bloquecero\zoom_cards::class, false)) {
+            require_once(__DIR__ . '/classes/zoom_cards.php');
+        }
+        $directosliveurl = null;
+        $directosrecordingsurl = null;
+        $zoomurls = \block_bloquecero\zoom_cards::urls($COURSE);
+        if ($zoomurls) {
+            $directosliveurl = $zoomurls['live'];
+            $directosrecordingsurl = $zoomurls['records'];
+        } else {
+            $directosmodinfo = get_fast_modinfo($COURSE);
+            foreach ($directosmodinfo->get_instances_of('directos') as $directoscm) {
+                if (!$directoscm->uservisible) {
+                    continue;
+                }
+                $directosliveurl = new moodle_url('/mod/directos/view.php', ['id' => $directoscm->id]);
+                $directosrecordingsurl = new moodle_url('/mod/directos/records.php', ['id' => $directoscm->id]);
+                break;
             }
-            $directosliveurl = new moodle_url('/mod/directos/view.php', ['id' => $directoscm->id]);
-            $directosrecordingsurl = new moodle_url('/mod/directos/records.php', ['id' => $directoscm->id]);
-            $directosbuttons = '
+        }
+        $sessionfooter = '';
+        if ($directosliveurl && $directosrecordingsurl) {
+            $sessionfooter = '
             <div class="sesiones-directo-footer">
             <hr class="sesiones-directo-divider">
-            <div class="sesiones-directo-footer-actions">
-                <a href="' . $directosliveurl . '" class="sesiones-directo-calendaricon">
-                    <svg width="15" height="15" viewBox="0 0 24 24" aria-hidden="true" style="flex-shrink:0;"><circle cx="12" cy="12" r="3.2" fill="currentColor"/><path d="M7.05 7.05a7 7 0 0 0 0 9.9M16.95 7.05a7 7 0 0 1 0 9.9M4.22 4.22a11 11 0 0 0 0 15.56M19.78 4.22a11 11 0 0 1 0 15.56" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>
-                    <span>' . get_string('directos_livelink', 'block_bloquecero') . '</span>
-                </a>
-                <a href="' . $directosrecordingsurl . '" class="sesiones-directo-calendaricon">
-                    <svg width="15" height="15" viewBox="0 0 24 24" aria-hidden="true" style="flex-shrink:0;"><rect x="2.5" y="6.5" width="13" height="11" rx="2" fill="currentColor"/><path d="M16 10.5l5-2.8v8.6l-5-2.8z" fill="currentColor"/></svg>
-                    <span>' . get_string('directos_recordingslink', 'block_bloquecero') . '</span>
-                </a>
-            </div>
+            ' . \block_bloquecero\zoom_cards::render_cards($directosliveurl, $directosrecordingsurl) . '
             </div>';
-            break;
         }
 
         // --- SESIONES EN DIRECTO: genera el bloque con selector de semana ---
@@ -1612,7 +1615,7 @@ class block_bloquecero extends block_base {
             <div class="sesiones-directo-container">
                 <div id="sesiones-list-content"></div>
             </div>
-            ' . $directosbuttons . '
+            ' . $sessionfooter . '
         </div>
         <script>
         document.addEventListener("DOMContentLoaded", function(){
@@ -1817,7 +1820,12 @@ class block_bloquecero extends block_base {
             <!-- Aviso convocatoria de septiembre -->
             <div class="bloquecero-september-notice" role="alert">
                 <strong>' . get_string('septembernotice_title', 'block_bloquecero') . '</strong>
-                <p>' . get_string('septembernotice_text', 'block_bloquecero') . '</p>
+                <p>' . get_string('septembernotice_text', 'block_bloquecero', userdate(
+                    !empty($this->config->september_enddate)
+                        ? (int)$this->config->september_enddate
+                        : mktime(23, 59, 0, 8, 31, (int)date('Y')),
+                    get_string('strftimedate', 'langconfig')
+                )) . '</p>
             </div>' : '') . '
             <!-- Bloques de información de contacto de cada profesor -->
             ' . (!$ismetacourse ? $contactblockshtml : '') . '
@@ -3048,6 +3056,63 @@ class block_bloquecero extends block_base {
             }
             a.sesiones-directo-calendaricon:hover {
                 text-decoration: none;
+            }
+            .sesiones-directo-footer .zoom-udima-cards {
+                display: flex;
+                flex-wrap: wrap;
+                gap: 0.6rem;
+            }
+            .sesiones-directo-footer .zoom-udima-card {
+                display: flex;
+                flex: 1 1 0;
+                flex-direction: row;
+                align-items: center;
+                justify-content: flex-start;
+                gap: 10px;
+                min-width: 0;
+                padding: 10px 14px;
+                border-radius: 0.4rem;
+                text-align: left;
+                text-decoration: none;
+                color: #212529;
+                background: #fff;
+                border: 1px solid #e9ecef;
+                transition: border-color 0.15s ease, background-color 0.15s ease;
+            }
+            .sesiones-directo-footer .zoom-udima-card:hover,
+            .sesiones-directo-footer .zoom-udima-card:focus {
+                color: #212529;
+                text-decoration: none;
+                border-color: #ced4da;
+                background: #f8f9fa;
+            }
+            .sesiones-directo-footer .zoom-udima-card:focus-visible {
+                outline: 2px solid #004D35;
+                outline-offset: 2px;
+            }
+            .sesiones-directo-footer .zoom-udima-card__icon {
+                display: inline-flex;
+                align-items: center;
+                justify-content: center;
+                width: 2.15rem;
+                height: 2.15rem;
+                border-radius: 50%;
+                flex-shrink: 0;
+                background: #f1f3f5;
+                color: #495057;
+            }
+            .sesiones-directo-footer .zoom-udima-card--live .zoom-udima-card__icon {
+                background: #e6f4ec;
+                color: #157347;
+            }
+            .sesiones-directo-footer .zoom-udima-card--records .zoom-udima-card__icon {
+                background: #e7f0fd;
+                color: #0b5ed7;
+            }
+            .sesiones-directo-footer .zoom-udima-card__title {
+                font-weight: 600;
+                font-size: 0.88rem;
+                line-height: 1.2;
             }
             #sesiones-list-content ul {
                 padding-left: 0;

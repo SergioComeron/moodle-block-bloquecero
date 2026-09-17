@@ -222,6 +222,12 @@ class block_bloquecero_edit_form extends block_edit_form {
         $mform->setDefault('config_show_september_notice', 0);
         $mform->addHelpButton('config_show_september_notice', 'septembernotice_enable', 'block_bloquecero');
 
+        // Fecha de cierre elegida por el profesor (por defecto, 31 de agosto del año en curso).
+        $mform->addElement('date_selector', 'config_september_enddate', get_string('septembernotice_enddate', 'block_bloquecero'));
+        $mform->setDefault('config_september_enddate', mktime(0, 0, 0, 8, 31, (int)date('Y')));
+        $mform->addHelpButton('config_september_enddate', 'septembernotice_enddate', 'block_bloquecero');
+        $mform->disabledIf('config_september_enddate', 'config_show_september_notice', 'eq', 0);
+
         // Selector para el número máximo de actividades a mostrar en cada ficha de sección.
         $mform->addElement('header', 'blokconfig', get_string('blocksconfig', 'block_bloquecero'));
         $maxactivitiesoptions = [];

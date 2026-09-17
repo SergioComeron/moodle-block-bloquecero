@@ -216,24 +216,18 @@ function bloquecero_gantt_course_data(stdClass $course, $blockconfig, int $useri
 
     // --- Live sessions ---
     $sessions = [];
-    if ($blockinstanceid) {
-        $sessionrecs = $DB->get_records(
-            'block_bloquecero_sessions',
-            ['blockinstanceid' => $blockinstanceid],
-            'sessiondate ASC'
-        );
-        foreach ($sessionrecs as $s) {
-            $sessions[] = [
-                'titulo' => $s->name,
-                'fecha'  => (int)$s->sessiondate,
-            ];
-            // Extend range to include session date.
-            if ($rangestart === 0 || (int)$s->sessiondate < $rangestart) {
-                $rangestart = (int)$s->sessiondate;
-            }
-            if ((int)$s->sessiondate > $rangeend) {
-                $rangeend = (int)$s->sessiondate;
-            }
+    $sessionrecs = \block_bloquecero\category_filter::get_sessions((int) $course->id, $blockinstanceid);
+    foreach ($sessionrecs as $s) {
+        $sessions[] = [
+            'titulo' => $s->name,
+            'fecha'  => (int)$s->sessiondate,
+        ];
+        // Extend range to include session date.
+        if ($rangestart === 0 || (int)$s->sessiondate < $rangestart) {
+            $rangestart = (int)$s->sessiondate;
+        }
+        if ((int)$s->sessiondate > $rangeend) {
+            $rangeend = (int)$s->sessiondate;
         }
     }
 
