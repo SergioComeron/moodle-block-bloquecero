@@ -1797,7 +1797,7 @@ class block_bloquecero extends block_base {
             <div class="bloquecero-header-responsive">
                 ' . ($fondocabeceraimg ? '<img src="' . $fondocabeceraimg . '" alt="" role="presentation" class="bloquecero-header-bg-img">' : '') . '
                 <div class="bloquecero-header-content">
-                    <h2 class="bloquecero-header-title">' . format_string(trim(explode(' - ', $COURSE->fullname, 2)[0])) . '</h2>
+                    <h2 class="bloquecero-header-title">' . format_string(\block_bloquecero\course_name::display($COURSE->fullname)) . '</h2>
                 </div>
             </div>
             ' . ($ismetacourse ? '
