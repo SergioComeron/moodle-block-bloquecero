@@ -79,7 +79,7 @@ function bloquecero_gantt_course_data(stdClass $course, $blockconfig, int $useri
         if (!empty($sec->component) && $sec->component === 'mod_subsection') {
             continue;
         }
-        if (!$sec->uservisible) {
+        if (!\block_bloquecero\visibility::show_section($sec)) {
             continue;
         }
         $secname  = format_string($sec->name ?: get_string('section', 'moodle') . ' ' . $sec->section);
@@ -120,74 +120,23 @@ function bloquecero_gantt_course_data(stdClass $course, $blockconfig, int $useri
         }
     }
 
-    // --- Subsection parent map ---
-    $subsectionmap = [];
-    $subsectionrecs = $DB->get_records(
-        'course_sections',
-        ['course' => $course->id, 'component' => 'mod_subsection'],
-        '',
-        'section, itemid'
-    );
-    if (!empty($subsectionrecs)) {
-        $cmids  = array_column((array)$subsectionrecs, 'itemid');
-        [$insql, $inparams] = $DB->get_in_or_equal($cmids);
-        $inparams[] = $course->id;
-        $parentcms = $DB->get_records_sql(
-            "SELECT cm.instance, cs.section AS parentsecnum
-               FROM {course_modules} cm
-               JOIN {course_sections} cs ON cs.id = cm.section
-               JOIN {modules} m ON m.id = cm.module AND m.name = 'subsection'
-              WHERE cm.instance $insql AND cm.course = ?",
-            $inparams
-        );
-        foreach ($subsectionrecs as $subsec) {
-            if (!empty($parentcms[$subsec->itemid])) {
-                $subsectionmap[(int)$subsec->section] = (int)$parentcms[$subsec->itemid]->parentsecnum;
-            }
-        }
-    }
-
     // --- Activities ---
     $activities = [];
-    foreach ($modinfo->cms as $cm) {
-        if (!$cm->uservisible) {
+    foreach (\block_bloquecero\course_order::listed_cms($modinfo) as $listed) {
+        $cm = $listed['cm'];
+        if (!\block_bloquecero\visibility::show_cm($cm)) {
             continue;
         }
         if (in_array($cm->modname, ['label', 'subsection'])) {
             continue;
         }
 
-        $actstart = 0;
-        $actend   = 0;
-
-        if ($cm->modname === 'assign' && $cm->instance) {
-            $rec = $DB->get_record('assign', ['id' => $cm->instance], 'allowsubmissionsfromdate, duedate');
-            if ($rec) {
-                $actstart = $rec->allowsubmissionsfromdate ?: $rec->duedate;
-                $actend   = $rec->duedate;
-            }
-        } else if ($cm->modname === 'quiz' && $cm->instance) {
-            $rec = $DB->get_record('quiz', ['id' => $cm->instance], 'timeopen, timeclose');
-            if ($rec) {
-                $actstart = $rec->timeopen ?: $rec->timeclose;
-                $actend   = $rec->timeclose;
-            }
-        } else if ($cm->modname === 'forum' && $cm->instance) {
-            $rec = $DB->get_record('forum', ['id' => $cm->instance], 'assesstimestart, assesstimefinish');
-            if ($rec && $rec->assesstimefinish) {
-                $actstart = $rec->assesstimestart ?: $rec->assesstimefinish;
-                $actend   = $rec->assesstimefinish;
-            }
-        }
+        $cmdates  = \block_bloquecero\activity_dates::for_cm($cm);
+        $actstart = $cmdates['start'];
+        $actend   = $cmdates['end'];
 
         if (!$actstart && !$actend) {
             continue;
-        }
-        if (!$actstart) {
-            $actstart = $actend;
-        }
-        if (!$actend) {
-            $actend = $actstart;
         }
 
         if ($rangestart === 0 || $actstart < $rangestart) {
@@ -195,11 +144,6 @@ function bloquecero_gantt_course_data(stdClass $course, $blockconfig, int $useri
         }
         if ($actend > $rangeend) {
             $rangeend = $actend;
-        }
-
-        $sectionnum = (int)$cm->sectionnum;
-        if (isset($subsectionmap[$sectionnum])) {
-            $sectionnum = $subsectionmap[$sectionnum];
         }
 
         $icon = $OUTPUT->pix_icon('icon', $cm->modfullname, $cm->modname, ['class' => 'activityicon']);
@@ -210,7 +154,10 @@ function bloquecero_gantt_course_data(stdClass $course, $blockconfig, int $useri
             'start'      => $actstart,
             'end'        => $actend,
             'modname'    => $cm->modname,
-            'sectionnum' => $sectionnum,
+            'sectionnum' => (int) $listed['sectionnum'],
+            'restricted' => \block_bloquecero\visibility::is_restricted($cm),
+            'cmid'       => (int) $cm->id,
+            'pred_cmids' => \block_bloquecero\visibility::completion_predecessor_cmids($cm),
         ];
     }
 
@@ -373,10 +320,19 @@ foreach ($coursesdata as $cdata) {
 
         // Activity rows.
         if ($hasactivities) {
-            foreach ($activitiesbysection[$sectionnum] as $act) {
+            $sectionacts = \block_bloquecero\visibility::annotate_gantt_chains($activitiesbysection[$sectionnum]);
+            foreach ($sectionacts as $act) {
                 $modtype = htmlspecialchars($act['modname'] ?? 'other');
-                $html .= '<tr data-gantt-type="' . $modtype . '"><td class="bloquecero-gantt-sectionname bloquecero-gantt-activityname">'
-                    . $act['icon'] . ' ' . htmlspecialchars($act['name']) . '</td>';
+                $rowclasses = [];
+                if (!empty($act['restricted'])) {
+                    $rowclasses[] = 'bloquecero-restricted';
+                }
+                if (!empty($act['chain'])) {
+                    $rowclasses[] = 'bloquecero-gantt-chained';
+                }
+                $rowclass = $rowclasses ? ' class="' . implode(' ', $rowclasses) . '"' : '';
+                $html .= '<tr data-gantt-type="' . $modtype . '"' . $rowclass . '><td class="bloquecero-gantt-sectionname bloquecero-gantt-activityname">'
+                    . \block_bloquecero\visibility::gantt_activity_label_html($act) . '</td>';
                 foreach ($ganttweeks as $idx => $wts) {
                     $weekend      = $ganttweekends[$idx];
                     $active       = ($act['start'] <= $weekend && $act['end'] >= $wts);

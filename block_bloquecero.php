@@ -35,31 +35,7 @@ require_once($CFG->dirroot . '/mod/forum/lib.php');
  * @return int Unix timestamp of start date, or 0 if not applicable.
  */
 function get_cm_start_date($cm) {
-    global $DB;
-    $time = 0;
-    switch ($cm->modname) {
-        case 'assign':
-            // En asignaciones, se usa allowsubmissionsfromdate o duedate como fallback
-            $assignment = $DB->get_record('assign', ['id' => $cm->instance], 'allowsubmissionsfromdate, duedate', MUST_EXIST);
-            $time = $assignment->allowsubmissionsfromdate ? $assignment->allowsubmissionsfromdate : $assignment->duedate;
-            break;
-        case 'quiz':
-            // En cuestionarios, se usa timeopen o timeclose como fallback
-            $quiz = $DB->get_record('quiz', ['id' => $cm->instance], 'timeopen, timeclose', MUST_EXIST);
-            $time = $quiz->timeopen ? $quiz->timeopen : $quiz->timeclose;
-            break;
-        case 'forum':
-            // En foros, se usa assesstimestart (fecha de inicio del rango de calificación)
-            $forum = $DB->get_record('forum', ['id' => $cm->instance], 'assesstimestart, assesstimefinish');
-            $time = $forum ? $forum->assesstimestart : 0;
-            break;
-        // Agregar otros casos según el tipo de actividad
-        default:
-            // Si no se define fecha de inicio para ese tipo, se deja en 0 o se puede devolver NULL
-            $time = 0;
-            break;
-    }
-    return (int)$time;
+    return (int) \block_bloquecero\activity_dates::for_cm($cm)['start'];
 }
 
 /**
@@ -799,7 +775,7 @@ class block_bloquecero extends block_base {
             if (!empty($sec->component) && $sec->component === 'mod_subsection') {
                 continue;
             }
-            if (!$sec->uservisible && !$canviewhidden) {
+            if (!\block_bloquecero\visibility::show_section($sec, $canviewhidden)) {
                 continue;
             }
             $secname = format_string($sec->name ?: get_string('section', 'moodle') . ' ' . $sec->section);
@@ -851,7 +827,7 @@ class block_bloquecero extends block_base {
         $sec0label = '';
         foreach ($modinfo->get_section_info_all() as $section) {
             $issection0 = ($section->section == 0);
-            if (!$section->uservisible) {
+            if (!\block_bloquecero\visibility::show_section($section, $canviewhidden)) {
                 continue;
             }
             if (!empty($section->component) && $section->component === 'mod_subsection') {
@@ -895,8 +871,8 @@ class block_bloquecero extends block_base {
                 foreach ($modinfo->sections[$section->section] as $cmid) {
                     $cm = $modinfo->cms[$cmid];
 
-                    if (!$cm->uservisible) {
-                        continue; // Saltar módulos no visibles para el usuario
+                    if (!\block_bloquecero\visibility::show_cm($cm)) {
+                        continue;
                     }
                     if ($cm->modname === 'label') {
                         continue; // Saltar actividades de texto y media
@@ -932,8 +908,17 @@ class block_bloquecero extends block_base {
                         $cmhiddenhtml = (!$cm->visible && $canviewhidden)
                             ? ' <span class="bloquecero-activity-hidden">' . get_string('hiddenfromstudents', 'moodle') . '</span>'
                             : '';
-                        $cmliclass = (!$cm->visible && $canviewhidden) ? ' class="bloquecero-item-hidden"' : '';
-                        $allactivitiesarray[] = '<li' . $cmliclass . '>' . $icon . ' <a href="' . $cm->url . '">' . format_string($cm->name) . '</a>' . $cmhiddenhtml . $completionhtml . '</li>';
+                        $cmclasses = [];
+                        if (\block_bloquecero\visibility::is_restricted($cm)) {
+                            $cmclasses[] = 'bloquecero-restricted';
+                        }
+                        if (!$cm->visible && $canviewhidden) {
+                            $cmclasses[] = 'bloquecero-item-hidden';
+                        }
+                        $cmliclass = $cmclasses ? ' class="' . implode(' ', $cmclasses) . '"' : '';
+                        $allactivitiesarray[] = '<li' . $cmliclass . '>'
+                            . \block_bloquecero\visibility::activity_title_html($cm, $icon)
+                            . $cmhiddenhtml . $completionhtml . '</li>';
                         $visibleactivities++;
                         $totalactivities++;
                     } else {
@@ -951,8 +936,8 @@ class block_bloquecero extends block_base {
                                 if (!empty($modinfo->sections[$subsection->section])) {
                                     foreach ($modinfo->sections[$subsection->section] as $subcmid) {
                                         $subcm = $modinfo->cms[$subcmid];
-                                        if (!$subcm->uservisible) {
-                                            continue; // Saltar actividades no visibles
+                                        if (!\block_bloquecero\visibility::show_cm($subcm)) {
+                                            continue;
                                         }
 
                                         // Generar el icono y el enlace para la actividad de la subsección
@@ -981,8 +966,14 @@ class block_bloquecero extends block_base {
                                                 $subcompletionhtml .= '<div class="bloquecero-completion-conditions">' . implode(' &middot; ', array_map('htmlspecialchars', $subconditionparts)) . '</div>';
                                             }
                                         }
-                                        // Añadir sangría con una clase CSS
-                                        $allactivitiesarray[] = '<li class="bloquecero-subsection-activity" style="margin-left: 20px;">' . $subicon . ' <a href="' . $subcm->url . '">' . format_string($subcm->name) . '</a>' . $subcompletionhtml . '</li>';
+                                        $subclasses = ['bloquecero-subsection-activity'];
+                                        if (\block_bloquecero\visibility::is_restricted($subcm)) {
+                                            $subclasses[] = 'bloquecero-restricted';
+                                        }
+                                        $allactivitiesarray[] = '<li class="' . implode(' ', $subclasses)
+                                            . '" style="margin-left: 20px;">'
+                                            . \block_bloquecero\visibility::activity_title_html($subcm, $subicon)
+                                            . $subcompletionhtml . '</li>';
                                         $visibleactivities++;
                                         $totalactivities++;
                                     }
@@ -1148,59 +1139,50 @@ class block_bloquecero extends block_base {
             }
         }
 
-        foreach ($modinfo->cms as $cm) {
-            if (!$cm->uservisible) {
+        foreach (\block_bloquecero\course_order::listed_cms($modinfo) as $listed) {
+            $cm = $listed['cm'];
+            if (!\block_bloquecero\visibility::show_cm($cm)) {
                 continue;
             }
-            $startdate = get_cm_start_date($cm);
+            $cmdates = \block_bloquecero\activity_dates::for_cm($cm);
+            $startdate = $cmdates['start'];
             $isgraded = isset($gradedmodules[$cm->modname . '_' . $cm->instance]);
             if ($startdate || $isgraded) {
                 $activitytime = $startdate ? userdate($startdate, '%d %b %Y') : null;
                 $icon = $OUTPUT->pix_icon('icon', $cm->modfullname, $cm->modname, ['class' => 'activityicon']);
 
                 // Determinar fecha de vencimiento y estado de entrega
-                $duedate = 0;
+                $duedate = $cmdates['end'];
                 $submitted = false;
                 $modname = $cm->modname;
 
                 // Para tareas (assign)
                 if ($modname === 'assign' && $cm->instance) {
-                    $assignment = $DB->get_record('assign', ['id' => $cm->instance]);
-                    if ($assignment) {
-                        $duedate = $assignment->duedate;
-                        // Verificar si hay entrega
-                        $submission = $DB->get_record('assign_submission', [
-                            'assignment' => $cm->instance,
-                            'userid' => $USER->id,
-                            'latest' => 1,
-                        ]);
-                        $submitted = $submission && $submission->status === 'submitted';
-                    }
+                    $submission = $DB->get_record('assign_submission', [
+                        'assignment' => $cm->instance,
+                        'userid' => $USER->id,
+                        'latest' => 1,
+                    ]);
+                    $submitted = $submission && $submission->status === 'submitted';
                 } else if ($modname === 'quiz' && $cm->instance) {
-                    // Para cuestionarios (quiz)
-                    $quiz = $DB->get_record('quiz', ['id' => $cm->instance]);
-                    if ($quiz) {
-                        $duedate = $quiz->timeclose;
-                        // Verificar si tiene intentos
-                        $attempts = $DB->count_records('quiz_attempts', [
-                            'quiz' => $cm->instance,
-                            'userid' => $USER->id,
-                        ]);
-                        $submitted = $attempts > 0;
-                    }
+                    $attempts = $DB->count_records('quiz_attempts', [
+                        'quiz' => $cm->instance,
+                        'userid' => $USER->id,
+                    ]);
+                    $submitted = $attempts > 0;
                 } else if ($modname === 'forum' && $cm->instance) {
-                    // Para foros (forum)
-                    $forum = $DB->get_record('forum', ['id' => $cm->instance], 'assesstimestart, assesstimefinish');
-                    if ($forum) {
-                        $duedate = $forum->assesstimefinish;
-                        $postcount = $DB->count_records_sql(
-                            "SELECT COUNT(*) FROM {forum_posts} fp
-                               JOIN {forum_discussions} fd ON fd.id = fp.discussion
-                              WHERE fd.forum = ? AND fp.userid = ?",
-                            [$cm->instance, $USER->id]
-                        );
-                        $submitted = $postcount > 0;
-                    }
+                    $postcount = $DB->count_records_sql(
+                        "SELECT COUNT(*) FROM {forum_posts} fp
+                           JOIN {forum_discussions} fd ON fd.id = fp.discussion
+                          WHERE fd.forum = ? AND fp.userid = ?",
+                        [$cm->instance, $USER->id]
+                    );
+                    $submitted = $postcount > 0;
+                } else if ($modname === 'lesson' && $cm->instance) {
+                    $submitted = $DB->record_exists('lesson_grades', [
+                        'lessonid' => $cm->instance,
+                        'userid' => $USER->id,
+                    ]);
                 }
 
                 // Si no hay duedate, usar startdate
@@ -1209,9 +1191,10 @@ class block_bloquecero extends block_base {
                 }
 
                 // Construir objeto de actividad para JavaScript
+                $restricted = \block_bloquecero\visibility::is_restricted($cm);
                 $activitiesdata[] = [
                     'name' => format_string($cm->name),
-                    'url' => $cm->url->out(),
+                    'url' => ($restricted || empty($cm->url)) ? '' : $cm->url->out(),
                     'icon' => $icon,
                     'modname' => $modname,
                     'modfullname' => format_string($cm->modfullname),
@@ -1219,7 +1202,11 @@ class block_bloquecero extends block_base {
                     'duedate' => (int)$duedate,
                     'submitted' => $submitted,
                     'hidden' => (!$cm->visible && $canviewhidden),
-                    'sectionnum' => (int)$cm->sectionnum,
+                    'restricted' => $restricted,
+                    'availabilityhtml' => \block_bloquecero\visibility::restriction_html($cm),
+                    'sectionnum' => (int)$listed['sectionnum'],
+                    'cmid' => (int)$cm->id,
+                    'pred_cmids' => \block_bloquecero\visibility::completion_predecessor_cmids($cm),
                 ];
 
                 $duedatehtml = '';
@@ -1234,10 +1221,17 @@ class block_bloquecero extends block_base {
                 $hasusergrade = isset($usergraded[$cm->modname . '_' . $cm->instance]) ? '1' : '0';
                 $hassubmitted = $submitted ? '1' : '0';
                 $calhidden = (!$cm->visible && $canviewhidden);
-                $calliclass = $calhidden ? ' class="bloquecero-item-hidden"' : '';
+                $calclasses = [];
+                if ($restricted) {
+                    $calclasses[] = 'bloquecero-restricted';
+                }
+                if ($calhidden) {
+                    $calclasses[] = 'bloquecero-item-hidden';
+                }
+                $calliclass = $calclasses ? ' class="' . implode(' ', $calclasses) . '"' : '';
                 $calhiddenhtml = $calhidden ? ' <span class="bloquecero-activity-hidden">' . get_string('hiddenfromstudents', 'moodle') . '</span>' : '';
                 $calendaractivities .= '<li data-timestamp="' . (int)$startdate . '" data-duedate="' . (int)$duedate . '" data-graded="' . $hasusergrade . '" data-submitted="' . $hassubmitted . '"' . $calliclass . ' style="margin-bottom: 8px;">'
-                    . '<div>' . $icon . ' <a href="' . $cm->url . '">' . format_string($cm->name) . '</a>' . $calhiddenhtml . '</div>'
+                    . '<div>' . \block_bloquecero\visibility::activity_title_html($cm, $icon) . $calhiddenhtml . '</div>'
                     . $secondline
                     . '</li>';
             }
@@ -1309,8 +1303,11 @@ class block_bloquecero extends block_base {
                 'start'      => $actstart,
                 'end'        => $actend,
                 'hidden'     => $act['hidden'],
+                'restricted' => !empty($act['restricted']),
                 'sectionnum' => $sectionnum,
                 'modname'    => $act['modname'] ?? 'other',
+                'cmid'       => (int) ($act['cmid'] ?? 0),
+                'pred_cmids' => $act['pred_cmids'] ?? [],
             ];
         }
 
@@ -1371,7 +1368,7 @@ class block_bloquecero extends block_base {
         // --- Calcular semanas para la tarjeta de ACTIVIDADES ---
         $activitydates = [];
         foreach ($modinfo->cms as $cm) {
-            if (!$cm->uservisible) {
+            if (!\block_bloquecero\visibility::show_cm($cm)) {
                 continue;
             }
             $startdate = get_cm_start_date($cm);
@@ -3220,8 +3217,32 @@ class block_bloquecero extends block_base {
                 font-size: 0.95em;
                 line-height: 1.5;
             }
-            .bloquecero-item-hidden {
+            .bloquecero-item-hidden,
+            .bloquecero-restricted {
                 opacity: 0.55;
+            }
+            .bloquecero-restriction-info {
+                font-size: 0.78em;
+                color: #666;
+                font-weight: 400;
+                margin-top: 3px;
+                line-height: 1.35;
+            }
+            .bloquecero-restricted .bloquecero-gantt-activity {
+                opacity: 0.45;
+            }
+            .bloquecero-gantt-tree {
+                display: inline-block;
+                width: 1.1em;
+                color: #888;
+                font-weight: 400;
+            }
+            .bloquecero-gantt-after {
+                font-size: 0.75em;
+                font-weight: 400;
+                color: #888;
+                margin: 2px 0 0 1.35em;
+                line-height: 1.2;
             }
             .bloquecero-hidden-badge {
                 display: inline-block;
@@ -3757,7 +3778,14 @@ class block_bloquecero extends block_base {
                     <button class="bloquecero-gantt-filter bloquecero-gantt-filter-active" data-filter-type="section" style="background:#6B7D2E; color:#fff; border:none; border-radius:20px; padding:3px 12px; font-size:0.82em; cursor:pointer;">' . get_string('ganttfiltersections', 'block_bloquecero') . '</button>
                     <button class="bloquecero-gantt-filter bloquecero-gantt-filter-active" data-filter-type="assign" style="background:#B8860B; color:#fff; border:none; border-radius:20px; padding:3px 12px; font-size:0.82em; cursor:pointer;">' . get_string('ganttfilterassign', 'block_bloquecero') . '</button>
                     <button class="bloquecero-gantt-filter bloquecero-gantt-filter-active" data-filter-type="quiz" style="background:#B8860B; color:#fff; border:none; border-radius:20px; padding:3px 12px; font-size:0.82em; cursor:pointer;">' . get_string('ganttfilterquiz', 'block_bloquecero') . '</button>
+                    <button class="bloquecero-gantt-filter bloquecero-gantt-filter-active" data-filter-type="lesson" style="background:#B8860B; color:#fff; border:none; border-radius:20px; padding:3px 12px; font-size:0.82em; cursor:pointer;">' . get_string('ganttfilterlesson', 'block_bloquecero') . '</button>
                     <button class="bloquecero-gantt-filter bloquecero-gantt-filter-active" data-filter-type="forum" style="background:#B8860B; color:#fff; border:none; border-radius:20px; padding:3px 12px; font-size:0.82em; cursor:pointer;">' . get_string('ganttfilterforum', 'block_bloquecero') . '</button>
+                    <button class="bloquecero-gantt-filter bloquecero-gantt-filter-active" data-filter-type="workshop" style="background:#B8860B; color:#fff; border:none; border-radius:20px; padding:3px 12px; font-size:0.82em; cursor:pointer;">' . get_string('pluginname', 'mod_workshop') . '</button>
+                    <button class="bloquecero-gantt-filter bloquecero-gantt-filter-active" data-filter-type="choice" style="background:#B8860B; color:#fff; border:none; border-radius:20px; padding:3px 12px; font-size:0.82em; cursor:pointer;">' . get_string('pluginname', 'mod_choice') . '</button>
+                    <button class="bloquecero-gantt-filter bloquecero-gantt-filter-active" data-filter-type="feedback" style="background:#B8860B; color:#fff; border:none; border-radius:20px; padding:3px 12px; font-size:0.82em; cursor:pointer;">' . get_string('pluginname', 'mod_feedback') . '</button>
+                    <button class="bloquecero-gantt-filter bloquecero-gantt-filter-active" data-filter-type="data" style="background:#B8860B; color:#fff; border:none; border-radius:20px; padding:3px 12px; font-size:0.82em; cursor:pointer;">' . get_string('pluginname', 'mod_data') . '</button>
+                    <button class="bloquecero-gantt-filter bloquecero-gantt-filter-active" data-filter-type="scorm" style="background:#B8860B; color:#fff; border:none; border-radius:20px; padding:3px 12px; font-size:0.82em; cursor:pointer;">' . get_string('pluginname', 'mod_scorm') . '</button>
+                    <button class="bloquecero-gantt-filter bloquecero-gantt-filter-active" data-filter-type="other" style="background:#B8860B; color:#fff; border:none; border-radius:20px; padding:3px 12px; font-size:0.82em; cursor:pointer;">' . get_string('ganttfilterother', 'block_bloquecero') . '</button>
                     <button class="bloquecero-gantt-filter bloquecero-gantt-filter-active" data-filter-type="livesession" style="background:#1565C0; color:#fff; border:none; border-radius:20px; padding:3px 12px; font-size:0.82em; cursor:pointer;">' . get_string('ganttfilterlivesessions', 'block_bloquecero') . '</button>
                 </div>
                 <div id="bloquecero-gantt-loading" style="display:none; text-align:center; padding:20px; color:#666;">
@@ -3858,12 +3886,22 @@ class block_bloquecero extends block_base {
                 $gantthtml .= '</tr>';
                 // Filas de actividades anidadas bajo esta sección.
                 if ($hasactivities) {
-                    foreach ($activitiesbysection[$sectionnum] as $act) {
+                    $sectionacts = \block_bloquecero\visibility::annotate_gantt_chains($activitiesbysection[$sectionnum]);
+                    foreach ($sectionacts as $act) {
                         $modtype = htmlspecialchars($act['modname'] ?? 'other');
-                        $hiddenclass = $act['hidden'] ? ' bloquecero-item-hidden' : '';
-                        $gantthtml .= '<tr data-gantt-type="' . $modtype . '" class="' . trim($hiddenclass) . '">';
+                        $rowclasses = [];
+                        if (!empty($act['hidden'])) {
+                            $rowclasses[] = 'bloquecero-item-hidden';
+                        }
+                        if (!empty($act['restricted'])) {
+                            $rowclasses[] = 'bloquecero-restricted';
+                        }
+                        if (!empty($act['chain'])) {
+                            $rowclasses[] = 'bloquecero-gantt-chained';
+                        }
+                        $gantthtml .= '<tr data-gantt-type="' . $modtype . '" class="' . implode(' ', $rowclasses) . '">';
                         $gantthtml .= '<td class="bloquecero-gantt-sectionname bloquecero-gantt-activityname">'
-                            . $act['icon'] . ' ' . htmlspecialchars($act['name']) . '</td>';
+                            . \block_bloquecero\visibility::gantt_activity_label_html($act) . '</td>';
                         foreach ($ganttweeks as $idx => $wts) {
                             $weekend = $ganttweekends[$idx];
                             $active = ($act['start'] <= $weekend && $act['end'] >= $wts);
@@ -3930,10 +3968,12 @@ class block_bloquecero extends block_base {
             // If only current course selected (or no multi-course selection), use pre-rendered html.
             if (courseids.length === 1 && courseids[0] === ' . (int)$COURSE->id . ') {
                 content.innerHTML = ganttDefaultHtml;
+                applyGanttFilters();
                 return;
             }
             if (ganttCache[key]) {
                 content.innerHTML = ganttCache[key];
+                applyGanttFilters();
                 return;
             }
             content.innerHTML = "";
@@ -4001,11 +4041,17 @@ class block_bloquecero extends block_base {
         // Filter pills (type filter).
         function applyGanttFilters() {
             var activeTypes = new Set();
+            var pillTypes = new Set();
+            document.querySelectorAll(".bloquecero-gantt-filter").forEach(function(p) {
+                pillTypes.add(p.dataset.filterType);
+            });
             document.querySelectorAll(".bloquecero-gantt-filter.bloquecero-gantt-filter-active").forEach(function(p) {
                 activeTypes.add(p.dataset.filterType);
             });
             document.querySelectorAll("#bloquecero-gantt-content tr[data-gantt-type]").forEach(function(row) {
-                row.style.display = activeTypes.has(row.dataset.ganttType) ? "" : "none";
+                var type = row.dataset.ganttType;
+                var show = pillTypes.has(type) ? activeTypes.has(type) : activeTypes.has("other");
+                row.style.display = show ? "" : "none";
             });
         }
 
@@ -4051,6 +4097,7 @@ class block_bloquecero extends block_base {
                     \'.bloquecero-gantt-weekcol { min-width: 36px; font-weight: 500; background: #f5f5f5; line-height: 1.1; }\' +
                     \'.bloquecero-gantt-active { background: #6B7D2E !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }\' +
                     \'.bloquecero-gantt-activity { background: #B8860B !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }\' +
+                    \'.bloquecero-restricted { opacity: 0.55; }\' +
                     \'.bloquecero-gantt-currentweek { background: #e8f5e9 !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }\' +
                     \'.bloquecero-gantt-active.bloquecero-gantt-currentweek { background: #4a5c1a !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }\' +
                     \'.bloquecero-gantt-activity.bloquecero-gantt-currentweek { background: #8B6008 !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }\' +
@@ -4258,13 +4305,20 @@ class block_bloquecero extends block_base {
                         }
 
                         var hiddenBadge = activity.hidden ? \' <span style="font-size:0.75em;font-weight:600;background:#aaa;color:#fff;border-radius:3px;padding:1px 6px;margin-left:4px;">\' + bloqueceroI18n.hiddenfromstudents + \'</span>\' : \'\';
-                        tabla += \'<tr style="border-bottom:1px solid #eee;transition:background 0.2s;\' + (activity.hidden ? \'opacity:0.6;\' : \'\') + \'">\' +
+                        var nameHtml = activity.url
+                            ? \'<a href="\' + activity.url + \'" style="color:#004D35;font-weight:600;text-decoration:none;">\' + activity.name + \'</a>\'
+                            : \'<span style="font-weight:600;">\' + activity.name + \'</span>\';
+                        var restrictionHtml = activity.availabilityhtml
+                            ? \'<div class="bloquecero-restriction-info">\' + activity.availabilityhtml + \'</div>\'
+                            : \'\';
+                        var rowDim = (activity.hidden || activity.restricted) ? \'opacity:0.6;\' : \'\';
+                        tabla += \'<tr style="border-bottom:1px solid #eee;transition:background 0.2s;\' + rowDim + \'">\' +
                             \'<td style="padding:12px;">\' +
                             \'<div style="display:flex;align-items:center;gap:8px;">\' +
                             activity.icon +
-                            \'<a href="\' + activity.url + \'" style="color:#004D35;font-weight:600;text-decoration:none;">\' + activity.name + \'</a>\' +
+                            nameHtml +
                             hiddenBadge +
-                            \'</div></td>\' +
+                            \'</div>\' + restrictionHtml + \'</td>\' +
                             \'<td style="padding:12px;color:#555;font-size:0.9em;">\' + activity.modfullname + \'</td>\' +
                             \'<td style="padding:12px;color:\' + daysColor + \';font-weight:500;font-size:0.88em;">\' + daysText + dueDateStr + \'</td>\' +
                             \'<td style="padding:12px;text-align:center;">\' + estadoHTML + \'</td>\' +
@@ -4982,6 +5036,9 @@ class block_bloquecero extends block_base {
         .bloquecero-gantt-activity {
             background: #B8860B;
         }
+        .bloquecero-restricted .bloquecero-gantt-activity {
+            opacity: 0.45;
+        }
         .bloquecero-gantt-currentweek {
             background: #e8f5e9 !important;
         }
@@ -4994,6 +5051,16 @@ class block_bloquecero extends block_base {
         .bloquecero-gantt-activityname {
             font-weight: 400;
             font-size: 0.9em;
+        }
+        .bloquecero-gantt-tree {
+            display: inline-block;
+            width: 1.1em;
+            color: #888;
+        }
+        .bloquecero-gantt-after {
+            font-size: 0.75em;
+            color: #888;
+            margin: 2px 0 0 1.35em;
         }
         .bloquecero-gantt-session {
             background: #1565C0;
