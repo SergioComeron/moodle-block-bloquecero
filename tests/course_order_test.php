@@ -36,8 +36,12 @@ final class course_order_test extends advanced_testcase {
         $this->resetAfterTest();
         $this->setAdminUser();
 
+        global $CFG;
         if (!get_config('mod_subsection', 'version')) {
             $this->markTestSkipped('mod_subsection is not available.');
+        }
+        if ((int) ($CFG->branch ?? 0) < 500) {
+            $this->markTestSkipped('Placing activities inside delegated subsections needs Moodle 5.0+.');
         }
 
         $course = $this->getDataGenerator()->create_course(['numsections' => 1]);
