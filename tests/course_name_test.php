@@ -31,6 +31,8 @@ use PHPUnit\Framework\Attributes\DataProvider;
 #[CoversClass(course_name::class)]
 final class course_name_test extends advanced_testcase {
     /**
+     * Course fullnames and the expected bloquecero header title.
+     *
      * @return array<string, array{string, string}>
      */
     public static function fullname_provider(): array {
@@ -56,6 +58,10 @@ final class course_name_test extends advanced_testcase {
 
     /**
      * Header title keeps the short name and restores Laboratorio when truncated.
+     *
+     * @dataProvider fullname_provider
+     * @param string $fullname Course fullname.
+     * @param string $expected Expected header title.
      */
     #[DataProvider('fullname_provider')]
     public function test_display(string $fullname, string $expected): void {

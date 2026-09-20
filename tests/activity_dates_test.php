@@ -30,11 +30,18 @@ use PHPUnit\Framework\Attributes\CoversClass;
 #[CoversClass(activity_dates::class)]
 final class activity_dates_test extends advanced_testcase {
     /**
+     * Reset state and log in as admin (lesson/forum generators require it).
+     */
+    protected function setUp(): void {
+        parent::setUp();
+        $this->resetAfterTest();
+        $this->setAdminUser();
+    }
+
+    /**
      * A lesson with available/deadline is plotted from those timestamps.
      */
     public function test_lesson_uses_available_and_deadline(): void {
-        $this->resetAfterTest();
-
         $course = $this->getDataGenerator()->create_course();
         $available = (new \DateTimeImmutable('2026-10-01 00:00:00', new \DateTimeZone('UTC')))->getTimestamp();
         $deadline = (new \DateTimeImmutable('2026-10-15 23:59:59', new \DateTimeZone('UTC')))->getTimestamp();
@@ -55,8 +62,6 @@ final class activity_dates_test extends advanced_testcase {
      * A lesson with only an opening date is a single-day bar.
      */
     public function test_lesson_available_without_deadline_is_point_in_time(): void {
-        $this->resetAfterTest();
-
         $course = $this->getDataGenerator()->create_course();
         $available = (new \DateTimeImmutable('2026-11-02 08:00:00', new \DateTimeZone('UTC')))->getTimestamp();
         $lesson = $this->getDataGenerator()->create_module('lesson', [
@@ -76,8 +81,6 @@ final class activity_dates_test extends advanced_testcase {
      * A lesson with no module dates and no restrictions is omitted.
      */
     public function test_lesson_without_dates_returns_zero(): void {
-        $this->resetAfterTest();
-
         $course = $this->getDataGenerator()->create_course();
         $lesson = $this->getDataGenerator()->create_module('lesson', [
             'course' => $course->id,
@@ -96,8 +99,6 @@ final class activity_dates_test extends advanced_testcase {
      * Restrict-access date conditions are used when the lesson has no own dates.
      */
     public function test_lesson_falls_back_to_availability_dates(): void {
-        $this->resetAfterTest();
-
         $course = $this->getDataGenerator()->create_course();
         $from = (new \DateTimeImmutable('2026-09-01 00:00:00', new \DateTimeZone('UTC')))->getTimestamp();
         $until = (new \DateTimeImmutable('2026-09-30 00:00:00', new \DateTimeZone('UTC')))->getTimestamp();
@@ -150,8 +151,6 @@ final class activity_dates_test extends advanced_testcase {
      * Moodle 5.2 forums use duedate/cutoffdate as the activity window.
      */
     public function test_forum_uses_duedate_and_cutoffdate(): void {
-        $this->resetAfterTest();
-
         $course = $this->getDataGenerator()->create_course();
         $due = (new \DateTimeImmutable('2026-10-08 00:00:00', new \DateTimeZone('UTC')))->getTimestamp();
         $cutoff = (new \DateTimeImmutable('2026-10-15 23:59:00', new \DateTimeZone('UTC')))->getTimestamp();
@@ -172,8 +171,6 @@ final class activity_dates_test extends advanced_testcase {
      * Modules without a dedicated extractor use core activity dates (choice).
      */
     public function test_choice_uses_core_activity_dates(): void {
-        $this->resetAfterTest();
-
         $course = $this->getDataGenerator()->create_course();
         $open = (new \DateTimeImmutable('2026-10-06 00:00:00', new \DateTimeZone('UTC')))->getTimestamp();
         $close = (new \DateTimeImmutable('2026-10-13 23:59:00', new \DateTimeZone('UTC')))->getTimestamp();
@@ -194,8 +191,6 @@ final class activity_dates_test extends advanced_testcase {
      * Assign dates keep the previous Gantt behaviour.
      */
     public function test_assign_uses_allowsubmissionsfromdate_and_duedate(): void {
-        $this->resetAfterTest();
-
         $course = $this->getDataGenerator()->create_course();
         $open = (new \DateTimeImmutable('2026-10-05 00:00:00', new \DateTimeZone('UTC')))->getTimestamp();
         $due = (new \DateTimeImmutable('2026-10-20 23:59:00', new \DateTimeZone('UTC')))->getTimestamp();

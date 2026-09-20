@@ -81,7 +81,15 @@ class course_order {
      * @return cm_info[]
      */
     private static function subsection_cms(cm_info $subsectioncm, \course_modinfo $modinfo, array $sectionbyid): array {
-        $sectionid = $subsectioncm->customdata['sectionid'] ?? null;
+        $sectionid = is_array($subsectioncm->customdata) ? ($subsectioncm->customdata['sectionid'] ?? null) : null;
+        if (!$sectionid && method_exists($subsectioncm, 'get_delegated_section_info')) {
+            $delegated = $subsectioncm->get_delegated_section_info();
+            $sectionid = $delegated->id ?? null;
+        }
+        if (!$sectionid) {
+            $delegated = $modinfo->get_section_info_by_component('mod_subsection', $subsectioncm->instance);
+            $sectionid = $delegated->id ?? null;
+        }
         if (!$sectionid || empty($sectionbyid[$sectionid])) {
             return [];
         }

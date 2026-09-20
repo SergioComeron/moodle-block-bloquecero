@@ -34,6 +34,11 @@ final class course_order_test extends advanced_testcase {
      */
     public function test_subsection_activities_keep_parent_sequence_order(): void {
         $this->resetAfterTest();
+        $this->setAdminUser();
+
+        if (!get_config('mod_subsection', 'version')) {
+            $this->markTestSkipped('mod_subsection is not available.');
+        }
 
         $course = $this->getDataGenerator()->create_course(['numsections' => 1]);
         $before = $this->getDataGenerator()->create_module('page', [
@@ -61,6 +66,7 @@ final class course_order_test extends advanced_testcase {
             'name' => 'Después',
         ]);
 
+        rebuild_course_cache($course->id, true);
         $listed = course_order::listed_cms(get_fast_modinfo($course));
         $names = array_map(static fn(array $row): string => $row['cm']->name, $listed);
         $this->assertSame(['Antes', 'Dentro', 'Después'], $names);
