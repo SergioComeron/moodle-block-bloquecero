@@ -5,6 +5,16 @@ Todos los cambios notables en este proyecto serán documentados en este archivo.
 El formato está basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1.0.0/),
 y este proyecto adhiere a [Semantic Versioning](https://semver.org/lang/es/).
 
+## [v0.16] - 2026-09-20
+
+### Nuevas funcionalidades
+- mostrar Laboratorio en el título recortado del curso
+- restricciones, lecciones y orden de subsecciones
+
+### Otros cambios
+- Release: bump version to 0.16
+
+
 ## [v0.15] - 2026-09-17
 
 ### Otros cambios
